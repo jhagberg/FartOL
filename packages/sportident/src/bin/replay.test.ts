@@ -111,8 +111,12 @@ const renderFrame = (command: number, parameters: number[]): number[] =>
 
 const makeStationConfigBlob = (): number[] => {
   const cfg = new Array<number>(128).fill(0x00);
-  cfg[STATION_CONFIG_OFFSETS.CODE] = 1;
+  // Pre-handshake state: Workstation mode, code=1. Handshake-flag bits
+  // (0x73/0x74) stay 0x00 — replay tests don't assert bit-merge semantics
+  // (that's covered in SiMainStation.test.ts); they just need the handshake
+  // to complete without errors so card-replay flows can run.
   cfg[STATION_CONFIG_OFFSETS.MODE] = StationMode.Workstation;
+  cfg[STATION_CONFIG_OFFSETS.CODE_LOW] = 1;
   return cfg;
 };
 

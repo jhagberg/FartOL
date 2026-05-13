@@ -107,6 +107,22 @@ git push origin v0.0.1-handshake
 
 This closes Phase 0 success criterion #6 (tagged release).
 
+## Operator helpers (one-off bench scripts)
+
+- **`scripts/repair-station-sn.mjs`** — one-off operator helper that restores
+  byte 0x02 of a BSM7/8 station's serial number to `0x0E`. It exists to undo
+  the Plan 00-04 handshake bug (whole-byte CODE write to offset 0x02, fixed in
+  Plan 00-06) on Jonas's bench reader, which corrupted his station's SN from
+  593656 (`0x00090EF8`) to 593144 (`0x000909F8`) on 2026-05-13. Usage:
+
+  ```sh
+  node scripts/repair-station-sn.mjs [/dev/ttyUSB0]
+  ```
+
+  The script verifies the post-write SN bytes and exits non-zero if byte 0x02
+  is not `0x0E` after the write. Delete the file once your reader is verified
+  to report SN 593656 again — it has no other purpose.
+
 ## Attribution
 
 This package contains code ported from

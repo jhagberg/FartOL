@@ -5,8 +5,9 @@
 //   - Trimmed to the Phase 0 surface: `readInfo()` (GET_SYS_VAL 0..128) + `writeDiff()`
 //     (SET_SYS_VAL for each contiguous dirty byte-range). Storage-typed station-config
 //     parsing is NOT ported — Phase 0 treats the 128-byte blob as a plain `number[]`
-//     and mutates known offsets directly (RESEARCH §Handshake sequence step 4 lists
-//     the fields we touch — code/mode/autoSend/handshake/beeps/flashes).
+//     and mutates known offsets directly. The flag layout below mirrors upstream's
+//     `siStationStorageLocations` (BaseSiStation.ts L41-86): most readout-mode
+//     fields are BITS inside bytes 0x73/0x74 rather than whole-byte slots.
 //   - Mode constants exported as a const literal (no enum — erasableSyntaxOnly).
 // See packages/sportident/NOTICE.md for cumulative attribution.
 
@@ -15,16 +16,54 @@ import type { SiMessage } from '../siProtocol.ts';
 import type { ISiStation } from './ISiStation.ts';
 
 /**
- * Station-config byte offsets exercised by readCards() (extracted from upstream
- * BaseSiStation locations). Upstream has many more — those are Phase 1+.
+ * Station-config byte offsets and bit positions exercised by SiMainStation.readCards().
+ *
+ * Upstream sportident.js stores the readout-mode flags (autoSend, handshake, beeps,
+ * flashes, extProto, …) as BITS inside bytes 0x73 and 0x74, not as whole-byte values.
+ * The previous shape of this constants object got this wrong: it treated 0x73/0x74/0x75/0x76
+ * as if each flag owned a whole byte, AND it placed CODE at 0x02 (which is in fact the
+ * third byte of the 4-byte big-endian serial number at offset 0..3). Writing CODE there
+ * corrupted Jonas's bench station's reported SN from 593656 → 593144 on 2026-05-13
+ * (see packages/sportident/tests/fixtures/jonas/si9-jonas-001.bytes.hex for the
+ * captured pre-corruption SI9 transcript). Worse, the handshake bit at 0x74 bit 2
+ * never actually got set, which is why the station never emits SI_CARD_DETECTED.
  */
 export const STATION_CONFIG_OFFSETS = {
-  CODE: 0x02, // station code (we set to 10)
-  MODE: 0x71, // station mode (we set to Readout)
-  AUTOSEND: 0x73, // autosend flag (we clear to false)
-  HANDSHAKE: 0x74, // handshake-mode flag (we set to true)
-  BEEPS: 0x75, // beep flag (we set to true)
-  FLASHES: 0x76, // flash flag (we set to true)
+  /** Serial number bytes [0..3] (big-endian). DO NOT WRITE here — readout only. */
+  SERIAL_NUMBER: { offset: 0x00, length: 4 },
+  /**
+   * Station code low byte (whole byte). High 2 bits live in byte 0x73 bits 6:7
+   * — Phase 0 keeps code ≤ 255 so those high bits stay zero.
+   */
+  CODE_LOW: 0x72,
+  /** Station mode (whole byte: 0x05 = Readout). */
+  MODE: 0x71,
+  /**
+   * Bit-packed flag byte: flashes (bit 0), beeps (bit 2), code-high-bits (6:7).
+   * Other bits in this byte belong to upstream features we don't touch.
+   */
+  FLAG_BYTE_73: 0x73,
+  /**
+   * Bit-packed flag byte: extProto (bit 0), autoSend (bit 1), handshake (bit 2),
+   * sprint4ms (3), passwordOnly (4), stopOnFullBackup (5), autoReadout (7).
+   * Preserve bits we don't explicitly set/clear so we don't silently change
+   * unrelated station behaviour configured by other operators.
+   */
+  FLAG_BYTE_74: 0x74,
+} as const;
+
+/** Bit masks inside byte 0x73. */
+export const FLAG_BITS_73 = {
+  FLASHES: 1 << 0,
+  BEEPS: 1 << 2,
+  CODE_HIGH_MASK: 0b11 << 6,
+} as const;
+
+/** Bit masks inside byte 0x74. */
+export const FLAG_BITS_74 = {
+  EXT_PROTO: 1 << 0,
+  AUTO_SEND: 1 << 1,
+  HANDSHAKE: 1 << 2,
 } as const;
 
 /** Station-mode byte values per upstream `BaseSiStation.Mode`. */

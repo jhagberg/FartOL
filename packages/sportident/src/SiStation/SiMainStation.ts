@@ -4,7 +4,10 @@
 //   - Wires the simplified (Direct-only) SiTargetMultiplexer; no SET_MS-on-every-call.
 //   - readCards() performs the upstream atomic handshake: SET_MS(0x4D) ->
 //     GET_SYS_VAL(0,128) -> SET_SYS_VAL diff to switch the station into Readout
-//     mode (mode=Readout, autoSend=false, handshake=true, beeps=true, flashes=true).
+//     mode. The readout-mode flags (beeps, flashes, autoSend, handshake, extProto)
+//     live as BITS inside bytes 0x73 and 0x74 — see BaseSiStation.STATION_CONFIG_OFFSETS
+//     for the wire layout. We do bit-aware read-modify-writes so we preserve
+//     unrelated firmware bits (sprint4ms, passwordOnly, etc.).
 //   - Card-insert dispatch: subscribes to multiplexer 'message'; routes SI5_DET
 //     and SI8_DET through BaseSiCard.detectFromMessage (Plan 03), emits
 //     'cardInserted', awaits card.read() (which calls back into sendMessage for
@@ -22,7 +25,13 @@ import type { FrameError, SiMessage } from '../siProtocol.ts';
 import { BaseSiCard } from '../SiCard/BaseSiCard.ts';
 import { EventEmitter } from '../utils/events.ts';
 import type { ISerialTransport } from '../transport/ISerialTransport.ts';
-import { BaseSiStation, STATION_CONFIG_OFFSETS, StationMode } from './BaseSiStation.ts';
+import {
+  BaseSiStation,
+  FLAG_BITS_73,
+  FLAG_BITS_74,
+  STATION_CONFIG_OFFSETS,
+  StationMode,
+} from './BaseSiStation.ts';
 import { SiTargetMultiplexer } from './SiTargetMultiplexer.ts';
 import type { ConnectionState, ISiMainStation } from './ISiMainStation.ts';
 
@@ -68,8 +77,15 @@ export class SiMainStation extends EventEmitter implements ISiMainStation {
    * Step 1: SET_MS(0x4D) — claim Master mode. The multiplexer prepends WAKEUP
    * automatically (codex review #11).
    * Step 2: readInfo() — fetch 128-byte config blob via GET_SYS_VAL(0, 128).
-   * Step 3: mutate the in-memory config: code=10, mode=Readout, autoSend=false,
-   * handshake=true, beeps=true, flashes=true.
+   * Step 3: bit-aware merge into the in-memory config:
+   *   - byte 0x71 (whole byte) = StationMode.Readout
+   *   - byte 0x72 (whole byte) = code low byte (10)
+   *   - byte 0x73: set BEEPS (bit 2) + FLASHES (bit 0); clear code-high-bits
+   *     (code ≤ 255). All other bits preserved.
+   *   - byte 0x74: set EXT_PROTO (bit 0) + HANDSHAKE (bit 2); clear AUTO_SEND
+   *     (bit 1). Other bits (sprint4ms, passwordOnly, stopOnFullBackup,
+   *     autoReadout) are preserved so we don't silently change unrelated
+   *     station behaviour.
    * Step 4: writeDiff(old, new) — send SET_SYS_VAL for each contiguous dirty
    * range. The station echoes the first byte of each write.
    *
@@ -93,17 +109,33 @@ export class SiMainStation extends EventEmitter implements ISiMainStation {
 
       // Step 2: read 128-byte config blob.
       const oldConfig = await this.station.readInfo();
-      // Step 3: build the new config (mutate copy in place).
+
+      // Step 3: build the new config (mutate copy in place). Bit-aware writes —
+      // see BaseSiStation.STATION_CONFIG_OFFSETS for the wire layout rationale.
       const newConfig = oldConfig.slice();
       // Defensive: pad short blobs (some fakes return fewer bytes) so the
       // offset-keyed writes don't index past the end.
       while (newConfig.length < 128) newConfig.push(0x00);
-      newConfig[STATION_CONFIG_OFFSETS.CODE] = 10;
+
+      // MODE = Readout (0x05) → byte 0x71 (whole byte).
       newConfig[STATION_CONFIG_OFFSETS.MODE] = StationMode.Readout;
-      newConfig[STATION_CONFIG_OFFSETS.AUTOSEND] = 0x00; // false
-      newConfig[STATION_CONFIG_OFFSETS.HANDSHAKE] = 0x01; // true
-      newConfig[STATION_CONFIG_OFFSETS.BEEPS] = 0x01; // true
-      newConfig[STATION_CONFIG_OFFSETS.FLASHES] = 0x01; // true
+
+      // CODE = 10 → byte 0x72 (low byte). High bits 6:7 of byte 0x73 stay zero
+      // since code ≤ 255; the bit-merge for 0x73 below clears them explicitly.
+      newConfig[STATION_CONFIG_OFFSETS.CODE_LOW] = 10;
+
+      // Byte 0x73: set BEEPS (bit 2) + FLASHES (bit 0); clear code-high-bits.
+      newConfig[STATION_CONFIG_OFFSETS.FLAG_BYTE_73] =
+        (newConfig[STATION_CONFIG_OFFSETS.FLAG_BYTE_73]! & ~FLAG_BITS_73.CODE_HIGH_MASK) |
+        FLAG_BITS_73.BEEPS |
+        FLAG_BITS_73.FLASHES;
+
+      // Byte 0x74: set EXT_PROTO (bit 0) + HANDSHAKE (bit 2); clear AUTO_SEND
+      // (bit 1). All other bits preserved.
+      newConfig[STATION_CONFIG_OFFSETS.FLAG_BYTE_74] =
+        (newConfig[STATION_CONFIG_OFFSETS.FLAG_BYTE_74]! & ~FLAG_BITS_74.AUTO_SEND) |
+        FLAG_BITS_74.EXT_PROTO |
+        FLAG_BITS_74.HANDSHAKE;
 
       // Step 4: writeDiff — one SET_SYS_VAL per contiguous dirty range.
       // Pad oldConfig to match.

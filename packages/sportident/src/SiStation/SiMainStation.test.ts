@@ -30,7 +30,12 @@ import { SiCard9 } from '../SiCard/types/SiCard9.ts';
 import { SiCard10 } from '../SiCard/types/SiCard10.ts';
 import { SIAC } from '../SiCard/types/SIAC.ts';
 import { SiMainStation } from './SiMainStation.ts';
-import { STATION_CONFIG_OFFSETS, StationMode } from './BaseSiStation.ts';
+import {
+  FLAG_BITS_73,
+  FLAG_BITS_74,
+  STATION_CONFIG_OFFSETS,
+  StationMode,
+} from './BaseSiStation.ts';
 
 import { fixture as si5Fixture } from '../../tests/fixtures/upstream/si5-16-punches.ts';
 import { fixture as si9Fixture } from '../../tests/fixtures/upstream/si9-typical.ts';
@@ -107,11 +112,32 @@ class FakeSerialTransport extends EventEmitter implements ISerialTransport {
 const renderFrame = (command: number, parameters: number[]): number[] =>
   render({ command, parameters });
 
-/** Build a 128-byte synthetic station config (everything 0x00 except mode=Workstation). */
+/**
+ * A non-trivial bit in byte 0x74 that the handshake MUST preserve. Upstream
+ * `SiStationStorageLocations` calls bit 3 of byte 0x74 `sprint4ms`; if the
+ * station operator had it enabled before the handshake, the handshake must
+ * not silently clear it. Test 1 uses this to assert bit preservation.
+ */
+const PRESERVE_BIT_74 = 1 << 3; // sprint4ms
+
+/**
+ * Build a 128-byte synthetic station config representing a station NOT yet in
+ * readout mode (Workstation mode, no beeps/flashes/handshake set, extProto set,
+ * sprint4ms set — to exercise bit-preservation). The handshake should leave the
+ * sprint4ms bit alone, set BEEPS/FLASHES on 0x73, and set HANDSHAKE on 0x74.
+ */
 const makeStationConfigBlob = (): number[] => {
   const cfg = new Array<number>(128).fill(0x00);
-  cfg[STATION_CONFIG_OFFSETS.CODE] = 1;
+  // Serial-number bytes (read-only — verifies handshake never writes here).
+  cfg[0x00] = 0x00;
+  cfg[0x01] = 0x09;
+  cfg[0x02] = 0x0e;
+  cfg[0x03] = 0xf8;
   cfg[STATION_CONFIG_OFFSETS.MODE] = StationMode.Workstation;
+  cfg[STATION_CONFIG_OFFSETS.CODE_LOW] = 1;
+  // FLAG_BYTE_73 starts at 0x00 (no beeps, no flashes, no code-high-bits).
+  // FLAG_BYTE_74 has extProto (bit 0) + sprint4ms (bit 3) set pre-handshake.
+  cfg[STATION_CONFIG_OFFSETS.FLAG_BYTE_74] = FLAG_BITS_74.EXT_PROTO | PRESERVE_BIT_74;
   return cfg;
 };
 
@@ -217,7 +243,7 @@ const buildBadCrcFrame = (): number[] => {
 // ----------------------------------------------------------------------------
 
 describe('SiMainStation handshake + dispatch', () => {
-  test('1) atomic handshake: SET_MS -> readInfo -> writeDiff puts station in Readout mode', async () => {
+  test('1) atomic handshake: SET_MS -> readInfo -> writeDiff puts station in Readout mode with bit-aware writes', async () => {
     const fake = new FakeSerialTransport();
     setUpHandshakeRules(fake);
 
@@ -237,6 +263,85 @@ describe('SiMainStation handshake + dispatch', () => {
     assert.ok(sentCommands.includes(proto.cmd.GET_SYS_VAL), 'GET_SYS_VAL sent');
     assert.ok(sentCommands.includes(proto.cmd.SET_SYS_VAL), 'SET_SYS_VAL sent');
     assert.deepStrictEqual(states, ['opening', 'open']);
+
+    // Reconstruct the post-handshake config by replaying every SET_SYS_VAL
+    // write onto a copy of the synthetic pre-handshake blob. Each on-wire
+    // frame: [WAKEUP, STX, cmd, len, offset, ...bytes, crc_hi, crc_lo, ETX].
+    const postConfig = makeStationConfigBlob();
+    for (const chunk of fake.recordedSends) {
+      if (chunk[0] !== proto.WAKEUP) continue;
+      if (chunk[1] !== proto.STX) continue;
+      if (chunk[2] !== proto.cmd.SET_SYS_VAL) continue;
+      const len = chunk[3] as number; // params length (offset + bytes)
+      const offset = chunk[4] as number;
+      const numDataBytes = len - 1;
+      for (let i = 0; i < numDataBytes; i++) {
+        postConfig[offset + i] = chunk[5 + i] as number;
+      }
+    }
+
+    // Mode is whole-byte Readout.
+    assert.strictEqual(
+      postConfig[STATION_CONFIG_OFFSETS.MODE],
+      StationMode.Readout,
+      `byte 0x71 (mode) expected ${StationMode.Readout}, got ${postConfig[STATION_CONFIG_OFFSETS.MODE]}`
+    );
+
+    // Code low byte is 10 (whole byte at 0x72).
+    assert.strictEqual(
+      postConfig[STATION_CONFIG_OFFSETS.CODE_LOW],
+      10,
+      `byte 0x72 (code low) expected 10, got ${postConfig[STATION_CONFIG_OFFSETS.CODE_LOW]}`
+    );
+
+    // Byte 0x73 has FLASHES (bit 0) and BEEPS (bit 2) SET.
+    const byte73 = postConfig[STATION_CONFIG_OFFSETS.FLAG_BYTE_73]!;
+    assert.ok(
+      (byte73 & FLAG_BITS_73.BEEPS) !== 0,
+      `byte 0x73 BEEPS bit (0x04) must be SET, got 0x${byte73.toString(16)}`
+    );
+    assert.ok(
+      (byte73 & FLAG_BITS_73.FLASHES) !== 0,
+      `byte 0x73 FLASHES bit (0x01) must be SET, got 0x${byte73.toString(16)}`
+    );
+    // code-high-bits cleared (code <= 255).
+    assert.strictEqual(
+      byte73 & FLAG_BITS_73.CODE_HIGH_MASK,
+      0,
+      `byte 0x73 CODE_HIGH bits must be CLEAR, got 0x${byte73.toString(16)}`
+    );
+
+    // Byte 0x74 has EXT_PROTO (bit 0) + HANDSHAKE (bit 2) SET; AUTO_SEND
+    // (bit 1) CLEAR; sprint4ms (bit 3) PRESERVED from pre-handshake state.
+    const byte74 = postConfig[STATION_CONFIG_OFFSETS.FLAG_BYTE_74]!;
+    assert.ok(
+      (byte74 & FLAG_BITS_74.HANDSHAKE) !== 0,
+      `byte 0x74 HANDSHAKE bit (0x04) must be SET, got 0x${byte74.toString(16)}`
+    );
+    assert.ok(
+      (byte74 & FLAG_BITS_74.EXT_PROTO) !== 0,
+      `byte 0x74 EXT_PROTO bit (0x01) must be SET, got 0x${byte74.toString(16)}`
+    );
+    assert.strictEqual(
+      byte74 & FLAG_BITS_74.AUTO_SEND,
+      0,
+      `byte 0x74 AUTO_SEND bit (0x02) must be CLEAR, got 0x${byte74.toString(16)}`
+    );
+    assert.ok(
+      (byte74 & PRESERVE_BIT_74) !== 0,
+      `byte 0x74 sprint4ms bit (0x08) must be PRESERVED, got 0x${byte74.toString(16)}`
+    );
+
+    // Critically: serial-number bytes (0x00..0x03) must NOT have been written.
+    assert.strictEqual(postConfig[0x00], 0x00, 'SN byte 0x00 must not change');
+    assert.strictEqual(postConfig[0x01], 0x09, 'SN byte 0x01 must not change');
+    assert.strictEqual(
+      postConfig[0x02],
+      0x0e,
+      'SN byte 0x02 must not change (bench bug 2026-05-13)'
+    );
+    assert.strictEqual(postConfig[0x03], 0xf8, 'SN byte 0x03 must not change');
+
     await station.close();
   });
 
