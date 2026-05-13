@@ -93,15 +93,22 @@ const makeStationConfigBlob = (): number[] => {
 const setUpHandshakeRules = (fake: FakeSerialTransport): void => {
   fake.addRule(
     (c) => c[0] === proto.WAKEUP && c[1] === proto.STX && c[2] === proto.cmd.SET_MS,
-    () => renderFrame(proto.cmd.SET_MS, [0x00, 0x00, proto.P_MS_DIRECT])
+    // Real-wire SET_MS response: [addr_hi, addr_lo, P_MS_DIRECT] (bench
+    // 2026-05-13: 02 F0 03 00 0A 4D ...). Station address = 0x000A.
+    () => renderFrame(proto.cmd.SET_MS, [0x00, 0x0a, proto.P_MS_DIRECT])
   );
   fake.addRule(
     (c) => c[0] === proto.WAKEUP && c[1] === proto.STX && c[2] === proto.cmd.GET_SYS_VAL,
-    () => renderFrame(proto.cmd.GET_SYS_VAL, [0x00, 0x80, ...makeStationConfigBlob()])
+    // Real-wire GET_SYS_VAL response: [addr_hi, addr_lo, offset_echo, ...128 data].
+    // Bench 2026-05-13 captured this exact 131-byte shape from /dev/ttyUSB0
+    // (02 83 83 00 0A 00 ...). Station address = 0x000A (code 10).
+    () => renderFrame(proto.cmd.GET_SYS_VAL, [0x00, 0x0a, 0x00, ...makeStationConfigBlob()])
   );
   fake.addRule(
     (c) => c[0] === proto.WAKEUP && c[1] === proto.STX && c[2] === proto.cmd.SET_SYS_VAL,
-    (c) => renderFrame(proto.cmd.SET_SYS_VAL, [0x00, c[4] as number])
+    // Real-wire SET_SYS_VAL response: [addr_hi, addr_lo, offset_echo]. The
+    // station ECHOES the offset written to.
+    (c) => renderFrame(proto.cmd.SET_SYS_VAL, [0x00, 0x0a, c[4] as number])
   );
 };
 
@@ -117,7 +124,10 @@ const buildSi5DetFrame = (cardNumber: number): number[] => {
 };
 
 const renderGetSi5Response = (page128: number[]): number[] =>
-  renderFrame(proto.cmd.GET_SI5, page128);
+  // Real-wire GET_SI5 response: [addr_hi, addr_lo, ...128 data]. Bench 2026-05-13
+  // captured this 130-byte param shape. SiCard5.typeSpecificRead does
+  // frame.slice(4) so the splice receives exactly 128 data bytes.
+  renderFrame(proto.cmd.GET_SI5, [0x00, 0x0a, ...page128]);
 
 // ---------------------------------------------------------------------------
 // e2e tests
@@ -159,8 +169,10 @@ describe('e2e: fixture-replay through SiMainStation -> NDJSON', () => {
     await station.readCards();
 
     // Wire the GET_SI5 reply to return the upstream SI5 fixture's 128-byte
-    // storage page. SI5 decoder does frame.slice(2) so the params section
-    // must be exactly 128 bytes.
+    // storage page wrapped in the real-wire [addr_hi, addr_lo, ...128 data]
+    // 130-byte param shape. SiCard5.typeSpecificRead does frame.slice(4) so
+    // the splice receives exactly 128 data bytes after the [cmd,len,addr_hi,
+    // addr_lo] response-header gets dropped.
     fake.addRule(
       (c) => c[0] === proto.WAKEUP && c[2] === proto.cmd.GET_SI5,
       () => renderGetSi5Response(si5Fixture.storageData as number[])

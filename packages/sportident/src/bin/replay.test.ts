@@ -121,17 +121,21 @@ const makeStationConfigBlob = (): number[] => {
 };
 
 const setUpHandshakeRules = (fake: RecordingFakeTransport): void => {
+  // Real-wire response shapes (bench transcript 2026-05-13 /dev/ttyUSB0):
+  //   SET_MS:      [addr_hi=00, addr_lo=0A, P_MS_DIRECT]
+  //   GET_SYS_VAL: [addr_hi=00, addr_lo=0A, offset_echo=00, ...128 config]
+  //   SET_SYS_VAL: [addr_hi=00, addr_lo=0A, offset_echo]
   fake.addRule(
     (c) => c[0] === proto.WAKEUP && c[1] === proto.STX && c[2] === proto.cmd.SET_MS,
-    () => renderFrame(proto.cmd.SET_MS, [0x00, 0x00, proto.P_MS_DIRECT])
+    () => renderFrame(proto.cmd.SET_MS, [0x00, 0x0a, proto.P_MS_DIRECT])
   );
   fake.addRule(
     (c) => c[0] === proto.WAKEUP && c[1] === proto.STX && c[2] === proto.cmd.GET_SYS_VAL,
-    () => renderFrame(proto.cmd.GET_SYS_VAL, [0x00, 0x80, ...makeStationConfigBlob()])
+    () => renderFrame(proto.cmd.GET_SYS_VAL, [0x00, 0x0a, 0x00, ...makeStationConfigBlob()])
   );
   fake.addRule(
     (c) => c[0] === proto.WAKEUP && c[1] === proto.STX && c[2] === proto.cmd.SET_SYS_VAL,
-    (c) => renderFrame(proto.cmd.SET_SYS_VAL, [0x00, c[4] as number])
+    (c) => renderFrame(proto.cmd.SET_SYS_VAL, [0x00, 0x0a, c[4] as number])
   );
 };
 
@@ -171,9 +175,10 @@ const captureFixture = async (basename: string): Promise<void> => {
   await fake.open();
   await station.readCards();
 
+  // Real-wire GET_SI5 response: [addr_hi, addr_lo, ...128 data].
   fake.addRule(
     (c) => c[0] === proto.WAKEUP && c[2] === proto.cmd.GET_SI5,
-    () => renderFrame(proto.cmd.GET_SI5, si5Fixture.storageData as number[])
+    () => renderFrame(proto.cmd.GET_SI5, [0x00, 0x0a, ...(si5Fixture.storageData as number[])])
   );
 
   fake.inject(buildSi5DetFrame(si5Fixture.cardData.cardNumber));

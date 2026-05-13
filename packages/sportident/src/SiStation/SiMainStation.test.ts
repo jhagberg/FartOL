@@ -141,44 +141,56 @@ const makeStationConfigBlob = (): number[] => {
   return cfg;
 };
 
-/** GET_SYS_VAL response frame: [cmd, len, off_hi, off_lo, ...128 bytes, crc_hi, crc_lo, ETX]. */
-const renderGetSysValResponse = (offsetLo: number, configBytes: number[]): number[] => {
-  return renderFrame(proto.cmd.GET_SYS_VAL, [0x00, offsetLo, ...configBytes]);
+/** GET_SYS_VAL response frame: real-wire shape is
+ * `[STX, cmd, len, addr_hi, addr_lo, offset_echo, ...128 data, crc, crc, ETX]`.
+ * (Bench transcript 2026-05-13 from /dev/ttyUSB0: `02 83 83 00 0A 00 ...`.)
+ * BaseSiStation.readInfo does `frame.slice(5, 5+128)` to strip
+ * `[cmd, len, addr_hi, addr_lo, offset_echo]` and keep the 128-byte config blob. */
+const renderGetSysValResponse = (offsetEcho: number, configBytes: number[]): number[] => {
+  return renderFrame(proto.cmd.GET_SYS_VAL, [0x00, 0x0a, offsetEcho, ...configBytes]);
 };
 
-/** GET_SI8 response frame (page read): [cmd, len, pageNo, ...128 bytes, crc, ETX]. */
+/** GET_SI8 response frame (page read): real-wire shape is
+ * `[STX, cmd, len, addr_hi, addr_lo, page_no, ...128 data, crc, crc, ETX]`.
+ * ModernSiCard.typeSpecificGetPage does `frame.slice(5)` to strip
+ * `[cmd, len, addr_hi, addr_lo, page_no]` and return the 128-byte page payload. */
 const renderGetSi8PageResponse = (pageNumber: number, pageBytes: number[]): number[] => {
-  return renderFrame(proto.cmd.GET_SI8, [pageNumber, ...pageBytes]);
+  return renderFrame(proto.cmd.GET_SI8, [0x00, 0x0a, pageNumber, ...pageBytes]);
 };
 
-/** GET_SI5 response frame: SI5 decoder does `frame.slice(2)` to drop [cmd, len];
- * params therefore must be exactly 128 bytes of page data. */
+/** GET_SI5 response frame: real-wire shape is
+ * `[STX, cmd, len, addr_hi, addr_lo, ...128 data, crc, crc, ETX]`.
+ * SiCard5.typeSpecificRead does `frame.slice(4)` to strip
+ * `[cmd, len, addr_hi, addr_lo]` and return the 128-byte page payload. */
 const renderGetSi5Response = (page128: number[]): number[] => {
-  return renderFrame(proto.cmd.GET_SI5, page128);
+  return renderFrame(proto.cmd.GET_SI5, [0x00, 0x0a, ...page128]);
 };
 
 /** Set up the rules for the atomic handshake. Returns the transport once configured. */
 const setUpHandshakeRules = (fake: FakeSerialTransport): void => {
-  // SET_MS — match a chunk starting [WAKEUP, STX, SET_MS, ...].
+  // SET_MS — match a chunk starting [WAKEUP, STX, SET_MS, ...]. Real-wire
+  // response shape: [addr_hi, addr_lo, P_MS_DIRECT] (bench: 02 F0 03 00 0A 4D ...).
   fake.addRule(
     (chunk) => chunk[0] === proto.WAKEUP && chunk[1] === proto.STX && chunk[2] === proto.cmd.SET_MS,
-    () => renderFrame(proto.cmd.SET_MS, [0x00, 0x00, proto.P_MS_DIRECT])
+    () => renderFrame(proto.cmd.SET_MS, [0x00, 0x0a, proto.P_MS_DIRECT])
   );
-  // GET_SYS_VAL(0, 128) — returns the synthetic 128-byte config blob.
+  // GET_SYS_VAL(0, 128) — returns the synthetic 128-byte config blob. The
+  // station echoes offset=0x00 (request asked for "read from offset 0").
   fake.addRule(
     (chunk) =>
       chunk[0] === proto.WAKEUP && chunk[1] === proto.STX && chunk[2] === proto.cmd.GET_SYS_VAL,
-    () => renderGetSysValResponse(0x80, makeStationConfigBlob())
+    () => renderGetSysValResponse(0x00, makeStationConfigBlob())
   );
-  // SET_SYS_VAL — echo the first byte (the offset) of the write.
+  // SET_SYS_VAL — real-wire response: [addr_hi, addr_lo, offset_echo]. The
+  // station echoes the offset byte that was written.
   fake.addRule(
     (chunk) =>
       chunk[0] === proto.WAKEUP && chunk[1] === proto.STX && chunk[2] === proto.cmd.SET_SYS_VAL,
     (chunk) => {
       // The SET_SYS_VAL frame body: [WAKEUP, STX, cmd, len, offset, ...bytes, crc_hi, crc_lo, ETX].
-      // Echo it back as a SET_SYS_VAL frame with the offset as a single-byte payload.
+      // Echo offset as the third param byte, after the two station-address bytes.
       const offset = chunk[4] as number;
-      return renderFrame(proto.cmd.SET_SYS_VAL, [0x00, offset]);
+      return renderFrame(proto.cmd.SET_SYS_VAL, [0x00, 0x0a, offset]);
     }
   );
 };

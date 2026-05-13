@@ -175,8 +175,13 @@ export class ModernSiCard extends BaseSiCard {
         if (frame === undefined) {
           throw new Error(`No response for GET_SI8 page ${pageNumber}`);
         }
-        // Upstream slices off the 3-byte response header [cmd, len, pageNo].
-        return frame.slice(3);
+        // Skip 5-byte response header: [cmd, len, addr_hi, addr_lo, page_no].
+        // Page payload is 128 bytes. (Real-wire bench transcript 2026-05-13:
+        // GET_SI8 response carries [addr_hi, addr_lo, page_no, ...128 data] in
+        // `parameters`; the multiplexer prepends [cmd, len] = 5 header bytes
+        // total. Previous slice(3) was correct only for synthetic fixtures
+        // that omit the 2-byte station address.)
+        return frame.slice(5);
       });
   }
 

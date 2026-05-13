@@ -94,10 +94,15 @@ export class BaseSiStation {
     });
     const frame = responses[0];
     if (!frame) throw new Error('GET_SYS_VAL returned no response');
-    // Frame is [cmd, len, ...params]. Upstream's response carries the offset
-    // (2 bytes) then the data. Skip the first 4 bytes (cmd, len, offset_hi,
-    // offset_lo) to land on the 128-byte payload. We tolerate short responses.
-    const headerLen = 4;
+    // Frame is [cmd, len, ...params]. Real-wire GET_SYS_VAL response carries
+    // [addr_hi, addr_lo, offset_echo, ...128 data] in `parameters` (bench
+    // transcript 2026-05-13: 02 83 83 00 0A 00 [128 data] ...). Skip
+    // [cmd, len, addr_hi, addr_lo, offset_echo] = 5 bytes; the 128-byte config
+    // blob follows. Previous headerLen=4 dropped the addr_lo and shifted the
+    // config blob by 1, which corrupted the bit-packed handshake flags at
+    // 0x73/0x74 (and the SN at 0x00..0x03 read 1 byte too late, returning
+    // 593144 instead of 593656 — see fixtures/jonas/si9-jonas-001).
+    const headerLen = 5;
     this.configBytes = frame.slice(headerLen, headerLen + 128);
     return this.configBytes;
   }

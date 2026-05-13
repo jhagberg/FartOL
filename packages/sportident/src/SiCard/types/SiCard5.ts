@@ -108,8 +108,14 @@ export class SiCard5 extends BaseSiCard {
         if (frame === undefined) {
           throw new Error('No response for GET_SI5');
         }
-        // Upstream slices off 2 leading bytes (response header).
-        this.storage.splice(bytesPerPage * 0, bytesPerPage, ...frame.slice(2));
+        // Skip 4-byte response header: [cmd, len, addr_hi, addr_lo]. SI5 payload
+        // is the remaining 128 bytes. (Real-wire bench transcript 2026-05-13:
+        // station emits 2-byte address before the page data — `parse` exposes it
+        // through `parameters`, the multiplexer prepends [cmd, len] = 4 bytes
+        // total to skip. Previous slice(2) was correct only for synthetic
+        // fixtures that omit addr bytes, and caused SiStorage.splice to receive
+        // 130 instead of 128 bytes on real hardware.)
+        this.storage.splice(bytesPerPage * 0, bytesPerPage, ...frame.slice(4));
         this.populateRaceResult();
       });
   }

@@ -88,13 +88,18 @@ describe('SiCard10 decoder — upstream fixture', () => {
         recorded.push({ command: msg.command, parameters: [...msg.parameters] });
         const pageNumber = msg.parameters[0];
         if (pageNumber === undefined) throw new Error('mock: missing pageNumber');
-        // Slice the page out of the fixture's storageData; prepend a 3-byte fake
-        // response header [cmd, len, pageNo] which the decoder strips off.
+        // Slice the page out of the fixture's storageData; prepend a 5-byte fake
+        // response header [cmd, len, addr_hi, addr_lo, pageNo] matching the
+        // real-wire response shape (bench transcript 2026-05-13 from
+        // /dev/ttyUSB0). ModernSiCard.typeSpecificGetPage does frame.slice(5)
+        // so the splice receives exactly 128 data bytes.
         const pageBytes = si10many.storageData.slice(
           pageNumber * bytesPerPage,
           (pageNumber + 1) * bytesPerPage
         );
-        return [[proto.cmd.GET_SI8, bytesPerPage + 1, pageNumber, ...(pageBytes as number[])]];
+        return [
+          [proto.cmd.GET_SI8, bytesPerPage + 3, 0x00, 0x0a, pageNumber, ...(pageBytes as number[])],
+        ];
       },
     };
 
