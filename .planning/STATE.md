@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v0.0.1
 milestone_name: milestone
-status: unknown
-stopped_at: Phase 0 context gathered
-last_updated: "2026-05-12T19:46:18.564Z"
+status: executing
+stopped_at: Plan 00-01 complete (Wave 0 scaffold)
+last_updated: '2026-05-12T20:43:00Z'
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 6
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 16
 ---
 
 # STATE
@@ -24,15 +24,21 @@ not duplicated here.
 
 ## Current position
 
-**Phase:** Phase 0 — Hardware proof (context gathered)
-**Next concrete action:** Run `/gsd-plan-phase 0` to produce the
-phase plan from `00-CONTEXT.md`.
+Phase: 0 (hardware-proof) — EXECUTING
+Plan: 2 of 6 (next)
+**Phase:** Phase 0 — Hardware proof (Wave 0 scaffold complete)
+**Next concrete action:** Run plan 00-02 (port siProtocol — CRC16 +
+parse + parseAll + render + constants/utils).
 
-**Last completed:** Phase 0 context discussion. 4 areas covered
-(Repo scaffold, Protocol approach, Output contract, Test strategy),
-20 decisions captured in `.planning/phases/00-hardware-proof/00-CONTEXT.md`.
-Hardware confirmed in hand (SPORTident CP2102 reader on `/dev/ttyUSB0`,
-serial 593656; cards SI5/SI9/SI10/SIAC Air+). Commit `48c7cd3`.
+**Last completed:** Plan 00-01 — Wave 0 scaffold. Root toolchain
+(pnpm@10.30.3 + TS strict + ESLint flat config + Prettier + lefthook +
+commitlint), `@fartol/sportident` sub-package skeleton (MIT, ESM+CJS
+exports, fartol-readout bin path, serialport@^13 dep), 8 Wave 0 test
+placeholders, fixture dirs, hardware-smoke.sh stub, GitHub Actions CI
+workflow with Corepack-pinned pnpm. Pipeline green:
+`pnpm install --frozen-lockfile && pnpm lint && pnpm typecheck && pnpm test`
+exits 0 with 8 skipped tests. Commits: `3b6afaf` (Task 1), `0a59fdc`
+(Task 2), `fd83a56` (Task 3).
 
 ---
 
@@ -40,6 +46,13 @@ serial 593656; cards SI5/SI9/SI10/SIAC Air+). Commit `48c7cd3`.
 
 Captured as MADR-format ADRs in `.planning/adr/`. See
 `.planning/adr/README.md` for the index.
+
+**Plan-level decisions (00-01):**
+
+- D-01 deviation: pnpm-workspace.yaml anchored in Phase 0 (codex review #10). 5 lines + comment header.
+- CI pinning: Corepack reads packageManager field from root package.json (codex review #9 default; pnpm/action-setup@v4 documented fallback).
+- tsup outExtension stub: explicit `.mjs`/`.cjs` so package.json `bin` path resolves to a real file (codex review #12).
+- Root `type: module` + per-extension globals in ESLint flat config (.cjs explicitly carved out as sourceType: commonjs for commitlint).
 
 ---
 
@@ -68,13 +81,20 @@ None. Phase 0 plans created.
 
 ## Session Continuity
 
-Last session: 2026-05-12T19:05:46.940Z
-Stopped At: Phase 0 context gathered
-Resume File: .planning/phases/00-hardware-proof/00-CONTEXT.md
+Last session: 2026-05-12T20:43:00Z
+Stopped At: Plan 00-01 complete (Wave 0 scaffold)
+Resume File: .planning/phases/00-hardware-proof/00-02-PLAN.md
 
 ---
 
 ## Recent changes to plan
+
+- 2026-05-12 — Plan 00-01 executed: Wave 0 scaffold landed. Repo now
+  bootstraps with `pnpm install --frozen-lockfile && pnpm lint &&
+pnpm typecheck && pnpm test` exit 0 (8 skipped tests). Commits
+  `3b6afaf` (root toolchain), `0a59fdc` (sub-package skeleton),
+  `fd83a56` (Wave 0 placeholders + CI + smoke stub). Five auto-fixes
+  applied (Rule 1/3) — all toolchain-config follow-ons, no scope creep.
 
 - 2026-05-12 — Phase 0 context discussion complete: 4 areas covered
   (Repo scaffold, Protocol approach, Output contract, Test strategy);

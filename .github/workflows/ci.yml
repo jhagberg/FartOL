@@ -1,0 +1,30 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      # Codex review #9: pnpm pinning via Corepack. Corepack reads the root
+      # package.json `packageManager` field (set to pnpm@10.30.3 in Task 1)
+      # and activates that exact version. No GHA context-variable substitution
+      # required, and the runner pnpm version can never drift from the
+      # lockfile's pnpm version.
+      - name: Enable Corepack (pins pnpm from package.json `packageManager`)
+        run: corepack enable && corepack prepare --activate
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test

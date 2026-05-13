@@ -1,0 +1,10 @@
+node_modules/
+dist/
+coverage/
+pnpm-lock.yaml
+
+# GSD planning files use specific list/indent structure that the GSD CLI
+# parser depends on; prettier reformats break `roadmap.analyze` and
+# adjacent parsers. Skip them.
+.planning/ROADMAP.md
+
