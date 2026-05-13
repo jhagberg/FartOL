@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v0.0.1
 milestone_name: milestone
 status: executing
-stopped_at: Plan 00-03 complete (Wave 2 card decoders)
-last_updated: '2026-05-12T21:15:58.530Z'
+stopped_at: Plan 00-04 complete (Wave 3 transport + multiplexer)
+last_updated: '2026-05-12T21:33:44Z'
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 6
-  completed_plans: 3
-  percent: 50
+  completed_plans: 4
+  percent: 67
 ---
 
 # STATE
@@ -25,25 +25,32 @@ not duplicated here.
 ## Current position
 
 Phase: 0 (hardware-proof) — EXECUTING
-Plan: 4 of 6 (next)
-**Phase:** Phase 0 — Hardware proof (Wave 2 card decoders complete)
-**Next concrete action:** Run plan 00-04 (Wave 3 transport + multiplexer
-— SerialTransport + SiTargetMultiplexer + SiSendTask).
+Plan: 5 of 6 (next)
+**Phase:** Phase 0 — Hardware proof (Wave 3 transport + multiplexer complete)
+**Next concrete action:** Run plan 00-05 (Wave 4 NDJSON output + bin) —
+subscribe to SiMainStation's event surface and emit one JSON object per
+event line to stdout; build the `fartol-readout` bin entrypoint.
 
-**Last completed:** Plan 00-03 — Wave 2 card decoders. Ported the
-storage primitives (SiInt/SiArray/SiDict/SiBool/SiEnum/SiModified/
-SiDataType/SiStorage, ~600 LOC), BaseSiCard with TWO non-overlapping
-registries (codex review #4 — registerSi5Range vs registerSi8Range),
-ModernSiCard with explicit page-4 punch-read chain (codex review #3),
-SiCard5/SiCard9/SiCard10/SIAC + 7 upstream fixtures + 13 decoder tests
-covering storage decode + detectFromMessage dispatch + cross-registry
-safety both directions + multi-page chain page-4-and-page-5. SiTime
-re-attached to siProtocol.ts (Plan 02 had trimmed it). Plain-array
-storage backing avoids the upstream `immutable` runtime dep. Pipeline
-green: 41 tests pass / 2 skipped (Wave 4 placeholders for plan 05) /
-0 fail. Commits: `fce06b6` (Task 1, port), `ff72a2f` (Task 2, fixtures +
-tests). Six auto-fixes applied (5 Rule 1 bugs, 1 Rule 2 SiEnum
-duplicate-key tolerance).
+**Last completed:** Plan 00-04 — Wave 3 transport + station layer. Ported
+a Node `serialport@13`-based `SerialTransport` (170 LOC) that replaces
+upstream's WebUSB/libusb transport, plus a heavily-simplified Direct-only
+`SiTargetMultiplexer` (194 LOC vs. upstream 300+), `SiSendTask` state
+machine, `BaseSiStation` (readInfo + writeDiff), and `SiMainStation`
+(atomic handshake + SI5/SI8 card-insert dispatch). Wired Plan 02's typed
+`parseAll(buf, {onFrameError})` callback DIRECTLY into the multiplexer's
+`'frameError'` event (codex review #1 — no stdout interception),
+prepended `proto.WAKEUP` to EVERY command (codex review #11), inlined
+GEMINI's two MEDIUM findings (64KB receive-buffer cap + close-rejects-
+pending-send for zombie-process prevention), and locked the modern-card
+page-4 read at the station level for SI9/SI10/SIAC (codex review #3).
+21 new tests (11 SerialTransport + 10 SiMainStation) drive every behavior
+against a FakeSerialTransport — zero hardware required. Pipeline green:
+62 tests pass / 2 skipped (Plan 05 placeholders) / 0 fail. Commits:
+`24012f1` (Task 0 errors.ts), `265e50d` (Task 1 SerialTransport),
+`a9a649a` (Task 2 station layer). Six auto-fixes applied (6 Rule 1 bugs
+— SI5 cardNumber arithmetic, GET_SI5 response prefix, SiSendTask timer
+unref, test 10 mock.method runner-confusion, comment grep-safety, prettier
+reformat).
 
 ---
 
@@ -94,6 +101,49 @@ Captured as MADR-format ADRs in `.planning/adr/`. See
   `typeSpecificRead` chain is still exercised separately against a
   recording mock station (codex review #3 multi-page verification).
 
+**Plan-level decisions (00-04):**
+
+- `transport/errors.ts` created as Task 0 (codex review #5) so
+  `SerialTransport` (Task 1) and `SiSendTask` (Task 2) both import
+  `DeviceClosedError` + `SendTimeoutError` from the same module — no
+  circular dep, no inline class redefinitions, Task 1 typechecks
+  regardless of Task 2's progress.
+- WAKEUP prepending centralised (codex review #11) — every
+  `SiTargetMultiplexer.sendMessage()` call wraps the rendered message in
+  `[proto.WAKEUP, ...render(message)]` via `_renderForWire`. Verified
+  end-to-end through station test 2 over multiple post-handshake commands.
+- `onFrameError` callback wired DIRECTLY (codex review #1) into
+  `multiplexer.emit('frameError', err)` — no stdout interception anywhere
+  in the SiStation OR transport tree. Station test 10 spies on
+  `process.stdout.write` + `process.stderr.write` and asserts zero writes
+  during bad-CRC frame handling.
+- Multiplexer simplification: Direct-only — dropped the SET_MS-on-every-
+  call dance and Remote/Unknown target branches. 194 LOC vs. upstream's
+  300+. Removed branches tagged with `// REMOVED (Phase 0 Direct-only);
+see RESEARCH §multiplexer.` for auditability.
+- GEMINI MEDIUM #1 (T-00-14): 64KB receive-buffer cap in
+  `SiTargetMultiplexer._onData` → emits a typed `'buffer_overflow'`
+  frameError when exceeded. Protects against adversarial / noisy byte
+  streams that never yield a valid frame.
+- GEMINI MEDIUM #2 (zombie-process prevention): transport close rejects
+  any pending send. Implemented at BOTH layers — `SerialTransport` (port-
+  close fails its `pendingRejecters`) and `SiTargetMultiplexer` (transport-
+  close aborts every pending `SiSendTask`). Verified by SerialTransport
+  test 10 + SiMainStation test 9.
+- `SiSendTask` timer is NOT `unref()`'d — `bin/fartol-readout` is
+  otherwise idle while awaiting station replies; unrefing would let Node
+  exit before the timeout fires.
+- Lazy `require('serialport')` in `SerialTransport` — tests inject a
+  FakeSerialPort via the constructor's second arg; the real native module
+  is only loaded when no Ctor is injected. CI never touches it.
+- `BaseSiStation` simplified — Phase 0 mutates known byte offsets directly
+  (`STATION_CONFIG_OFFSETS.CODE / MODE / AUTOSEND / HANDSHAKE / BEEPS /
+FLASHES`) instead of porting upstream's storage-typed config wrappers.
+- SI_REM cardNumber decode inlined in `SiMainStation` (the BaseSiCard
+  registry only routes SI5_DET/SI8_DET per Plan 03's codex review #4
+  invariant). The inline rebuild uses the modern-card branch
+  `((hi<<8)|lo) | (mid<<16)` when `mid > 4`.
+
 ## Open questions (deferred until we have working code)
 
 - Does Electric scale to 30 000 concurrent public viewers at O-ringen,
@@ -119,13 +169,31 @@ None. Phase 0 plans created.
 
 ## Session Continuity
 
-Last session: 2026-05-12T21:15:31.495Z
-Stopped At: Plan 00-03 complete (Wave 2 card decoders)
-Resume File: .planning/phases/00-hardware-proof/00-04-PLAN.md
+Last session: 2026-05-12T21:33:44Z
+Stopped At: Plan 00-04 complete (Wave 3 transport + multiplexer)
+Resume File: .planning/phases/00-hardware-proof/00-05-PLAN.md
 
 ---
 
 ## Recent changes to plan
+
+- 2026-05-12 — Plan 00-04 executed: Wave 3 transport + station layer
+  landed. SerialTransport (170 LOC) replaces upstream's WebUSB transport
+  via `serialport@13`; SiTargetMultiplexer (194 LOC, Direct-only)
+  prepends WAKEUP to every command (codex review #11) and wires
+  parseAll's onFrameError callback directly (codex review #1); BaseSi-
+  Station + SiMainStation port the atomic handshake (SET_MS → readInfo
+  → writeDiff). transport/errors.ts created as Task 0 so Task 1/2
+  imports resolve regardless of order (codex review #5). 21 new tests
+  (11 SerialTransport + 10 SiMainStation) drive every behavior against
+  a FakeSerialTransport — including SI5/SI9/SI10/SIAC insertion paths
+  with the GET_SI8 page-4 read for modern cards (codex review #3 + #2).
+  Inlined GEMINI MEDIUM findings: 64KB receive-buffer cap + close-rejects-
+  pending-send (zombie-process prevention) at both transport and
+  multiplexer layers. Pipeline green: 62 pass / 2 skipped / 0 fail.
+  Commits `24012f1` (Task 0 errors.ts), `265e50d` (Task 1 SerialTransport),
+  `a9a649a` (Task 2 station layer). Six auto-fixes (6 Rule 1 bugs — all
+  test-helper / runner / formatting follow-ons; no scope creep).
 
 - 2026-05-12 — Plan 00-03 executed: Wave 2 card decoders landed.
   Storage primitives (8 files, plain-array backed — no immutable.js

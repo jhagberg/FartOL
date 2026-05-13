@@ -16,9 +16,16 @@ it is marked `[dropped]` but the ID stays.
 
 **REQ-HW-001 (v1)** — Read SI8, SI9, SI10, SI11 cards via BSM7/BSM8-USB
 on Linux, macOS, and Windows. Parse all punches into structured form.
+✅ **Linux read-chain completed in Plan 00-03 + Plan 00-04** — SI9/SI10/
+SIAC decoders + BSM7/8 handshake + SI8_DET dispatch + GET_SI8 page-4
+read; verified at the station level against upstream fixtures. SI11 and
+macOS/Windows deferred to Phase 1.
 
 **REQ-HW-002 (v1)** — Read SI5 cards. Legacy support is non-negotiable;
 clubs still own SI5s.
+✅ **Completed in Plan 00-03 + Plan 00-04** — SiCard5 decoder + GET_SI5
+single-frame read path verified end-to-end through SiMainStation against
+upstream fixture (16-punch + full 36-punch).
 
 **REQ-HW-003 (v1)** — Read SIAC cards (Air+). Treat beacon punches as
 regular punches when received via SRR dongle or station readout.
