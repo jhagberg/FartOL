@@ -15,8 +15,8 @@
 //     storage buffer (page0..page7 concatenated, or partial) into the SiStorage and
 //     resolves the raceResult; fixture replay tests use this instead of a mock
 //     station.
-//   - Removed `console.warn` mismatch warnings (no console writes from decoders;
-//     mismatch detection moves to the multiplexer in Plan 04).
+//   - Removed upstream's stdout-warning on storage mismatch (no console writes
+//     from decoders; mismatch detection moves to the multiplexer in Plan 04).
 // See packages/sportident/NOTICE.md for cumulative attribution.
 
 import { proto } from '../../constants.ts';

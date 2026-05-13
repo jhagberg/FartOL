@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v0.0.1
 milestone_name: milestone
 status: executing
-stopped_at: Plan 00-04 complete (Wave 3 transport + multiplexer)
-last_updated: '2026-05-12T21:33:44Z'
+stopped_at: Plan 00-05 complete (Wave 4 NDJSON output + bin + e2e replay)
+last_updated: '2026-05-12T21:52:15Z'
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 6
-  completed_plans: 4
-  percent: 67
+  completed_plans: 5
+  percent: 83
 ---
 
 # STATE
@@ -25,32 +25,38 @@ not duplicated here.
 ## Current position
 
 Phase: 0 (hardware-proof) — EXECUTING
-Plan: 5 of 6 (next)
-**Phase:** Phase 0 — Hardware proof (Wave 3 transport + multiplexer complete)
-**Next concrete action:** Run plan 00-05 (Wave 4 NDJSON output + bin) —
-subscribe to SiMainStation's event surface and emit one JSON object per
-event line to stdout; build the `fartol-readout` bin entrypoint.
+Plan: 6 of 6 (next)
+**Phase:** Phase 0 — Hardware proof (Wave 4 NDJSON output + bin + e2e complete)
+**Next concrete action:** Run plan 00-06 (Wave 5 hardware smoke + record/replay) —
+add `--record <path>` / `--replay <path>` modes to `bin/fartol-readout`, then
+run `scripts/hardware-smoke.sh` against `/dev/ttyUSB0` (SI5 + SI9 + SI10 + SIAC
+insertions). After green smoke, tag `v0.0.1-handshake`.
 
-**Last completed:** Plan 00-04 — Wave 3 transport + station layer. Ported
-a Node `serialport@13`-based `SerialTransport` (170 LOC) that replaces
-upstream's WebUSB/libusb transport, plus a heavily-simplified Direct-only
-`SiTargetMultiplexer` (194 LOC vs. upstream 300+), `SiSendTask` state
-machine, `BaseSiStation` (readInfo + writeDiff), and `SiMainStation`
-(atomic handshake + SI5/SI8 card-insert dispatch). Wired Plan 02's typed
-`parseAll(buf, {onFrameError})` callback DIRECTLY into the multiplexer's
-`'frameError'` event (codex review #1 — no stdout interception),
-prepended `proto.WAKEUP` to EVERY command (codex review #11), inlined
-GEMINI's two MEDIUM findings (64KB receive-buffer cap + close-rejects-
-pending-send for zombie-process prevention), and locked the modern-card
-page-4 read at the station level for SI9/SI10/SIAC (codex review #3).
-21 new tests (11 SerialTransport + 10 SiMainStation) drive every behavior
-against a FakeSerialTransport — zero hardware required. Pipeline green:
-62 tests pass / 2 skipped (Plan 05 placeholders) / 0 fail. Commits:
-`24012f1` (Task 0 errors.ts), `265e50d` (Task 1 SerialTransport),
-`a9a649a` (Task 2 station layer). Six auto-fixes applied (6 Rule 1 bugs
-— SI5 cardNumber arithmetic, GET_SI5 response prefix, SiSendTask timer
-unref, test 10 mock.method runner-confusion, comment grep-safety, prettier
-reformat).
+**Last completed:** Plan 00-05 — Wave 4 NDJSON output + bin entry + e2e
+fixture replay. Landed `NdjsonEmitter` (5 event types: connection_changed,
+card_inserted, card_read, card_removed, frame_error) with stable v1 schema
+(schema_version=1, snake_case D-15, ms-epoch D-14, raw half-day clock per
+RESEARCH §"Half-day clock + missing event date"); `emitDiagnostic` for
+stderr human diagnostics; `bin/fartol-readout` public entry point that
+wires all 5 SiMainStation events to NdjsonEmitter on stdout +
+emitDiagnostic on stderr (typed FrameError consumed directly — codex
+review #1 closed end-to-end through Plans 02+04+05; zero console.warn
+anywhere in src/). Full public API surface in `index.ts` (18 named
+exports per RESEARCH §"Open Questions #6") with side-effect imports of
+card-type modules so BaseSiCard registries populate at consumer import.
+e2e fixture-replay test (`integration/e2e.test.ts`) replaces the Wave 0
+placeholder — synthetic SI5_DET + GET_SI5 reply -> 3-line NDJSON
+sequence with punches byte-equal to upstream `si5-16-punches` fixture.
+MIT attribution audit script (`scripts/check-mit-attribution.sh`,
+codex review #13) scans 54 files and exits 0; wired into root
+`pnpm lint` chain. tsup build produces all four expected artifacts
+(`.mjs` + `.cjs` for both entries + .d.ts). Pipeline green: 76 tests
+pass / 0 fail / 0 skipped. Commits `70020bb` (Task 1 RED tests),
+`84d9719` (Task 1 GREEN — NdjsonEmitter + diagnostics + bridge),
+`3be5c9d` (Task 2 — bin + index.ts + e2e + MIT audit script). Five
+auto-fixes (5 Rule 1 bugs — card_holder snake_case at boundary, three
+NOTICE-header comment-token rewordings, MIT-audit grep regex relaxation,
+unknown[] cast for fixture, prettier reformat).
 
 ---
 
@@ -89,13 +95,16 @@ Captured as MADR-format ADRs in `.planning/adr/`. See
 - Two non-overlapping registries on BaseSiCard — codex review #4.
   `registerSi5Range` (SI5_DET only) and `registerSi8Range` (SI8_DET only)
   cannot capture each other's frames regardless of cardNumber overlap.
+
 - Storage primitives backed by plain `(number|undefined)[]` instead of
   `Immutable.List` — avoids the upstream `immutable` runtime dep.
   Phase 0 decoders are read-only so structural-sharing buys nothing.
+
 - SiEnum reverse lookup is first-key-wins on int collisions — SiCard10
   and SIAC both share series byte 0x0F; the shared `utils.getLookup`
   throws on duplicates which is wrong for this case. Routing within a
   shared series is by card-number range anyway.
+
 - Test-only `_decodeFromStorage(bytes)` helper on every card subclass
   lets fixture replay tests skip the mainStation. The multi-page
   `typeSpecificRead` chain is still exercised separately against a
@@ -108,41 +117,80 @@ Captured as MADR-format ADRs in `.planning/adr/`. See
   `DeviceClosedError` + `SendTimeoutError` from the same module — no
   circular dep, no inline class redefinitions, Task 1 typechecks
   regardless of Task 2's progress.
+
 - WAKEUP prepending centralised (codex review #11) — every
   `SiTargetMultiplexer.sendMessage()` call wraps the rendered message in
   `[proto.WAKEUP, ...render(message)]` via `_renderForWire`. Verified
   end-to-end through station test 2 over multiple post-handshake commands.
+
 - `onFrameError` callback wired DIRECTLY (codex review #1) into
   `multiplexer.emit('frameError', err)` — no stdout interception anywhere
   in the SiStation OR transport tree. Station test 10 spies on
   `process.stdout.write` + `process.stderr.write` and asserts zero writes
   during bad-CRC frame handling.
+
 - Multiplexer simplification: Direct-only — dropped the SET_MS-on-every-
   call dance and Remote/Unknown target branches. 194 LOC vs. upstream's
   300+. Removed branches tagged with `// REMOVED (Phase 0 Direct-only);
 see RESEARCH §multiplexer.` for auditability.
+
 - GEMINI MEDIUM #1 (T-00-14): 64KB receive-buffer cap in
   `SiTargetMultiplexer._onData` → emits a typed `'buffer_overflow'`
   frameError when exceeded. Protects against adversarial / noisy byte
   streams that never yield a valid frame.
+
 - GEMINI MEDIUM #2 (zombie-process prevention): transport close rejects
   any pending send. Implemented at BOTH layers — `SerialTransport` (port-
   close fails its `pendingRejecters`) and `SiTargetMultiplexer` (transport-
   close aborts every pending `SiSendTask`). Verified by SerialTransport
   test 10 + SiMainStation test 9.
+
 - `SiSendTask` timer is NOT `unref()`'d — `bin/fartol-readout` is
   otherwise idle while awaiting station replies; unrefing would let Node
   exit before the timeout fires.
+
 - Lazy `require('serialport')` in `SerialTransport` — tests inject a
   FakeSerialPort via the constructor's second arg; the real native module
   is only loaded when no Ctor is injected. CI never touches it.
+
 - `BaseSiStation` simplified — Phase 0 mutates known byte offsets directly
   (`STATION_CONFIG_OFFSETS.CODE / MODE / AUTOSEND / HANDSHAKE / BEEPS /
 FLASHES`) instead of porting upstream's storage-typed config wrappers.
+
 - SI_REM cardNumber decode inlined in `SiMainStation` (the BaseSiCard
   registry only routes SI5_DET/SI8_DET per Plan 03's codex review #4
   invariant). The inline rebuild uses the modern-card branch
   `((hi<<8)|lo) | (mid<<16)` when `mid > 4`.
+
+**Plan-level decisions (00-05):**
+
+- `schema_version: 1` LOCKED on every NDJSON event (Claude's discretion
+  per CONTEXT.md "schema_version=1 strongly suggested but not yet locked").
+  All 5 event types carry this field as the first key.
+
+- card_holder snake_case at the NDJSON boundary — the ported Phase 0
+  decoder produces upstream's camelCase field names (firstName, isComplete,
+  etc.). `NdjsonEmitter.card_read` applies a one-level `snakeCaseKeys()`
+  transform so D-15 (snake_case end-to-end) holds without modifying the
+  ported decoder. Alternative — rewriting the decoder — would have created
+  upstream drift.
+
+- `weekday: null` from `toHalfDayClock` — `SiTimestamp` is `number | null`
+  with no weekday byte attached; weekday lives elsewhere in card storage
+  and isn't currently exposed by Phase 0 decoders. Phase 1 will plumb it
+  through when wall-clock reconstruction matters.
+
+- Bin uses a hand-rolled minimal CLI arg parser (no commander/yargs dep).
+  Keeps the install lean. `--record`/`--replay` flags are parsed-but-
+  stubbed; Plan 06 wires the file IO.
+
+- `setBlocking(true)` on `process.stdout._handle` wrapped in try/catch in
+  the bin (per RESEARCH §Landmines #12, internal Node API; best-effort).
+
+- MIT audit grep relaxed to regex `(Ported|Derived)( \(qualifier\))? from
+allestuetsmerweh/sportident\.js` — literal "Ported from" would have
+  failed on real existing headers like "Ported (simplified) from" in
+  SiStation/\* files. Pattern preserves the audit intent.
 
 ## Open questions (deferred until we have working code)
 
@@ -169,13 +217,32 @@ None. Phase 0 plans created.
 
 ## Session Continuity
 
-Last session: 2026-05-12T21:33:44Z
-Stopped At: Plan 00-04 complete (Wave 3 transport + multiplexer)
-Resume File: .planning/phases/00-hardware-proof/00-05-PLAN.md
+Last session: 2026-05-12T21:52:15Z
+Stopped At: Plan 00-05 complete (Wave 4 NDJSON output + bin + e2e replay)
+Resume File: .planning/phases/00-hardware-proof/00-06-PLAN.md
 
 ---
 
 ## Recent changes to plan
+
+- 2026-05-12 — Plan 00-05 executed: Wave 4 NDJSON output + bin entry landed.
+  NdjsonEmitter (5 event types: connection_changed, card_inserted, card_read,
+  card_removed, frame_error) with stable v1 schema; emitDiagnostic for stderr
+  human diagnostics; bin/fartol-readout (#!/usr/bin/env node) wires all 5
+  SiMainStation events to NdjsonEmitter on stdout + emitDiagnostic on stderr.
+  Typed FrameError flows from parseAll(onFrameError) straight through to
+  NdjsonEmitter.frame_error (codex review #1 closed end-to-end through Plans
+  02+04+05; zero console.warn anywhere in src/). Full public API surface in
+  index.ts (18 named exports per RESEARCH §"Open Questions #6"). e2e fixture-
+  replay test replaces Wave 0 placeholder (synthetic SI5_DET + GET_SI5 reply
+  -> 3-line NDJSON sequence with punches byte-equal to upstream fixture). MIT
+  attribution audit script (codex review #13) scans 54 files; wired into root
+  pnpm lint chain. tsup build produces all four expected artifacts (.mjs +
+  .cjs for both entries + .d.ts). Pipeline green: 76 tests pass / 0 fail / 0
+  skipped. Commits `70020bb` (Task 1 RED), `84d9719` (Task 1 GREEN),
+  `3be5c9d` (Task 2). Five auto-fixes (5 Rule 1 bugs — card_holder boundary
+  snake_case, three NOTICE-header comment rewordings for cross-plan grep
+  safety, MIT-audit grep regex relaxation, unknown[] cast, prettier reformat).
 
 - 2026-05-12 — Plan 00-04 executed: Wave 3 transport + station layer
   landed. SerialTransport (170 LOC) replaces upstream's WebUSB transport

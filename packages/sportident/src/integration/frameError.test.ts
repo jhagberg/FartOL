@@ -95,6 +95,55 @@ test('synthetic/truncated-frame.bytes.hex -> 0 messages, remainder = full input 
   assert.deepStrictEqual(remainder, bytes);
 });
 
-// TODO(plan-05): in plan 05 we wrap NdjsonEmitter around this callback so that
-// frame_error emits both to stdout NDJSON and stderr diagnostics. The
-// siProtocol contract is FINAL — plan 05 only adds the bridge.
+// ---------------------------------------------------------------------------
+// Plan 05 bridge: parseAll(onFrameError) -> NdjsonEmitter.frame_error.
+// Codex review #1 final closure: typed FrameError flows from parseAll directly
+// into NdjsonEmitter.frame_error, with NO stdout-warning interception anywhere
+// in the call graph. We assert console.* spies all have callCount === 0 via
+// node:test mocks (the spy bindings necessarily reference the global console).
+// ---------------------------------------------------------------------------
+
+import { mock } from 'node:test';
+import { NdjsonEmitter } from '../output/ndjson.ts';
+
+test('plan-05 bridge: parseAll(onFrameError -> emitter.frame_error) emits one NDJSON line; no stdout-warning fires', () => {
+  const bytes = loadBytesHex(join(fixturesDir, 'crc-mismatch.bytes.hex'));
+
+  const stdoutLines: string[] = [];
+  const emitter = new NdjsonEmitter({
+    device_path: '/dev/null',
+    out: (line) => stdoutLines.push(line),
+  });
+
+  // Spy on global console methods (warn/log/error) to assert NONE fire during
+  // the parseAll -> emitter.frame_error bridge call graph.
+  const warnSpy = mock.method(console, 'warn', () => {});
+  const logSpy = mock.method(console, 'log', () => {});
+  const errorSpy = mock.method(console, 'error', () => {});
+  try {
+    const { messages } = parseAll(bytes, {
+      onFrameError: (err) => emitter.frame_error(err),
+    });
+    assert.strictEqual(messages.length, 0);
+  } finally {
+    warnSpy.mock.restore();
+    logSpy.mock.restore();
+    errorSpy.mock.restore();
+  }
+
+  assert.strictEqual(stdoutLines.length, 1, 'one NDJSON frame_error line emitted');
+  const line = stdoutLines[0]!;
+  assert.ok(line.endsWith('\n'));
+  const parsed = JSON.parse(line) as Record<string, unknown>;
+  assert.strictEqual(parsed.event, 'frame_error');
+  assert.strictEqual(parsed.error_code, 'crc_mismatch');
+  assert.strictEqual(parsed.bytes_consumed, bytes.length);
+  // The hex fields come from the typed FrameError, not a string parse.
+  assert.ok(parsed.expected_crc_hex, 'expected_crc_hex populated');
+  assert.ok(parsed.actual_crc_hex, 'actual_crc_hex populated');
+
+  // Codex review #1 enforcement: no console.* fired anywhere in the pipeline.
+  assert.strictEqual(warnSpy.mock.callCount(), 0, 'warn spy never called');
+  assert.strictEqual(logSpy.mock.callCount(), 0, 'log spy never called');
+  assert.strictEqual(errorSpy.mock.callCount(), 0, 'error spy never called');
+});

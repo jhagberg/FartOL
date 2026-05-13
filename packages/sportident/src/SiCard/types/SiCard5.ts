@@ -6,7 +6,7 @@
 //     codex review #4 enforces that SiCard5 NEVER captures SI8_DET messages even
 //     if their cardNumber happens to fall in SI5's historical range.
 //   - Stripped lodash; no enums.
-//   - `console.warn` mismatch removed (decoders are pure).
+//   - Upstream stdout-warning on storage mismatch removed (decoders are pure).
 //   - Test-only `_decodeFromStorage(bytes)` helper that splices a single-page
 //     storage blob and populates raceResult — fixture replay bypasses transport.
 // See packages/sportident/NOTICE.md for cumulative attribution.

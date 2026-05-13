@@ -35,7 +35,7 @@ orienteer at a real event (training counts).
   - [x] 00-02-PLAN.md — Port siProtocol (CRC16 + parse + parseAll + render) + constants + utils; 10 frozen CRC vectors green; synthetic frame fixtures
   - [x] 00-03-PLAN.md — Port storage primitives + BaseSiCard + ModernSiCard + SiCard5/9/10/SIAC; upstream-fixture-driven decoder tests
   - [x] 00-04-PLAN.md — SerialTransport (node serialport@13) + simplified SiTargetMultiplexer (Direct-only) + BaseSiStation/SiMainStation handshake; FakeSerialTransport-driven tests
-  - [ ] 00-05-PLAN.md — NDJSON output layer + bin/fartol-readout + index.ts public API + end-to-end fixture-replay integration test
+  - [x] 00-05-PLAN.md — NDJSON output layer + bin/fartol-readout + index.ts public API + end-to-end fixture-replay integration test
   - [ ] 00-06-PLAN.md — --record/--replay modes + hardware-smoke.sh + capture 4 bench fixtures (SI5/SI9/SI10/SIAC) + tag v0.0.1-handshake
 
 This is the hardest single technical milestone. Everything else is
@@ -127,7 +127,7 @@ These must be respected throughout, not deferred to a phase:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 0. Hardware proof | 4/6 | In Progress|  |
+| 0. Hardware proof | 5/6 | In Progress|  |
 | 1. Single-laptop training MVP | 0/TBD | Not started | - |
 | 2. Small sanctioned competition | 0/TBD | Not started | - |
 | 3. Children's finish, public engagement | 0/TBD | Not started | - |

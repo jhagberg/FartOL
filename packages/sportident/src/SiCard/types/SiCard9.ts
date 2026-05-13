@@ -5,7 +5,7 @@
 //   - Registers on the SI8_DET-only registry via `BaseSiCard.registerSi8Range` —
 //     codex review #4 enforces that SiCard9 NEVER captures SI5_DET messages.
 //   - Stripped lodash; no enums.
-//   - `console.warn` mismatch removed (decoders are pure).
+//   - Upstream stdout-warning on storage mismatch removed (decoders are pure).
 //   - Test-only `_decodeFromStorage(bytes)` helper that splices a multi-page
 //     storage blob (pages 0+1 expected for SI9 since max 50 punches in 2 pages).
 // See packages/sportident/NOTICE.md for cumulative attribution.
