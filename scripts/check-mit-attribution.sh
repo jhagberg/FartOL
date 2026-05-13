@@ -31,6 +31,7 @@ ALLOWLIST=(
   "packages/sportident/src/integration/e2e.test.ts"
   "packages/sportident/src/integration/frameError.test.ts"
   "packages/sportident/src/integration/wireFormat.test.ts"
+  "packages/sportident/src/integration/benchReplay.test.ts"
   # Card-decoder tests authored for fartol (the decoders are ported, the tests are ours)
   "packages/sportident/src/SiCard/types/SiCard5.test.ts"
   "packages/sportident/src/SiCard/types/SiCard9.test.ts"

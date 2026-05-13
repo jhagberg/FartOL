@@ -9,7 +9,7 @@ orienteer at a real event (training counts).
 
 ## Phases
 
-- [ ] **Phase 0: Hardware proof** — Node.js script reads SI cards via BSM7/BSM8 on Linux, logs structured JSON.
+- [x] **Phase 0: Hardware proof** — Node.js script reads SI cards via BSM7/BSM8 on Linux, logs structured JSON. (Completed 2026-05-13, tagged `v0.0.1-handshake`.)
 - [ ] **Phase 1: Single-laptop training MVP** — Run a real club training using only this software on one laptop.
 - [ ] **Phase 2: Small sanctioned competition** — Sanctioned competition with 100–200 starters and concurrent operators.
 - [ ] **Phase 3: Children's finish, public engagement** — Kids' finish screen, parent notifications, embeddable live widget.
@@ -36,7 +36,7 @@ orienteer at a real event (training counts).
   - [x] 00-03-PLAN.md — Port storage primitives + BaseSiCard + ModernSiCard + SiCard5/9/10/SIAC; upstream-fixture-driven decoder tests
   - [x] 00-04-PLAN.md — SerialTransport (node serialport@13) + simplified SiTargetMultiplexer (Direct-only) + BaseSiStation/SiMainStation handshake; FakeSerialTransport-driven tests
   - [x] 00-05-PLAN.md — NDJSON output layer + bin/fartol-readout + index.ts public API + end-to-end fixture-replay integration test
-  - [ ] 00-06-PLAN.md — --record/--replay modes + hardware-smoke.sh + capture 4 bench fixtures (SI5/SI9/SI10/SIAC) + tag v0.0.1-handshake
+  - [x] 00-06-PLAN.md — --record/--replay modes + hardware-smoke.sh + 4 bench fixtures (SI5/SI9/SI10/SIAC, captured 2026-05-13 in `packages/sportident/tests/fixtures/jonas/`) + v0.0.1-handshake tag
 
 This is the hardest single technical milestone. Everything else is
 "normal" web development once this works.
@@ -127,7 +127,7 @@ These must be respected throughout, not deferred to a phase:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 0. Hardware proof | 5/6 | In Progress|  |
+| 0. Hardware proof | 6/6 | Complete   | 2026-05-13 |
 | 1. Single-laptop training MVP | 0/TBD | Not started | - |
 | 2. Small sanctioned competition | 0/TBD | Not started | - |
 | 3. Children's finish, public engagement | 0/TBD | Not started | - |

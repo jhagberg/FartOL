@@ -126,15 +126,27 @@ class PlaybackTransport extends EventEmitter implements ISerialTransport {
       return Promise.reject(new Error(this.error));
     }
     this.cursor++;
-    // Pump exactly ONE matching `in` (the response) on the next tick. Any
-    // additional consecutive `in` chunks are spontaneous and get pumped on a
-    // delayed schedule so the current sendMessage promise + its follow-on
-    // chain resolves first.
-    const next = this.steps[this.cursor];
-    if (next && next.dir === 'in') {
+    // Pump every consecutive `in` chunk that follows this `out` and precedes
+    // the next `out`. The real serial driver fragments single logical wire
+    // frames across multiple MTU-sized `in` reads, so an `out GET_SYS_VAL`
+    // can be followed by 3 `in` lines that parseAll reassembles into one
+    // frame. Subsequent consecutive `in` lines (e.g. a spontaneous SI*_DET
+    // arriving between handshake completion and the next station command)
+    // are emitted in the same batch — parseAll handles them in order via
+    // its internal byte buffer.
+    //
+    // Each chunk gets its own setImmediate tick so parseAll runs once per
+    // chunk and the station's send-promise chain resolves between bursts.
+    const inChunks: number[][] = [];
+    while (this.cursor < this.steps.length) {
+      const next = this.steps[this.cursor];
+      if (!next || next.dir !== 'in') break;
+      inChunks.push(next.bytes);
       this.cursor++;
-      const bytes = next.bytes;
-      setImmediate(() => this.emit('data', bytes));
+    }
+    // Emit each chunk on its own tick so parseAll processes them in order.
+    for (const chunk of inChunks) {
+      setImmediate(() => this.emit('data', chunk));
     }
     return Promise.resolve();
   }

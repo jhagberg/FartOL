@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v0.0.1
 milestone_name: milestone
-status: executing
-stopped_at: Plan 00-05 complete (Wave 4 NDJSON output + bin + e2e replay)
-last_updated: '2026-05-12T21:52:15Z'
+status: phase-complete
+stopped_at: Phase 0 complete (v0.0.1-handshake tagged; bench-verified on Jonas's BSM7-USB 2026-05-13)
+last_updated: '2026-05-13T04:55:20.760Z'
 progress:
   total_phases: 6
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 6
-  completed_plans: 5
-  percent: 83
+  completed_plans: 6
+  percent: 100
 ---
 
 # STATE
@@ -24,39 +24,57 @@ not duplicated here.
 
 ## Current position
 
-Phase: 0 (hardware-proof) — EXECUTING
-Plan: 6 of 6 (next)
-**Phase:** Phase 0 — Hardware proof (Wave 4 NDJSON output + bin + e2e complete)
-**Next concrete action:** Run plan 00-06 (Wave 5 hardware smoke + record/replay) —
-add `--record <path>` / `--replay <path>` modes to `bin/fartol-readout`, then
-run `scripts/hardware-smoke.sh` against `/dev/ttyUSB0` (SI5 + SI9 + SI10 + SIAC
-insertions). After green smoke, tag `v0.0.1-handshake`.
+Phase: 1 (Single-laptop training MVP) — READY FOR DISCUSSION
+Plan: 0 of TBD
+**Phase:** Phase 1 — Single-laptop training MVP (not yet started)
+**Next concrete action:** Run `/gsd-discuss-phase 1` to gather context for the
+training MVP. Phase 0 is complete and tagged `v0.0.1-handshake` (annotated tag
+created locally; Jonas does the `git push origin v0.0.1-handshake`).
 
-**Last completed:** Plan 00-05 — Wave 4 NDJSON output + bin entry + e2e
-fixture replay. Landed `NdjsonEmitter` (5 event types: connection_changed,
-card_inserted, card_read, card_removed, frame_error) with stable v1 schema
-(schema_version=1, snake_case D-15, ms-epoch D-14, raw half-day clock per
-RESEARCH §"Half-day clock + missing event date"); `emitDiagnostic` for
-stderr human diagnostics; `bin/fartol-readout` public entry point that
-wires all 5 SiMainStation events to NdjsonEmitter on stdout +
-emitDiagnostic on stderr (typed FrameError consumed directly — codex
-review #1 closed end-to-end through Plans 02+04+05; zero console.warn
-anywhere in src/). Full public API surface in `index.ts` (18 named
-exports per RESEARCH §"Open Questions #6") with side-effect imports of
-card-type modules so BaseSiCard registries populate at consumer import.
-e2e fixture-replay test (`integration/e2e.test.ts`) replaces the Wave 0
-placeholder — synthetic SI5_DET + GET_SI5 reply -> 3-line NDJSON
-sequence with punches byte-equal to upstream `si5-16-punches` fixture.
-MIT attribution audit script (`scripts/check-mit-attribution.sh`,
-codex review #13) scans 54 files and exits 0; wired into root
-`pnpm lint` chain. tsup build produces all four expected artifacts
-(`.mjs` + `.cjs` for both entries + .d.ts). Pipeline green: 76 tests
-pass / 0 fail / 0 skipped. Commits `70020bb` (Task 1 RED tests),
-`84d9719` (Task 1 GREEN — NdjsonEmitter + diagnostics + bridge),
-`3be5c9d` (Task 2 — bin + index.ts + e2e + MIT audit script). Five
-auto-fixes (5 Rule 1 bugs — card_holder snake_case at boundary, three
-NOTICE-header comment-token rewordings, MIT-audit grep regex relaxation,
-unknown[] cast for fixture, prettier reformat).
+**Last completed:** Plan 00-06 — hardware-proof close. Bench-verified Phase 0
+end-to-end on 2026-05-13 against Jonas's SPORTident BSM7/8-USB reader on
+/dev/ttyUSB0 (serial 593656). All 4 of Jonas's card types
+(SI5/248215, SI9/1428824, SI10/7501853, SIAC/8535005 — the SIAC carrying a
+17-punch real-run trace) round-tripped cleanly through SerialTransport +
+siProtocol + SiMainStation + NdjsonEmitter via `scripts/hardware-smoke.sh`.
+Four bench fixture pairs (`.bytes.hex` directional transcript + `.expected
+.json` NDJSON output) committed under `packages/sportident/tests/fixtures/jonas/`.
+A new `src/integration/benchReplay.test.ts` drives all 4 fixtures through the
+production pipeline and asserts wire-event NDJSON byte-equality so future
+regressions in the protocol/decode/handshake/emit chain surface in CI before
+reaching hardware. v0.0.1-handshake annotated tag created on the wrap-up commit
+(NOT pushed — Jonas does the push). Phase 0 success criteria #1-6 all met.
+Cumulative: 92 tests pass / 0 fail.
+
+**Plan-06 gap-closure cycles during bench execution** (both backstopped by new
+regression tests so Phase 1 won't silently regress them):
+
+1. _Bit-packed station config flags_ (commits `96d62dd` / `2d0d365` /
+   `0ae4872` / `558067c`) — real BSM-mini hardware packs autosend/handshake/
+   beeps/flashes as individual bits in shared bytes 0x73/0x74/0x76. Plan 04's
+   byte-overwrite handshake clobbered unrelated state (including the station's
+   serial-number low byte). Fix: bit-aware writes via mask + OR. Recovery
+   helper `scripts/repair-station-sn.mjs` restored Jonas's reader's S/N after
+   the first failed smoke run.
+
+2. _Wire-format slice mismatch_ (commits `0aecc04` / `98be932` / `5fde72e`) —
+   real-wire GET_SYS_VAL / GET_SI5 / GET_SI8 responses carry a 2-byte station
+   address prefix that the synthetic test fixtures didn't include. SiCard5 +
+   ModernSiCard `typeSpecificRead` now slice 4 bytes (`[cmd, len, addr_hi,
+addr_lo]`) instead of 2 before splicing the 128-byte page. New
+   `src/integration/wireFormat.test.ts` regression-tests the exact shapes.
+
+**Plan 06 commits (Tasks 1-4 + gap-closures):** `5bd7d9f` (Task 1 record/replay),
+`cb58703` (Task 2 hardware-smoke + README), `c800067` (smoke fixup), gap-closure
+chains as above, `c33318a` (Task 3: bench fixtures), `f8e3f37` (Task 3b:
+bench-replay regression test + PlaybackTransport multi-chunk fix). Three
+auto-fixes: 1 Rule 1 protocol bug (PlaybackTransport emitted only one `in` per
+`out` — couldn't handle the multi-chunk fragmented responses real serial
+drivers deliver; fix pumps every consecutive `in` after each `out` so parseAll
+reassembles them), 1 Rule 3 blocker (prettier rejected NDJSON .expected.json
+fixtures — added to .prettierignore), 1 Rule 1 scope adjustment (bench-replay
+test compares wire-events only, filters connection_changed lifecycle artefacts
+the synchronous PlaybackTransport can't reproduce).
 
 ---
 
@@ -188,9 +206,12 @@ FLASHES`) instead of porting upstream's storage-typed config wrappers.
   the bin (per RESEARCH §Landmines #12, internal Node API; best-effort).
 
 - MIT audit grep relaxed to regex `(Ported|Derived)( \(qualifier\))? from
+
 allestuetsmerweh/sportident\.js` — literal "Ported from" would have
-  failed on real existing headers like "Ported (simplified) from" in
-  SiStation/\* files. Pattern preserves the audit intent.
+failed on real existing headers like "Ported (simplified) from" in
+SiStation/\* files. Pattern preserves the audit intent.
+
+- [Phase ?]: Phase 0 complete: bench-verified all 4 card types on Jonas's BSM7-USB 2026-05-13; v0.0.1-handshake tagged. Two protocol-layer gap closures landed during bench execution (bit-packed station config flags + wire-format slice mismatch).
 
 ## Open questions (deferred until we have working code)
 
@@ -217,13 +238,37 @@ None. Phase 0 plans created.
 
 ## Session Continuity
 
-Last session: 2026-05-12T21:52:15Z
-Stopped At: Plan 00-05 complete (Wave 4 NDJSON output + bin + e2e replay)
-Resume File: .planning/phases/00-hardware-proof/00-06-PLAN.md
+Last session: 2026-05-13T04:54:46.457Z
+Stopped At: Phase 0 complete (v0.0.1-handshake tagged; bench-verified on Jonas's BSM7-USB 2026-05-13)
+Resume File: None
 
 ---
 
 ## Recent changes to plan
+
+- 2026-05-13 — Phase 0 COMPLETE. Plan 00-06 wrap-up: bench session 2026-05-13
+  against Jonas's BSM7/8-USB on /dev/ttyUSB0 (serial 593656) round-tripped
+  all 4 card types (SI5/248215, SI9/1428824, SI10/7501853, SIAC/8535005 — the
+  SIAC with a 17-punch real-run trace) through fartol-readout. Four directional-
+  transcript + NDJSON fixture pairs committed under packages/sportident/tests/
+  fixtures/jonas/. New src/integration/benchReplay.test.ts replays the bench
+  fixtures in CI and asserts wire-event byte-equality (cumulative 92 tests pass /
+  0 fail). v0.0.1-handshake annotated tag created on the wrap-up commit (NOT
+  pushed — Jonas pushes). Two protocol-layer gap closures during bench
+  execution: (1) bit-packed station config flags (commits 96d62dd → 2d0d365 →
+  0ae4872 → 558067c — the original byte-overwrite handshake clobbered the
+  station S/N; now bit-aware writes), (2) wire-format slice mismatch (commits
+  0aecc04 → 98be932 → 5fde72e — real-wire GET_SYS_VAL/GET_SI5/GET_SI8 responses
+  carry a 2-byte station-address prefix the original slice arithmetic didn't
+  account for; SiCard5 + ModernSiCard typeSpecificRead now slice 4 bytes; new
+  wireFormat.test.ts regression-tests the exact shapes). Plan 06 Tasks 1-4
+  commits: 5bd7d9f, cb58703, c800067, c33318a, f8e3f37. Three deviation auto-
+  fixes (1 Rule 1 protocol bug in PlaybackTransport — couldn't handle multi-
+  chunk fragmented responses real serial drivers deliver, fix pumps every
+  consecutive `in` after each `out`; 1 Rule 3 blocker — prettier rejected NDJSON
+  .expected.json fixtures, added to .prettierignore; 1 Rule 1 scope adjustment —
+  bench-replay test compares wire-events only, filters connection_changed
+  lifecycle artefacts the synchronous PlaybackTransport can't reproduce).
 
 - 2026-05-12 — Plan 00-05 executed: Wave 4 NDJSON output + bin entry landed.
   NdjsonEmitter (5 event types: connection_changed, card_inserted, card_read,

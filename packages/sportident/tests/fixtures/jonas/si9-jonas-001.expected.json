@@ -1,0 +1,6 @@
+{"schema_version":1,"event":"connection_changed","ts_ms":1778647219726,"device_path":"/dev/ttyUSB0","state":"opening"}
+{"schema_version":1,"event":"connection_changed","ts_ms":1778647219750,"device_path":"/dev/ttyUSB0","state":"opening"}
+{"schema_version":1,"event":"connection_changed","ts_ms":1778647219935,"device_path":"/dev/ttyUSB0","state":"open"}
+{"schema_version":1,"event":"card_inserted","ts_ms":1778647220633,"device_path":"/dev/ttyUSB0","card_type":"SI9","card_number":1428824,"card_series_byte":1}
+{"schema_version":1,"event":"card_read","ts_ms":1778647221447,"device_path":"/dev/ttyUSB0","card_type":"SI9","card_number":1428824,"start":{"seconds_in_half_day":32460,"half_day":0,"weekday":null},"finish":{"seconds_in_half_day":32342,"half_day":0,"weekday":null},"check":{"seconds_in_half_day":32449,"half_day":0,"weekday":null},"clear":null,"punch_count":2,"punches":[{"code":110,"seconds_in_half_day":32441,"half_day":0,"weekday":null},{"code":136,"seconds_in_half_day":32522,"half_day":0,"weekday":null}],"card_holder":{"first_name":"1428824","is_complete":false},"card_series_byte":1,"uid":1993565838}
+{"schema_version":1,"event":"connection_changed","ts_ms":1778647221449,"device_path":"/dev/ttyUSB0","state":"closed"}
