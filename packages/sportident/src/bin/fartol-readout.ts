@@ -12,6 +12,14 @@
 // directly from siProtocol and forwards it to `emitter.frame_error`. No
 // stdout-warning interception or string parsing anywhere in the call graph.
 //
+// Plan 06: `--record <basename>` swaps NdjsonEmitter for RecordSink which tees
+// the NDJSON to `<basename>.expected.json` AND captures a directional wire
+// transcript (`out <hex>` / `in <hex>` lines) to `<basename>.bytes.hex` (codex
+// review #6). `--replay <basename>` drives the same pipeline against a
+// playback transport seeded by the transcript (no hardware). `--once` exits
+// after a single cardRead — used by `scripts/hardware-smoke.sh` so each card
+// type lands a fresh fixture pair (codex review #8).
+//
 // Real-hardware execution happens here — Plan 06's smoke script spawns this
 // bin against /dev/ttyUSB0. Tests use FakeSerialTransport at the SiMainStation
 // layer (src/SiStation/SiMainStation.test.ts, src/integration/e2e.test.ts).
@@ -24,14 +32,18 @@ import { NdjsonEmitter, type CardType } from '../output/ndjson.ts';
 import { emitDiagnostic } from '../output/diagnostics.ts';
 import type { FrameError } from '../siProtocol.ts';
 import type { BaseSiCard } from '../SiCard/BaseSiCard.ts';
+import { RecordSink } from './record.ts';
+import { replayFixture } from './replay.ts';
 
 // ---------------------------------------------------------------------------
 // CLI arg parsing — minimal hand-rolled (no commander/yargs dep). Flags:
 //   --device <path>          Serial device (overrides $FARTOL_DEVICE)
 //   --once                   Read one card then exit
 //   --include-raw-pages      Include raw_pages_b64 in card_read events
-//   --record <path>          (Plan 06) record raw byte stream to file
-//   --replay <path>          (Plan 06) replay byte stream from file
+//   --record <basename>      Tee NDJSON + directional wire transcript to disk.
+//                            Allowed roots: cwd OR /tmp (codex review #7).
+//   --replay <basename>      Drive SiMainStation against the transcript and
+//                            assert byte-equal NDJSON output.
 // ---------------------------------------------------------------------------
 
 interface CliOpts {
@@ -41,6 +53,26 @@ interface CliOpts {
   record?: string;
   replay?: string;
 }
+
+const HELP = `fartol-readout: stream SportIdent card reads as NDJSON.
+
+Usage:
+  fartol-readout [options]
+
+Options:
+  --device <path>          Serial device (overrides $FARTOL_DEVICE, default /dev/ttyUSB0)
+  --once                   Read a single card then exit cleanly
+  --include-raw-pages      Include raw_pages_b64 in card_read events
+  --record <basename>      Tee NDJSON to <basename>.expected.json AND capture
+                           a directional wire transcript ('out <hex>' / 'in <hex>'
+                           lines) to <basename>.bytes.hex. Allowed roots: the
+                           current working directory OR /tmp.
+  --replay <basename>      Drive the readout pipeline against the recorded
+                           transcript at <basename>.bytes.hex and assert the
+                           produced NDJSON matches <basename>.expected.json.
+                           Exits 0 on match, 1 on diff.
+  --help, -h               Show this help.
+`;
 
 const parseArgs = (argv: string[]): CliOpts => {
   const opts: CliOpts = {
@@ -60,17 +92,14 @@ const parseArgs = (argv: string[]): CliOpts => {
       opts.includeRawPages = true;
     } else if (a === '--record') {
       const next = argv[++i];
-      if (next === undefined) throw new Error('--record requires a path');
-      opts.record = next; // implemented in plan-06
+      if (next === undefined) throw new Error('--record requires a basename');
+      opts.record = next;
     } else if (a === '--replay') {
       const next = argv[++i];
-      if (next === undefined) throw new Error('--replay requires a path');
-      opts.replay = next; // implemented in plan-06
+      if (next === undefined) throw new Error('--replay requires a basename');
+      opts.replay = next;
     } else if (a === '--help' || a === '-h') {
-      process.stdout.write(
-        'fartol-readout: stream SportIdent card reads as NDJSON.\n' +
-          'Usage: fartol-readout [--device /dev/ttyUSB0] [--once] [--include-raw-pages]\n'
-      );
+      process.stdout.write(HELP);
       process.exit(0);
     } else {
       throw new Error(`Unknown argument: ${a}`);
@@ -96,16 +125,72 @@ const formatCrcHex = (pair: [number, number] | undefined): string => {
   );
 };
 
+const runReplay = async (basename: string): Promise<void> => {
+  // Replay never touches the serial port — drive replayFixture and exit.
+  // Allowed roots: cwd + /tmp (codex review #7) so smoke-script-derived
+  // fixtures committed to packages/sportident/tests/fixtures/jonas/ AND
+  // temporary fixtures in /tmp both work.
+  const result = await replayFixture(basename, { allowedRoots: [process.cwd(), '/tmp'] });
+  if (result.matches) {
+    emitDiagnostic(`replay match: ${basename}`);
+    process.exit(0);
+  }
+  emitDiagnostic(`replay mismatch: ${basename}\n${result.diff ?? ''}`);
+  process.exit(1);
+};
+
 const main = async (): Promise<void> => {
   const opts = parseArgs(process.argv.slice(2));
-  const emitter = new NdjsonEmitter({
-    device_path: opts.device,
-    includeRawPages: opts.includeRawPages,
-  });
+
+  // --replay short-circuits — no serial port, no recording.
+  if (opts.replay !== undefined) {
+    await runReplay(opts.replay);
+    return;
+  }
+
+  // Construct emitter (or RecordSink subclass when --record). RecordSink tees
+  // stdout NDJSON to <basename>.expected.json AND opens the directional
+  // wire-transcript stream <basename>.bytes.hex. Allowed roots: cwd + /tmp
+  // (codex review #7) — the smoke script writes under cwd, tests under /tmp.
+  const emitter: NdjsonEmitter =
+    opts.record !== undefined
+      ? new RecordSink({
+          device_path: opts.device,
+          recordBasename: opts.record,
+          allowedRoots: [process.cwd(), '/tmp'],
+          ...(opts.includeRawPages ? { includeRawPages: true } : {}),
+        })
+      : new NdjsonEmitter({
+          device_path: opts.device,
+          ...(opts.includeRawPages ? { includeRawPages: true } : {}),
+        });
 
   emitter.connection_changed({ state: 'opening' });
+
   const transport = new SerialTransport({ path: opts.device, baudRate: 38400 });
-  const station = new SiMainStation(transport);
+
+  // When recording, intercept BOTH transport pathways via a thin Proxy so the
+  // sink sees every wire chunk in both directions. The proxy wraps `send`
+  // (records the chunk first, then delegates) and leaves the rest of the
+  // ISerialTransport surface intact via Reflect.get fallthrough.
+  let activeTransport: typeof transport = transport;
+  if (opts.record !== undefined) {
+    const sink = emitter as RecordSink;
+    transport.on('data', (bytes: number[]) => sink.onRawReceive(bytes));
+    activeTransport = new Proxy(transport, {
+      get(target, prop, receiver) {
+        if (prop === 'send') {
+          return (bytes: number[]): Promise<void> => {
+            sink.onRawSend(bytes);
+            return target.send(bytes);
+          };
+        }
+        return Reflect.get(target, prop, receiver);
+      },
+    });
+  }
+
+  const station = new SiMainStation(activeTransport);
 
   // Wire all five events. CODEX REVIEW #1: the frameError handler receives
   // the typed FrameError directly — NO string parsing of warning lines.
@@ -120,7 +205,7 @@ const main = async (): Promise<void> => {
   station.on('cardRead', (card: BaseSiCard) => {
     emitter.card_read({ card });
     if (opts.once) {
-      void station.close().then(() => process.exit(0));
+      void shutdown(0);
     }
   });
   station.on('cardRemoved', (cardNumber: number) =>
@@ -142,9 +227,26 @@ const main = async (): Promise<void> => {
     }
   );
 
+  // Centralised shutdown: closes station then sinks (flushing RecordSink) then exits.
+  const shutdown = async (code: number): Promise<void> => {
+    try {
+      await station.close();
+    } catch {
+      // best-effort
+    }
+    if (opts.record !== undefined) {
+      try {
+        await (emitter as RecordSink).close();
+      } catch {
+        // best-effort
+      }
+    }
+    process.exit(code);
+  };
+
   // SIGINT: close cleanly, exit 0.
   process.on('SIGINT', () => {
-    void station.close().then(() => process.exit(0));
+    void shutdown(0);
   });
 
   // Per RESEARCH §Landmines #12: ensure piped stdout writes don't drop on

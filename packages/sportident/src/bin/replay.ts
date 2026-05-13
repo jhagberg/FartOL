@@ -1,0 +1,285 @@
+// Authored for fartol. Not ported from upstream.
+//
+// `replayFixture(basename)` — reads a directional transcript (`<basename>
+// .bytes.hex`, codex review #6) and drives SiMainStation via a deterministic
+// playback transport that gates `in <hex>` chunks on the corresponding `out
+// <hex>` chunk being delivered by the station. Compares produced NDJSON to
+// `<basename>.expected.json` (ts_ms normalised to 0) and returns
+// `{matches, diff?}`.
+//
+// Ordering discipline: every `in` is pumped on its own event-loop tick to give
+// the multiplexer's parseAll a chance to fully process each chunk before the
+// next arrives. The first `in` after each `out` is the immediate response;
+// subsequent consecutive `in` lines are SPONTANEOUS (e.g., SI*_DET frames the
+// station emits between handshake steps) and are delayed slightly so the
+// current `sendMessage()` promise resolves first.
+
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { EventEmitter } from 'node:events';
+
+import type { ISerialTransport } from '../transport/ISerialTransport.ts';
+import { SiMainStation } from '../SiStation/SiMainStation.ts';
+import { NdjsonEmitter } from '../output/ndjson.ts';
+import type { BaseSiCard } from '../SiCard/BaseSiCard.ts';
+import type { FrameError } from '../siProtocol.ts';
+
+export interface ReplayResult {
+  matches: boolean;
+  diff?: string;
+}
+
+export interface ReplayFixtureOpts {
+  /** Roots under which `basename` is permitted to resolve. Default:
+   * `[process.cwd()]`. Tests pass `[process.cwd(), '/tmp']`. */
+  allowedRoots?: string[];
+}
+
+type Direction = 'out' | 'in';
+interface TranscriptStep {
+  dir: Direction;
+  bytes: number[];
+}
+
+interface TranscriptMeta {
+  device_path: string;
+  device_serial: string | undefined;
+}
+
+const validateBasename = (basename: string, allowedRoots: string[]): string => {
+  const resolved = path.resolve(basename);
+  const roots = allowedRoots.map((r) => path.resolve(r));
+  const ok = roots.some((root) => resolved === root || resolved.startsWith(root + path.sep));
+  if (!ok) {
+    throw new Error(
+      `basename resolves outside allowed roots: ${resolved} (allowed: ${roots.join(', ')})`
+    );
+  }
+  return resolved;
+};
+
+const hexEncode = (bytes: number[]): string =>
+  bytes.map((b) => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+
+const parseTranscript = (raw: string): { steps: TranscriptStep[]; meta: TranscriptMeta } => {
+  const steps: TranscriptStep[] = [];
+  const meta: TranscriptMeta = { device_path: '/dev/replay', device_serial: undefined };
+  for (const lineRaw of raw.split('\n')) {
+    const line = lineRaw.trim();
+    if (line.length === 0) continue;
+    if (line.startsWith('#')) {
+      const capm = /^#\s*Captured\s+\S+\s+from\s+(\S+)/.exec(line);
+      if (capm) meta.device_path = capm[1]!;
+      const sm = /^#\s*device_serial:\s*(\S+)/.exec(line);
+      if (sm && sm[1] !== 'unknown') meta.device_serial = sm[1]!;
+      continue;
+    }
+    const m = /^(out|in)\s+([0-9A-Fa-f \t]+)$/.exec(line);
+    if (!m) throw new Error(`bad transcript line: ${JSON.stringify(line)}`);
+    const dir = m[1] as Direction;
+    const bytes = m[2]!
+      .split(/\s+/)
+      .filter((s) => s.length > 0)
+      .map((s) => parseInt(s, 16));
+    steps.push({ dir, bytes });
+  }
+  return { steps, meta };
+};
+
+/**
+ * Playback transport: gated by SiMainStation's send order.
+ *   - On send(): assert next step is `out` with matching bytes; advance cursor.
+ *     Pump the FIRST following `in` immediately (it's the response). Spontaneous
+ *     `in` lines (any consecutive after the first) are scheduled with a small
+ *     delay so the current send-cycle resolves first.
+ *   - Mismatch is captured in `error` and surfaced to replayFixture as diff.
+ */
+class PlaybackTransport extends EventEmitter implements ISerialTransport {
+  private cursor = 0;
+  private error: string | null = null;
+  private steps: TranscriptStep[];
+
+  constructor(steps: TranscriptStep[]) {
+    super();
+    this.steps = steps;
+  }
+
+  open(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  send(bytes: number[]): Promise<void> {
+    if (this.error) return Promise.reject(new Error(this.error));
+    const step = this.steps[this.cursor];
+    if (!step) {
+      this.error = `out mismatch: transcript exhausted (sent ${hexEncode(bytes)})`;
+      return Promise.reject(new Error(this.error));
+    }
+    if (step.dir !== 'out') {
+      this.error = `out mismatch: expected 'in' but station sent ${hexEncode(bytes)} (cursor=${this.cursor})`;
+      return Promise.reject(new Error(this.error));
+    }
+    const expected = hexEncode(step.bytes);
+    const actual = hexEncode(bytes);
+    if (expected !== actual) {
+      this.error = `out mismatch at step ${this.cursor}: expected '${expected}', got '${actual}'`;
+      return Promise.reject(new Error(this.error));
+    }
+    this.cursor++;
+    // Pump exactly ONE matching `in` (the response) on the next tick. Any
+    // additional consecutive `in` chunks are spontaneous and get pumped on a
+    // delayed schedule so the current sendMessage promise + its follow-on
+    // chain resolves first.
+    const next = this.steps[this.cursor];
+    if (next && next.dir === 'in') {
+      this.cursor++;
+      const bytes = next.bytes;
+      setImmediate(() => this.emit('data', bytes));
+    }
+    return Promise.resolve();
+  }
+
+  close(): Promise<void> {
+    setImmediate(() => this.emit('close'));
+    return Promise.resolve();
+  }
+
+  /** Pump every remaining `in` step on a delayed schedule (one per tick),
+   * spacing them so each gets a clean parseAll cycle. Called after handshake
+   * resolves so spontaneous SI*_DET frames are processed in order, without
+   * racing the connectionChanged:'open' emission. */
+  pumpRemaining(perTickDelayMs: number = 5): Promise<void> {
+    return new Promise<void>((resolve) => {
+      const tick = (): void => {
+        const step = this.steps[this.cursor];
+        if (!step) {
+          resolve();
+          return;
+        }
+        if (step.dir === 'out') {
+          // The next out will arrive via send(). We can't fabricate it.
+          resolve();
+          return;
+        }
+        this.cursor++;
+        setImmediate(() => this.emit('data', step.bytes));
+        setTimeout(tick, perTickDelayMs);
+      };
+      setTimeout(tick, perTickDelayMs);
+    });
+  }
+
+  getError(): string | null {
+    return this.error;
+  }
+
+  isExhausted(): boolean {
+    return this.cursor >= this.steps.length;
+  }
+}
+
+/** Normalise ts_ms to 0 on a single NDJSON line so the diff isn't dominated by
+ * Date.now() drift between record and replay. */
+const normaliseLine = (line: string): string => {
+  if (line.length === 0) return line;
+  const obj = JSON.parse(line) as Record<string, unknown>;
+  obj.ts_ms = 0;
+  return JSON.stringify(obj);
+};
+
+const buildDiff = (expected: string[], actual: string[]): string => {
+  const out: string[] = [];
+  const max = Math.max(expected.length, actual.length);
+  for (let i = 0; i < max; i++) {
+    const e = expected[i] ?? '<missing>';
+    const a = actual[i] ?? '<missing>';
+    if (e !== a) {
+      out.push(`@@ line ${i + 1} @@`);
+      out.push(`- ${e}`);
+      out.push(`+ ${a}`);
+    }
+  }
+  return out.join('\n');
+};
+
+export const replayFixture = async (
+  basename: string,
+  opts: ReplayFixtureOpts = {}
+): Promise<ReplayResult> => {
+  const allowedRoots = opts.allowedRoots ?? [process.cwd()];
+  const resolved = validateBasename(basename, allowedRoots);
+
+  const bytesRaw = fs.readFileSync(`${resolved}.bytes.hex`, 'utf8');
+  const expectedRaw = fs.readFileSync(`${resolved}.expected.json`, 'utf8');
+
+  const { steps, meta } = parseTranscript(bytesRaw);
+  const transport = new PlaybackTransport(steps);
+
+  const captured: string[] = [];
+  const emitterOpts: { device_path: string; device_serial?: string; out: (line: string) => void } =
+    {
+      device_path: meta.device_path,
+      out: (line) => captured.push(line),
+    };
+  if (meta.device_serial !== undefined) emitterOpts.device_serial = meta.device_serial;
+  const emitter = new NdjsonEmitter(emitterOpts);
+
+  const station = new SiMainStation(transport);
+  station.on('connectionChanged', (state: 'opening' | 'open' | 'closed' | 'error') =>
+    emitter.connection_changed({ state })
+  );
+  station.on('cardInserted', (card: BaseSiCard) =>
+    emitter.card_inserted({
+      card_type: 'SI5',
+      card_number: card.cardNumber,
+      ...(card.cardSeriesByte !== undefined ? { card_series_byte: card.cardSeriesByte } : {}),
+    })
+  );
+  station.on('cardRead', (card: BaseSiCard) => emitter.card_read({ card }));
+  station.on('cardRemoved', (cardNumber: number) =>
+    emitter.card_removed({ card_number: cardNumber })
+  );
+  station.on('frameError', (err: FrameError) => emitter.frame_error(err));
+
+  // Drive the handshake; this consumes the leading `out`/`in` steps.
+  try {
+    await transport.open();
+    await station.readCards();
+  } catch (err) {
+    const msg = transport.getError() ?? (err instanceof Error ? err.message : String(err));
+    return { matches: false, diff: msg };
+  }
+
+  // Now pump any remaining spontaneous `in` lines (e.g., SI*_DET frames the
+  // station injects between handshake response and the next out). Each tick
+  // emits one `in`, gives parseAll a clean cycle, then schedules the next.
+  // When the cursor reaches an `out`, send() will run again from the station
+  // (the card-read GET_SI5/GET_SI8 follow-up). pumpRemaining resolves either
+  // when the cursor hits an `out` or runs out.
+  await transport.pumpRemaining();
+
+  // Let the post-pump events (card_read after GET_SI5 returns) settle.
+  await new Promise((r) => setTimeout(r, 80));
+
+  await station.close();
+
+  const replayError = transport.getError();
+  if (replayError) {
+    return { matches: false, diff: replayError };
+  }
+
+  // Compare with ts_ms normalised.
+  const expectedLines = expectedRaw
+    .split('\n')
+    .filter((l) => l.length > 0)
+    .map(normaliseLine);
+  const actualLines = captured.map((l) => l.replace(/\n$/, '')).map(normaliseLine);
+
+  if (
+    expectedLines.length === actualLines.length &&
+    expectedLines.every((l, i) => l === actualLines[i])
+  ) {
+    return { matches: true };
+  }
+  return { matches: false, diff: buildDiff(expectedLines, actualLines) };
+};
