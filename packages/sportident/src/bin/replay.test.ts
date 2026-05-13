@@ -172,6 +172,11 @@ const captureFixture = async (basename: string): Promise<void> => {
   );
   station.on('cardRead', (card: BaseSiCard) => sink.card_read({ card }));
 
+  // CR-002 (codex review): emit a manual opening event BEFORE transport.open()
+  // so the captured fixture mirrors the bin's lifecycle. replayFixture also
+  // emits a manual opening, so round-trip parity requires both sides to do it.
+  sink.connection_changed({ state: 'opening' });
+
   await fake.open();
   await station.readCards();
 

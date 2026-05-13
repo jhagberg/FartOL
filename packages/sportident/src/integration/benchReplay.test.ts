@@ -103,6 +103,27 @@ class BenchPlaybackTransport extends EventEmitter implements ISerialTransport {
   }
   send(bytes: number[]): Promise<void> {
     if (this.error) return Promise.reject(new Error(this.error));
+    // CR-003 (codex review): the production pipeline now sends a bare ACK
+    // (0x06) after every successful card read. The committed Jonas fixtures
+    // were captured BEFORE this fix (2026-05-13 bench session) and so don't
+    // contain the trailing `out 06`. To preserve the bench transcripts as
+    // frozen truth, silently swallow bare-ACK sends that aren't in the
+    // fixture stream — they're a real-wire artefact this test doesn't
+    // regression-protect. Re-captured fixtures (post-CR-003) will include
+    // the ACK and the cursor will line up; both shapes match here.
+    if (bytes.length === 1 && bytes[0] === 0x06) {
+      const step = this.steps[this.cursor];
+      if (
+        step === undefined ||
+        step.dir !== 'out' ||
+        step.bytes.length !== 1 ||
+        step.bytes[0] !== 0x06
+      ) {
+        return Promise.resolve();
+      }
+      // Fixture DOES include the ACK at the cursor — fall through and
+      // advance the cursor like any other matching out step.
+    }
     const step = this.steps[this.cursor];
     if (!step || step.dir !== 'out') {
       this.error = `out mismatch at cursor=${this.cursor} (sent ${hexEncode(bytes)})`;

@@ -201,8 +201,18 @@ export class SiMainStation extends EventEmitter implements ISiMainStation {
       };
       this.emit('cardInserted', card);
       // Drive the typeSpecificRead chain; emit cardRead on success.
+      //
+      // CR-003 (codex review .planning/phases/00-hardware-proof/00-REVIEW.md):
+      // after a successful read we send a bare ACK (0x06) so the BSx reader
+      // beeps and stops re-reporting the card. The ACK is fire-and-forget
+      // via the multiplexer's no-response API — it does NOT travel through
+      // sendMessage() because there's no expected response and we don't want
+      // a timeout on it. We emit cardRead AFTER the ACK send promise
+      // resolves so subscribers see the events in causal order
+      // (cardInserted -> [card data on wire] -> [ACK on wire] -> cardRead).
       card
         .read()
+        .then(() => this.multiplexer.sendBareAck())
         .then(() => this.emit('cardRead', card))
         .catch((err: Error) => {
           // Forward as a frameError so subscribers see the failure.

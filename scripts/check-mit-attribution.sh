@@ -25,6 +25,7 @@ ALLOWLIST=(
   "packages/sportident/src/bin/replay.ts"
   "packages/sportident/src/bin/record.test.ts"
   "packages/sportident/src/bin/replay.test.ts"
+  "packages/sportident/src/bin/replay-jonas-fixtures.test.ts"
   # Events util — replacement (no upstream code), wraps node:events
   "packages/sportident/src/utils/events.ts"
   # Integration tests authored for fartol
@@ -32,6 +33,9 @@ ALLOWLIST=(
   "packages/sportident/src/integration/frameError.test.ts"
   "packages/sportident/src/integration/wireFormat.test.ts"
   "packages/sportident/src/integration/benchReplay.test.ts"
+  "packages/sportident/src/integration/esmImport.test.ts"
+  # Card-type inference helper — authored for fartol (no upstream content)
+  "packages/sportident/src/SiCard/cardTypeFromNumber.ts"
   # Card-decoder tests authored for fartol (the decoders are ported, the tests are ours)
   "packages/sportident/src/SiCard/types/SiCard5.test.ts"
   "packages/sportident/src/SiCard/types/SiCard9.test.ts"
@@ -39,6 +43,7 @@ ALLOWLIST=(
   "packages/sportident/src/SiCard/types/SIAC.test.ts"
   # Station tests authored for fartol against a FakeSerialTransport
   "packages/sportident/src/SiStation/SiMainStation.test.ts"
+  "packages/sportident/src/SiStation/SiTargetMultiplexer.test.ts"
   # Storage barrel — no upstream code, just re-exports
   "packages/sportident/src/storage/index.ts"
   # Public API barrel — authored for fartol

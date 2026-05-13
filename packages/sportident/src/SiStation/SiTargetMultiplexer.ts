@@ -82,6 +82,19 @@ export class SiTargetMultiplexer extends EventEmitter {
     }
     const task = new SiSendTask(message, expectedResponses, timeoutMs);
     this.pendingSendTasks.push(task);
+    // WR-001 (codex review): unconditional cleanup hook so a timeout, abort,
+    // or any other settle path (not just successful completion via _dispatch)
+    // removes the task from pendingSendTasks. Without this, a timed-out head
+    // task stays in the queue forever and any subsequent response is routed
+    // against the dead task — making the next sendMessage time out too.
+    //
+    // The trailing `.catch(() => undefined)` is mandatory: `.finally()`
+    // returns a NEW promise that adopts the rejection of `task.promise`. If
+    // the caller's original rejection is the only handler (the typical case
+    // for `await sendMessage(...)` rejecting on timeout), this chained
+    // promise has no handler and triggers an unhandledRejection. The catch
+    // is a no-op — the caller already saw the rejection on `task.promise`.
+    task.promise.finally(() => this._removeTask(task)).catch(() => undefined);
 
     // Chain transport.send onto sendChain so consecutive sendMessage calls
     // serialize their wire transmissions. Errors do NOT poison the queue —
@@ -91,16 +104,48 @@ export class SiTargetMultiplexer extends EventEmitter {
       .then(() => {
         if (this.isClosed) {
           task.failWithError(new DeviceClosedError('transport closed before send'));
-          this._removeTask(task);
+          // No explicit _removeTask here — the failWithError above causes
+          // task.promise to reject which triggers the finally() cleanup.
           return undefined;
         }
         return this.transport.send(this._renderForWire(message)).catch((err: Error) => {
           task.failWithError(err);
-          this._removeTask(task);
+          // Same: finally() cleanup handles removal.
         });
       });
 
     return task.promise;
+  }
+
+  /**
+   * Fire-and-forget: send a single bare ACK byte (0x06). Used after a
+   * successful card read to signal "release the card" — on BSx readers this
+   * triggers the post-read beep and stops the station from continuing to
+   * report the same card. NOT a command-response cycle: no SiSendTask, no
+   * timeout, no WAKEUP prefix (single-byte mode messages are bare per the
+   * SI protocol — see constants.ts and RESEARCH §Frame format).
+   *
+   * Chained onto the same sendChain as full commands so it serialises after
+   * the preceding GET_SI5/GET_SI8 read and before any subsequent command.
+   * Codex review CR-003 (.planning/phases/00-hardware-proof/00-REVIEW.md).
+   */
+  sendBareAck(): Promise<void> {
+    if (this.isClosed) {
+      return Promise.reject(new DeviceClosedError('multiplexer closed'));
+    }
+    // Return a promise that resolves after the send completes. The send is
+    // appended to sendChain so it serialises after any in-flight commands.
+    return new Promise<void>((resolve, reject) => {
+      this.sendChain = this.sendChain
+        .catch(() => undefined)
+        .then(() => {
+          if (this.isClosed) {
+            reject(new DeviceClosedError('transport closed before bare ACK'));
+            return undefined;
+          }
+          return this.transport.send([proto.ACK]).then(resolve, reject);
+        });
+    });
   }
 
   /** Close the multiplexer. Idempotent. Aborts any in-flight tasks first

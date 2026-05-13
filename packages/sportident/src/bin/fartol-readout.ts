@@ -28,10 +28,11 @@
 
 import { SerialTransport } from '../transport/SerialTransport.ts';
 import { SiMainStation } from '../SiStation/SiMainStation.ts';
-import { NdjsonEmitter, type CardType } from '../output/ndjson.ts';
+import { NdjsonEmitter } from '../output/ndjson.ts';
 import { emitDiagnostic } from '../output/diagnostics.ts';
 import type { FrameError } from '../siProtocol.ts';
 import type { BaseSiCard } from '../SiCard/BaseSiCard.ts';
+import { inferCardType } from '../SiCard/cardTypeFromNumber.ts';
 import { RecordSink } from './record.ts';
 import { replayFixture } from './replay.ts';
 
@@ -72,6 +73,14 @@ Options:
                            produced NDJSON matches <basename>.expected.json.
                            Exits 0 on match, 1 on diff.
   --help, -h               Show this help.
+
+Exit codes:
+  0   Clean shutdown (SIGINT, --once after a successful card read, or
+      --replay match).
+  1   Fatal initialisation failure (bad --device, unknown arg, replay diff).
+  3   Card-read failure: the station emitted an 'error' event mid-read
+      (WR-003). A structured connection_changed/error NDJSON event is
+      emitted before exit.
 `;
 
 const parseArgs = (argv: string[]): CliOpts => {
@@ -106,15 +115,6 @@ const parseArgs = (argv: string[]): CliOpts => {
     }
   }
   return opts;
-};
-
-const TYPE_MAP: Record<string, CardType> = {
-  SiCard5: 'SI5',
-  SiCard8: 'SI8',
-  SiCard9: 'SI9',
-  SiCard10: 'SI10',
-  SiCard11: 'SI11',
-  SIAC: 'SIAC',
 };
 
 const formatCrcHex = (pair: [number, number] | undefined): string => {
@@ -194,10 +194,17 @@ const main = async (): Promise<void> => {
 
   // Wire all five events. CODEX REVIEW #1: the frameError handler receives
   // the typed FrameError directly — NO string parsing of warning lines.
+  //
+  // CR-002 (codex review): card_inserted card_type uses the shared
+  // inferCardType(cardNumber) helper so the bin (record path) and
+  // replayFixture (replay path) agree. The constructor.name → CardType map
+  // (TYPE_MAP) stays in place for card_read in NdjsonEmitter where the card
+  // instance carries richer state that drives extra fields — it's only the
+  // card_inserted event where range-based inference and constructor.name
+  // ever disagreed pre-fix.
   station.on('cardInserted', (card: BaseSiCard) => {
-    const card_type = TYPE_MAP[card.constructor.name] ?? 'SI5';
     emitter.card_inserted({
-      card_type,
+      card_type: inferCardType(card.cardNumber),
       card_number: card.cardNumber,
       ...(card.cardSeriesByte !== undefined ? { card_series_byte: card.cardSeriesByte } : {}),
     });
@@ -247,6 +254,24 @@ const main = async (): Promise<void> => {
   // SIGINT: close cleanly, exit 0.
   process.on('SIGINT', () => {
     void shutdown(0);
+  });
+
+  // WR-003 (codex review .planning/phases/00-hardware-proof/00-REVIEW.md):
+  // SiMainStation emits Node's special 'error' event when a card read fails
+  // (e.g. partial-page response, transport closes mid-read). Without an
+  // installed listener the EventEmitter rule promotes the error to a process
+  // crash. Wire it to the same structured-shutdown path SIGINT uses so the
+  // operator sees an NDJSON `connection_changed/error` event AND a stderr
+  // diagnostic, then exits non-zero (code 3 = card-read failure).
+  station.on('error', (err: Error) => {
+    const message = err instanceof Error ? err.message : String(err);
+    try {
+      emitter.connection_changed({ state: 'error', error: message });
+    } catch {
+      // ignore secondary failure
+    }
+    emitDiagnostic(`card-read error: ${message}`);
+    void shutdown(3);
   });
 
   // Per RESEARCH §Landmines #12: ensure piped stdout writes don't drop on

@@ -22,6 +22,7 @@ import type { ISerialTransport } from '../transport/ISerialTransport.ts';
 import { SiMainStation } from '../SiStation/SiMainStation.ts';
 import { NdjsonEmitter } from '../output/ndjson.ts';
 import type { BaseSiCard } from '../SiCard/BaseSiCard.ts';
+import { inferCardType } from '../SiCard/cardTypeFromNumber.ts';
 import type { FrameError } from '../siProtocol.ts';
 
 export interface ReplayResult {
@@ -110,6 +111,23 @@ class PlaybackTransport extends EventEmitter implements ISerialTransport {
 
   send(bytes: number[]): Promise<void> {
     if (this.error) return Promise.reject(new Error(this.error));
+    // CR-003 (codex review): the production pipeline sends a bare ACK (0x06)
+    // after every successful card read. Pre-CR-003 fixtures don't contain
+    // the trailing `out 06`; tolerate that case by silently absorbing the
+    // ACK send when the transcript doesn't expect one at the cursor. When
+    // the fixture DOES expect the ACK (post-CR-003 captures), fall through
+    // to the normal cursor-advance path so the assertion still fires.
+    if (bytes.length === 1 && bytes[0] === 0x06) {
+      const step = this.steps[this.cursor];
+      if (
+        step === undefined ||
+        step.dir !== 'out' ||
+        step.bytes.length !== 1 ||
+        step.bytes[0] !== 0x06
+      ) {
+        return Promise.resolve();
+      }
+    }
     const step = this.steps[this.cursor];
     if (!step) {
       this.error = `out mismatch: transcript exhausted (sent ${hexEncode(bytes)})`;
@@ -240,9 +258,13 @@ export const replayFixture = async (
   station.on('connectionChanged', (state: 'opening' | 'open' | 'closed' | 'error') =>
     emitter.connection_changed({ state })
   );
+  // CR-002 (codex review): use the shared inferCardType(cardNumber) helper so
+  // the card_type field of card_inserted matches what the bin emits during
+  // --record. Previously hard-coded 'SI5' here, which made replay diverge
+  // from record for SI9 / SI10 / SIAC cards.
   station.on('cardInserted', (card: BaseSiCard) =>
     emitter.card_inserted({
-      card_type: 'SI5',
+      card_type: inferCardType(card.cardNumber),
       card_number: card.cardNumber,
       ...(card.cardSeriesByte !== undefined ? { card_series_byte: card.cardSeriesByte } : {}),
     })
@@ -252,6 +274,14 @@ export const replayFixture = async (
     emitter.card_removed({ card_number: cardNumber })
   );
   station.on('frameError', (err: FrameError) => emitter.frame_error(err));
+
+  // CR-002 (codex review): mirror fartol-readout.ts's lifecycle. The bin emits
+  // a manual connection_changed/opening BEFORE transport.open(), then
+  // SiMainStation.readCards() emits another opening followed by open. The
+  // recorded .expected.json fixtures therefore contain two consecutive
+  // 'opening' events; the previous replay path only emitted one (from inside
+  // readCards) and diverged from record by one line.
+  emitter.connection_changed({ state: 'opening' });
 
   // Drive the handshake; this consumes the leading `out`/`in` steps.
   try {

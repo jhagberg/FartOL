@@ -16,6 +16,7 @@
 // See packages/sportident/NOTICE.md for cumulative attribution.
 
 import { EventEmitter } from 'node:events';
+import { createRequire } from 'node:module';
 import { DeviceClosedError } from './errors.ts';
 import type { ISerialTransport } from './ISerialTransport.ts';
 
@@ -52,10 +53,34 @@ export interface SerialTransportOpts {
  * Lazy default — only require `serialport` when no Ctor is injected. Tests
  * always inject a FakeSerialPort, so `serialport` (a native dependency) never
  * loads in CI.
+ *
+ * ESM-safe: this package is `type: "module"` and `exports.import` points at
+ * `dist/index.mjs`. A bare `require('serialport')` throws "Dynamic require of
+ * 'serialport' is not supported" in ESM bundles and "require is not defined"
+ * at source level. `createRequire(import.meta.url)` gives us a CJS require
+ * resolved against this module's URL so the cjs-only `serialport` package
+ * loads without a top-level await (which would force the constructor to be
+ * async).
+ *
+ * tsup dual-bundle: the source uses `import.meta.url` (ESM-only). esbuild
+ * rewrites `import.meta` to `{}` for the CJS output, so the CJS path would
+ * crash if it reached `createRequire(undefined)`. Guarded by a runtime check —
+ * the CJS bundle takes the `typeof __filename` branch and uses native require;
+ * the ESM bundle takes the `createRequire(import.meta.url)` branch. Codex
+ * review CR-001 (.planning/phases/00-hardware-proof/00-REVIEW.md).
  */
+const requireFromHere: NodeRequire = (() => {
+  // CJS bundle: native `require` is in scope (tsup's CJS output already has
+  // it). `typeof __filename` is a cheap way to detect CJS without referencing
+  // `require` at module top-level (which esbuild's lint would warn about).
+  if (typeof __filename !== 'undefined') {
+    return createRequire(__filename);
+  }
+  // ESM bundle: `import.meta.url` is the canonical anchor for createRequire.
+  return createRequire(import.meta.url);
+})();
 const defaultSerialPortCtor = (): NodeSerialPortCtor => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const mod = require('serialport') as { SerialPort: NodeSerialPortCtor };
+  const mod = requireFromHere('serialport') as { SerialPort: NodeSerialPortCtor };
   return mod.SerialPort;
 };
 

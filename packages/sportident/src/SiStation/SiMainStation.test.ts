@@ -603,6 +603,55 @@ describe('SiMainStation handshake + dispatch', () => {
     assert.ok(states.includes('closed'), `expected 'closed' in ${JSON.stringify(states)}`);
   });
 
+  test('11) CR-003: after a successful card read, multiplexer sends a bare ACK (0x06)', async () => {
+    const fake = new FakeSerialTransport();
+    setUpHandshakeRules(fake);
+    const station = new SiMainStation(fake);
+    await fake.open();
+    await station.readCards();
+
+    // Wire GET_SI5 to return the fixture as a single 128-byte page.
+    fake.addRule(
+      (chunk) => chunk[0] === proto.WAKEUP && chunk[2] === proto.cmd.GET_SI5,
+      () => renderGetSi5Response(si5Fixture.storageData as number[])
+    );
+
+    let cardReadFired = false;
+    station.on('cardRead', () => {
+      cardReadFired = true;
+    });
+
+    // Snapshot the send-count before the card insertion so we look at only
+    // the post-card sends.
+    const preCardSendCount = fake.recordedSends.length;
+
+    fake.inject(buildSi5DetFrame(si5Fixture.cardData.cardNumber));
+    await new Promise((r) => setTimeout(r, 50));
+
+    assert.strictEqual(cardReadFired, true, 'cardRead must fire');
+
+    const postCardSends = fake.recordedSends.slice(preCardSendCount);
+    // postCardSends should contain at least: [WAKEUP, STX, GET_SI5, ...] AND [0x06].
+    const hasGetSi5 = postCardSends.some(
+      (chunk) => chunk[0] === proto.WAKEUP && chunk[2] === proto.cmd.GET_SI5
+    );
+    const ackChunk = postCardSends.find((chunk) => chunk.length === 1 && chunk[0] === 0x06);
+    assert.ok(hasGetSi5, 'GET_SI5 should have been sent during card-read');
+    assert.ok(
+      ackChunk,
+      `expected a bare ACK (0x06) send after card read; postCardSends=${JSON.stringify(postCardSends.map((c) => c.map((b) => b.toString(16))))}`
+    );
+
+    // Order matters: ACK must come AFTER GET_SI5 (the read), not before.
+    const getSi5Idx = postCardSends.findIndex(
+      (chunk) => chunk[0] === proto.WAKEUP && chunk[2] === proto.cmd.GET_SI5
+    );
+    const ackIdx = postCardSends.findIndex((chunk) => chunk.length === 1 && chunk[0] === 0x06);
+    assert.ok(ackIdx > getSi5Idx, `ACK (idx=${ackIdx}) must come after GET_SI5 (idx=${getSi5Idx})`);
+
+    await station.close();
+  });
+
   test('10) CODEX REVIEW #1: bad-CRC frame emits "frameError" via typed callback; NO stdout/stderr writes', async () => {
     const fake = new FakeSerialTransport();
     const station = new SiMainStation(fake);

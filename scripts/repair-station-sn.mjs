@@ -22,8 +22,17 @@
 // been verified to report SN 593656 again, this file can be deleted. Plan
 // 00-06 SUMMARY will document the bug-and-fix narrative.
 
-import { SerialPort } from 'serialport';
+// Resolve `serialport` via the sub-package that actually depends on it. This
+// script lives at repo-root but the dep is installed under
+// packages/sportident/node_modules/ (workspace layout). Without this shim Node
+// would walk up from /scripts and fail with ERR_MODULE_NOT_FOUND.
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
 import { argv, exit } from 'node:process';
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const require = createRequire(resolve(__dirname, '../packages/sportident/package.json'));
+const { SerialPort } = require('serialport');
 
 const DEFAULT_PATH = '/dev/ttyUSB0';
 const BAUD = 38400;
@@ -144,8 +153,10 @@ try {
   const getSysValReply = await readUntilEtx(port, 2000);
   console.log(`[repair] <- GET_SYS_VAL reply: ${hexAll(getSysValReply)}`);
 
-  // Parse the SN bytes out of the reply. Frame layout:
-  //   [STX, cmd, len, off_hi, off_lo, b0, b1, b2, b3, crc_hi, crc_lo, ETX]
+  // Parse the SN bytes out of the reply. Frame layout (real-wire, verified by
+  // bench transcript 2026-05-13 from /dev/ttyUSB0 — matches the corrected
+  // headerLen = 5 in BaseSiStation.readInfo):
+  //   [STX, cmd, len, addr_hi, addr_lo, offset_echo, b0, b1, b2, b3, crc_hi, crc_lo, ETX]
   // The reply doesn't include WAKEUP, but parsing tolerates a leading WAKEUP
   // just in case the station echoes one.
   let i = 0;
@@ -155,8 +166,11 @@ try {
       `Expected STX at index ${i}, got ${hex(getSysValReply[i])} (full: ${hexAll(getSysValReply)})`
     );
   }
-  // STX at i, cmd at i+1, len at i+2, params from i+3 ... params include 2-byte offset + 4 data bytes.
-  const dataStart = i + 3 + 2; // skip STX, cmd, len, off_hi, off_lo
+  // STX at i, cmd at i+1, len at i+2, params from i+3. Params include 3
+  // bookkeeping bytes (addr_hi, addr_lo, offset_echo) before the data bytes —
+  // skip all three so snBytes[2] correctly returns the byte at station-config
+  // offset 0x02 (the SN byte we just repaired).
+  const dataStart = i + 3 + 3; // skip STX, cmd, len, addr_hi, addr_lo, offset_echo
   const snBytes = getSysValReply.slice(dataStart, dataStart + 4);
 
   console.log(`[repair] SN bytes [0x00..0x03] = [${hexAll(snBytes)}]`);
