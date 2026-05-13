@@ -15,4 +15,15 @@ export default defineConfig({
   outExtension({ format }) {
     return { js: format === 'esm' ? '.mjs' : '.cjs' };
   },
+  // IN-001 (codex review 2026-05-13): the CJS bundle parses `import.meta.url`
+  // (from the createRequire shim in SerialTransport.ts) but doesn't reach it at
+  // runtime — the CR-001 fix guards via `typeof import.meta`. esbuild warns
+  // anyway. Silence only this specific warning so genuine future warnings stay
+  // visible.
+  esbuildOptions(options) {
+    options.logOverride = {
+      ...options.logOverride,
+      'empty-import-meta': 'silent',
+    };
+  },
 });

@@ -231,15 +231,19 @@ describe('bench-fixture replay (Jonas 2026-05-13 BSM7-USB)', () => {
       const actualWire = wireEvents(actualLines);
       const expectedWire = wireEvents(expectedLines);
 
-      // Sanity: bench fixtures all carry exactly card_inserted + card_read.
-      assert.strictEqual(expectedWire.length, 2, 'expected 2 wire events in bench fixture');
+      // Sanity: every bench fixture must contain a card_inserted + card_read pair
+      // with the expected card_type. Real captures may legitimately include leading
+      // card_removed events (operator clears a card before inserting the fresh one),
+      // so we locate card_inserted by predicate rather than pinning its index.
+      const insertedIdx = expectedWire.findIndex((l) => l.includes(`"event":"card_inserted"`));
+      assert.notStrictEqual(insertedIdx, -1, 'fixture has a card_inserted event');
       assert.ok(
-        expectedWire[0]!.includes(`"event":"card_inserted"`),
-        'first wire event is card_inserted'
+        expectedWire[insertedIdx]!.includes(`"card_type":"${expectedType}"`),
+        `card_inserted carries card_type=${expectedType}`
       );
       assert.ok(
-        expectedWire[0]!.includes(`"card_type":"${expectedType}"`),
-        `card_inserted carries card_type=${expectedType}`
+        expectedWire.slice(insertedIdx + 1).some((l) => l.includes(`"event":"card_read"`)),
+        'card_read follows card_inserted'
       );
 
       assert.deepStrictEqual(actualWire, expectedWire);

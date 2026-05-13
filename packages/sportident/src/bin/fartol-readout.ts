@@ -47,7 +47,7 @@ import { replayFixture } from './replay.ts';
 //                            assert byte-equal NDJSON output.
 // ---------------------------------------------------------------------------
 
-interface CliOpts {
+export interface CliOpts {
   device: string;
   once: boolean;
   includeRawPages: boolean;
@@ -83,30 +83,49 @@ Exit codes:
       emitted before exit.
 `;
 
-const parseArgs = (argv: string[]): CliOpts => {
+export const parseArgs = (argv: string[]): CliOpts => {
   const opts: CliOpts = {
     device: process.env.FARTOL_DEVICE ?? '/dev/ttyUSB0',
     once: false,
     includeRawPages: false,
   };
+  // Helper: pull the value for a `--flag` argument. Accepts either the
+  // following positional token (`--flag value`) OR an inline `--flag=value`
+  // pair. Rejects a missing or flag-looking value so `--device --once` doesn't
+  // silently absorb `--once` as the device path.
+  const valueFor = (
+    flag: string,
+    raw: string,
+    index: number
+  ): { value: string; consumed: number } => {
+    if (raw.startsWith(`${flag}=`)) {
+      const value = raw.slice(flag.length + 1);
+      if (value.length === 0) throw new Error(`${flag} requires a value`);
+      return { value, consumed: 0 };
+    }
+    const next = argv[index + 1];
+    if (next === undefined || next.startsWith('-')) throw new Error(`${flag} requires a value`);
+    return { value: next, consumed: 1 };
+  };
+
   for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === '--device') {
-      const next = argv[++i];
-      if (next === undefined) throw new Error('--device requires a value');
-      opts.device = next;
+    const a = argv[i] as string;
+    if (a === '--device' || a.startsWith('--device=')) {
+      const { value, consumed } = valueFor('--device', a, i);
+      opts.device = value;
+      i += consumed;
     } else if (a === '--once') {
       opts.once = true;
     } else if (a === '--include-raw-pages') {
       opts.includeRawPages = true;
-    } else if (a === '--record') {
-      const next = argv[++i];
-      if (next === undefined) throw new Error('--record requires a basename');
-      opts.record = next;
-    } else if (a === '--replay') {
-      const next = argv[++i];
-      if (next === undefined) throw new Error('--replay requires a basename');
-      opts.replay = next;
+    } else if (a === '--record' || a.startsWith('--record=')) {
+      const { value, consumed } = valueFor('--record', a, i);
+      opts.record = value;
+      i += consumed;
+    } else if (a === '--replay' || a.startsWith('--replay=')) {
+      const { value, consumed } = valueFor('--replay', a, i);
+      opts.replay = value;
+      i += consumed;
     } else if (a === '--help' || a === '-h') {
       process.stdout.write(HELP);
       process.exit(0);
@@ -290,19 +309,35 @@ const main = async (): Promise<void> => {
   // via cardRead handler.
 };
 
-main().catch((err: unknown) => {
-  const message = err instanceof Error ? err.message : String(err);
-  // Emit a final stdout connection_changed/error + stderr diagnostic so both
-  // pipelines see the fatal. Build the NdjsonEmitter on demand because the
-  // failure may have happened before construction (e.g. invalid --device).
+// Only execute main() when this module is the entrypoint. Imported for tests
+// (parseArgs.test.ts), the top-level code stays inert so we don't try to open
+// /dev/ttyUSB0 from a unit-test runtime.
+import { fileURLToPath } from 'node:url';
+import { realpathSync } from 'node:fs';
+
+const isEntrypoint = ((): boolean => {
+  if (!process.argv[1]) return false;
   try {
-    const emitter = new NdjsonEmitter({
-      device_path: process.env.FARTOL_DEVICE ?? '/dev/ttyUSB0',
-    });
-    emitter.connection_changed({ state: 'error', error: message });
+    return realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1]);
   } catch {
-    // ignore secondary failure
+    return false;
   }
-  emitDiagnostic(`fatal: ${err instanceof Error ? (err.stack ?? message) : message}`);
-  process.exit(1);
-});
+})();
+
+if (isEntrypoint)
+  main().catch((err: unknown) => {
+    const message = err instanceof Error ? err.message : String(err);
+    // Emit a final stdout connection_changed/error + stderr diagnostic so both
+    // pipelines see the fatal. Build the NdjsonEmitter on demand because the
+    // failure may have happened before construction (e.g. invalid --device).
+    try {
+      const emitter = new NdjsonEmitter({
+        device_path: process.env.FARTOL_DEVICE ?? '/dev/ttyUSB0',
+      });
+      emitter.connection_changed({ state: 'error', error: message });
+    } catch {
+      // ignore secondary failure
+    }
+    emitDiagnostic(`fatal: ${err instanceof Error ? (err.stack ?? message) : message}`);
+    process.exit(1);
+  });

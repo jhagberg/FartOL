@@ -31,7 +31,22 @@ Plan: 0 of TBD
 training MVP. Phase 0 is complete and tagged `v0.0.1-handshake` (annotated tag
 created locally; Jonas does the `git push origin v0.0.1-handshake`).
 
-**Last completed:** Plan 00-06 — hardware-proof close. Bench-verified Phase 0
+**Last completed:** Plan 0.1 — Phase 0 gap-closure cycle for codex's post-tag
+deep review. Six of seven review findings addressed across 6 sequential commits
+on main (f5df121 / 9df11ab / 598d583 / b247dc7 / f205cb6 / c21a985), closing
+CR-001 (ESM-safe SerialTransport import), CR-002 (production --replay
+round-trips committed fixtures), CR-003 (bare ACK 0x06 after card read —
+BSM-mini now beeps, bench-verified by Jonas 2026-05-13), WR-001 (timed-out
+multiplexer task removed from queue head), WR-002 (repair-script offset
+off-by-one) and WR-003 (station error event handled in bin). IN-001 (root
+`pnpm build` script) is deferred to Phase 1. 99 cumulative tests pass / 0
+fail. v0.0.2-handshake annotated tag created on the Phase 0.1 wrap-up commit
+(NOT pushed — Jonas does the push). Phase 0 success criteria #1-6 still met;
+the beep wasn't a ROADMAP criterion but is now also satisfied. See
+`.planning/phases/00-hardware-proof/00-1-SUMMARY.md` for the per-finding
+breakdown.
+
+**Previously completed:** Plan 00-06 — hardware-proof close. Bench-verified Phase 0
 end-to-end on 2026-05-13 against Jonas's SPORTident BSM7/8-USB reader on
 /dev/ttyUSB0 (serial 593656). All 4 of Jonas's card types
 (SI5/248215, SI9/1428824, SI10/7501853, SIAC/8535005 — the SIAC carrying a
@@ -211,8 +226,6 @@ allestuetsmerweh/sportident\.js` — literal "Ported from" would have
 failed on real existing headers like "Ported (simplified) from" in
 SiStation/\* files. Pattern preserves the audit intent.
 
-- [Phase ?]: Phase 0 complete: bench-verified all 4 card types on Jonas's BSM7-USB 2026-05-13; v0.0.1-handshake tagged. Two protocol-layer gap closures landed during bench execution (bit-packed station config flags + wire-format slice mismatch).
-
 ## Open questions (deferred until we have working code)
 
 - Does Electric scale to 30 000 concurrent public viewers at O-ringen,
@@ -245,6 +258,31 @@ Resume File: None
 ---
 
 ## Recent changes to plan
+
+- 2026-05-13 — Phase 0.1 (gap-closure) COMPLETE. Codex deep review of Phase 0
+  HEAD (immediately after v0.0.1-handshake) flagged 3 critical + 3 warning + 1
+  info findings; six addressed in this cycle as a sequential commit chain on
+  main (no worktree). CR-001 ESM-safe SerialTransport import via createRequire
+  shim (`9df11ab`). CR-002 production `replayFixture()` now round-trips all 4
+  committed Jonas fixtures byte-equal — card-type mapper extracted to a shared
+  `SiCard/cardTypeFromNumber.ts` and lifecycle alignment between bin and
+  station (`c21a985`). CR-003 bare ACK (0x06) emitted after every successful
+  card read via a new fire-and-forget `sendBareAck()` on SiTargetMultiplexer,
+  chained after `card.read()` in SiMainStation — BSM-mini now beeps audibly
+  on every card insert/read cycle, bench-verified by Jonas the same day
+  ("WE GOT BEEEPS!", `b247dc7`). WR-001 timed-out send no longer leaves a
+  stale task at the multiplexer queue head, so subsequent commands can route
+  matching replies (`598d583`). WR-002 repair-station-sn.mjs verification
+  now skips the addr_hi/addr_lo/offset_echo trio (three bytes, not two) before
+  reading the repaired byte (`f5df121`). WR-003 fartol-readout installs a
+  `station.on('error')` handler that emits a structured NDJSON `frame_error`
+  event with reason `card_read_failed` and exits non-zero rather than
+  crashing on an unhandled EventEmitter error (`f205cb6`). IN-001 (root
+  `pnpm build` script — cosmetic) deferred to Phase 1. The committed v0.0.1
+  Jonas fixtures stay frozen at the pre-ACK wire shape (historical bench
+  truth); future re-captures land alongside as `*-jonas-002.*`. 99 cumulative
+  tests pass / 0 fail. v0.0.2-handshake annotated tag created on the wrap-up
+  commit (NOT pushed). See `.planning/phases/00-hardware-proof/00-1-SUMMARY.md`.
 
 - 2026-05-13 — Phase 0 COMPLETE. Plan 00-06 wrap-up: bench session 2026-05-13
   against Jonas's BSM7/8-USB on /dev/ttyUSB0 (serial 593656) round-tripped

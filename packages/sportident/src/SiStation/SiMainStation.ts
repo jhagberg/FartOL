@@ -22,6 +22,7 @@
 
 import { proto } from '../constants.ts';
 import type { FrameError, SiMessage } from '../siProtocol.ts';
+import { arr2cardNumber } from '../siProtocol.ts';
 import { BaseSiCard } from '../SiCard/BaseSiCard.ts';
 import { EventEmitter } from '../utils/events.ts';
 import type { ISerialTransport } from '../transport/ISerialTransport.ts';
@@ -179,15 +180,12 @@ export class SiMainStation extends EventEmitter implements ISiMainStation {
       void card;
       const params = message.parameters;
       if (params.length >= 6) {
-        // Reuse same byte order as detectFromMessage: params[3..5] -> arr2cardNumber.
-        const byte3 = params[3] as number;
-        const byte4 = params[4] as number;
-        const byte5 = params[5] as number;
-        // Simple cardNumber rebuild (same as arr2cardNumber's basic path):
-        let cardnum = (byte4 << 8) | byte5;
-        if (byte3 !== 0 && byte3 > 4) cardnum |= byte3 << 16;
-        else cardnum += byte3 * 100000;
-        this.emit('cardRemoved', cardnum);
+        // arr2cardNumber expects LSB-first; SI_REM params carry the card number
+        // in params[3..5] as [high, mid, low].
+        const cardnum = arr2cardNumber([params[5], params[4], params[3]]);
+        if (cardnum !== undefined) {
+          this.emit('cardRemoved', cardnum);
+        }
       }
       return;
     }
