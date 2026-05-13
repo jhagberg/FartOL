@@ -32,7 +32,7 @@ orienteer at a real event (training counts).
   6. Tagged `v0.0.1-handshake`.
 **Plans**: 6 plans
   - [x] 00-01-PLAN.md — Wave 0 scaffold: pnpm/tsup/lefthook/commitlint + packages/sportident/ skeleton + all Wave-0 test placeholders + CI workflow
-  - [ ] 00-02-PLAN.md — Port siProtocol (CRC16 + parse + parseAll + render) + constants + utils; 10 frozen CRC vectors green; synthetic frame fixtures
+  - [x] 00-02-PLAN.md — Port siProtocol (CRC16 + parse + parseAll + render) + constants + utils; 10 frozen CRC vectors green; synthetic frame fixtures
   - [ ] 00-03-PLAN.md — Port storage primitives + BaseSiCard + ModernSiCard + SiCard5/9/10/SIAC; upstream-fixture-driven decoder tests
   - [ ] 00-04-PLAN.md — SerialTransport (node serialport@13) + simplified SiTargetMultiplexer (Direct-only) + BaseSiStation/SiMainStation handshake; FakeSerialTransport-driven tests
   - [ ] 00-05-PLAN.md — NDJSON output layer + bin/fartol-readout + index.ts public API + end-to-end fixture-replay integration test
@@ -127,7 +127,7 @@ These must be respected throughout, not deferred to a phase:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 0. Hardware proof | 1/6 | In progress | - |
+| 0. Hardware proof | 2/6 | In Progress|  |
 | 1. Single-laptop training MVP | 0/TBD | Not started | - |
 | 2. Small sanctioned competition | 0/TBD | Not started | - |
 | 3. Children's finish, public engagement | 0/TBD | Not started | - |

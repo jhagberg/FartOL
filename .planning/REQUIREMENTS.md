@@ -25,6 +25,8 @@ regular punches when received via SRR dongle or station readout.
 
 **REQ-HW-004 (v1)** — CRC16-CCITT-0x8005 validation on every incoming
 frame. Reject malformed frames with logged diagnostic.
+✅ **Completed in Plan 00-02** — siProtocol.ts CRC16 + parse + parseAll
+with typed FrameError callback; 10 frozen vectors locked.
 
 **REQ-HW-005 (v2)** — Receive autosend (`0xD3`) punches from BSF8/9
 control stations configured in punch mode.
@@ -172,7 +174,7 @@ existing Pi+4G radio controls in the wild.
 **REQ-STD-006 (v2)** — SIRAP TCP server: accept punches from MeOS-
 compatible radio control gateways.
 
-**REQ-STD-007 (v2)** — MeOS TCP input protocol *output*: feed our
+**REQ-STD-007 (v2)** — MeOS TCP input protocol _output_: feed our
 punches into a parallel MeOS installation as a side-car during
 migration.
 
