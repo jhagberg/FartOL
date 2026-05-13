@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v0.0.1
 milestone_name: milestone
 status: executing
-stopped_at: Plan 00-02 complete (Wave 1 siProtocol port)
-last_updated: '2026-05-12T20:55:58.275Z'
+stopped_at: Plan 00-03 complete (Wave 2 card decoders)
+last_updated: '2026-05-12T21:15:58.530Z'
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 6
-  completed_plans: 2
-  percent: 33
+  completed_plans: 3
+  percent: 50
 ---
 
 # STATE
@@ -25,21 +25,25 @@ not duplicated here.
 ## Current position
 
 Phase: 0 (hardware-proof) — EXECUTING
-Plan: 3 of 6 (next)
-**Phase:** Phase 0 — Hardware proof (Wave 1 siProtocol port complete)
-**Next concrete action:** Run plan 00-03 (Wave 2 card decoders —
-SI5/SI9/SI10/SIAC + storage primitives).
+Plan: 4 of 6 (next)
+**Phase:** Phase 0 — Hardware proof (Wave 2 card decoders complete)
+**Next concrete action:** Run plan 00-04 (Wave 3 transport + multiplexer
+— SerialTransport + SiTargetMultiplexer + SiSendTask).
 
-**Last completed:** Plan 00-02 — Wave 1 siProtocol port. CRC16 (10
-frozen vectors locked byte-for-byte), `parse`/`parseAll`/`render` with
-the typed `FrameError` channel replacing upstream's `console.warn`
-(codex review #1 HIGH), `constants.ts` proto table, `utils/{bytes,
-general,events}.ts`, 5 synthetic byte-exact fixtures, and a fixture-
-driven integration test for the `onFrameError` callback contract.
-Pipeline green: 28 tests pass / 6 skipped (Wave 0 placeholders for
-plans 03 + 05) / 0 fail. Zero lodash, zero `console.*` calls in
-siProtocol.ts, every ported file carries the MIT NOTICE header.
-Commits: `1b0095d` (Task 1, port), `2102dea` (Task 2, tests + fixtures).
+**Last completed:** Plan 00-03 — Wave 2 card decoders. Ported the
+storage primitives (SiInt/SiArray/SiDict/SiBool/SiEnum/SiModified/
+SiDataType/SiStorage, ~600 LOC), BaseSiCard with TWO non-overlapping
+registries (codex review #4 — registerSi5Range vs registerSi8Range),
+ModernSiCard with explicit page-4 punch-read chain (codex review #3),
+SiCard5/SiCard9/SiCard10/SIAC + 7 upstream fixtures + 13 decoder tests
+covering storage decode + detectFromMessage dispatch + cross-registry
+safety both directions + multi-page chain page-4-and-page-5. SiTime
+re-attached to siProtocol.ts (Plan 02 had trimmed it). Plain-array
+storage backing avoids the upstream `immutable` runtime dep. Pipeline
+green: 41 tests pass / 2 skipped (Wave 4 placeholders for plan 05) /
+0 fail. Commits: `fce06b6` (Task 1, port), `ff72a2f` (Task 2, fixtures +
+tests). Six auto-fixes applied (5 Rule 1 bugs, 1 Rule 2 SiEnum
+duplicate-key tolerance).
 
 ---
 
@@ -62,16 +66,33 @@ Captured as MADR-format ADRs in `.planning/adr/`. See
   surface that synthesizes the typed `FrameError` payload. Plans 04
   (multiplexer) and 05 (NDJSON) wire directly to the callback with no
   `console.warn` interception.
+
 - `allowImportingTsExtensions: true` in root tsconfig — required for
   Node-22 strip-types-native `.ts` import suffixes (the RESEARCH code-
   example style); `noEmit: true` already in place satisfies the
   precondition.
+
 - Trimmed upstream `siProtocol.ts`'s storage-backed `SiDate`/`SiTime`
   classes from this port: Phase 0 uses only the pure `arr2date` /
   `arr2cardNumber` helpers; the class wrappers depend on `storage/*`
   which Plan 03 lands.
 
----
+**Plan-level decisions (00-03):**
+
+- Two non-overlapping registries on BaseSiCard — codex review #4.
+  `registerSi5Range` (SI5_DET only) and `registerSi8Range` (SI8_DET only)
+  cannot capture each other's frames regardless of cardNumber overlap.
+- Storage primitives backed by plain `(number|undefined)[]` instead of
+  `Immutable.List` — avoids the upstream `immutable` runtime dep.
+  Phase 0 decoders are read-only so structural-sharing buys nothing.
+- SiEnum reverse lookup is first-key-wins on int collisions — SiCard10
+  and SIAC both share series byte 0x0F; the shared `utils.getLookup`
+  throws on duplicates which is wrong for this case. Routing within a
+  shared series is by card-number range anyway.
+- Test-only `_decodeFromStorage(bytes)` helper on every card subclass
+  lets fixture replay tests skip the mainStation. The multi-page
+  `typeSpecificRead` chain is still exercised separately against a
+  recording mock station (codex review #3 multi-page verification).
 
 ## Open questions (deferred until we have working code)
 
@@ -98,13 +119,25 @@ None. Phase 0 plans created.
 
 ## Session Continuity
 
-Last session: 2026-05-12T20:55:58.264Z
-Stopped At: Plan 00-02 complete (Wave 1 siProtocol port)
-Resume File: .planning/phases/00-hardware-proof/00-03-PLAN.md
+Last session: 2026-05-12T21:15:31.495Z
+Stopped At: Plan 00-03 complete (Wave 2 card decoders)
+Resume File: .planning/phases/00-hardware-proof/00-04-PLAN.md
 
 ---
 
 ## Recent changes to plan
+
+- 2026-05-12 — Plan 00-03 executed: Wave 2 card decoders landed.
+  Storage primitives (8 files, plain-array backed — no immutable.js
+  dep), BaseSiCard with two non-overlapping registries (codex review
+  #4: registerSi5Range vs registerSi8Range, cannot cross-capture),
+  ModernSiCard with explicit page-4 punch chain (codex review #3),
+  SiCard5/SiCard9/SiCard10/SIAC, 7 upstream-derived fixtures
+  (including a 64-punch one that exercises pages 4+5), 13 decoder
+  tests including cross-registry safety in both directions.
+  Pipeline green: 41 pass / 2 skipped / 0 fail. Commits `fce06b6`
+  (port), `ff72a2f` (fixtures + tests). Six auto-fixes (5 Rule 1
+  bugs, 1 Rule 2 SiEnum first-key-wins for shared series 0x0F).
 
 - 2026-05-12 — Plan 00-02 executed: Wave 1 siProtocol port landed.
   CRC16 + parse + parseAll + render verified end-to-end with 10

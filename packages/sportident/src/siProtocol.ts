@@ -8,14 +8,17 @@
 //     `parse` itself stays pure (no console output, no callback invocation) and surfaces
 //     bad CRC by returning `{message: null, remainder: <after consumed bytes>}` so that
 //     `parseAll` is the single place that synthesizes the `FrameError` payload.
-//   - Trimmed storage-dependent SiDate / SiTime classes — Phase 0 uses the pure
-//     `arr2date` / `date2arr` / `arr2cardNumber` helpers only; the heavy storage-backed
-//     `SiDate`/`SiTime` classes from upstream are imported by Plan 03's card decoders, so
-//     they'll be ported there once `storage/*` exists.
+//   - SiTime added back in Plan 03 once `storage/*` was ported (Plan 02 left it out
+//     because it depended on SiDataType). SiTime here is the storage-backed half-day
+//     clock primitive consumed by the card decoders; it returns a `SiTimestamp =
+//     number | null` (raw seconds-in-half-day, matching upstream's fixture shape —
+//     full wall-clock reconstruction needs the event date and is Phase 1's job).
 //   - SiCard11/PCard cardNumber path retained from upstream (4-byte arr2cardNumber).
 // See packages/sportident/NOTICE.md for cumulative attribution.
 
 import { proto } from './constants.ts';
+import { SiInt } from './storage/SiInt.ts';
+import { SiDataType, type SiStorageData } from './storage/SiDataType.ts';
 import { arr2big, assertArrIsOfLengths, assertIsByteArr, prettyHex } from './utils/bytes.ts';
 
 export const SI_TIME_CUTOFF = 43200; // Half a day in seconds.
@@ -354,3 +357,34 @@ export const render = (message: SiMessage): number[] => {
   }
   return renderFunction();
 };
+
+// --- SiTime / SiTimestamp ---------------------------------------------------
+// SiTime models the half-day clock primitive on every SI card (seconds since
+// midnight or midday, 0..43199). `null` represents `proto.NO_TIME` (0xEEEE)
+// which means "no punch yet". Wall-clock reconstruction needs the event date
+// and is Phase 1's job — Phase 0 emits raw seconds.
+//
+// Ported from upstream `siProtocol.ts` L335-399. Read-only (no update path);
+// no lodash; constructor accepts the same `[[lo],[hi]]` byte-part shape upstream
+// uses so the card decoder storage locations port verbatim.
+
+export type SiTimestamp = number | null;
+
+export class SiTime extends SiDataType<SiTimestamp> {
+  private readonly intField: SiInt | undefined;
+  public intParts: [[number], [number]] | undefined;
+
+  constructor(intParts: [[number], [number]] | undefined) {
+    super();
+    this.intParts = intParts;
+    this.intField = intParts === undefined ? undefined : new SiInt(intParts);
+  }
+
+  typeSpecificExtractFromData(data: SiStorageData): SiTimestamp | undefined {
+    if (this.intField === undefined) return null;
+    const timeInt = this.intField.typeSpecificExtractFromData(data);
+    if (timeInt === proto.NO_TIME) return null;
+    if (timeInt === undefined || timeInt > SI_TIME_CUTOFF) return undefined;
+    return timeInt;
+  }
+}
