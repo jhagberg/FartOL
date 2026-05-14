@@ -1,0 +1,42 @@
+{
+  "name": "@fartol/edge",
+  "version": "0.0.0",
+  "description": "FartOL edge bridge — Fastify HTTP/WS server + SQLite event log + SportIdent bridge",
+  "license": "AGPL-3.0-or-later",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.mjs"
+    }
+  },
+  "bin": {
+    "fartol": "./dist/bin/fartol.cjs"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx watch src/bin/fartol.ts",
+    "test": "node --test --test-reporter=spec --import tsx 'src/**/*.test.ts'",
+    "test:watch": "node --test --watch --test-reporter=spec --import tsx 'src/**/*.test.ts'",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@fartol/shared-types": "workspace:*",
+    "@fartol/sportident": "workspace:*",
+    "@fastify/cors": "^11.2.0",
+    "@fastify/sensible": "^6.0.4",
+    "@fastify/static": "^9.1.3",
+    "fastify": "^5.8.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsup": "^8.3.5",
+    "tsx": "^4.20.0",
+    "typescript": "^5.6.3"
+  }
+}
