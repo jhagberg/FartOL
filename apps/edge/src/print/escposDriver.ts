@@ -41,6 +41,9 @@ export interface DriverOpts {
   /** Override /dev/usb/lp* probing (tests). When undefined, probePath()
    * scans /dev/usb/lp{0..3} at print time. */
   devicePath?: string;
+  /** Override the auto-probed paths. Tests use this to avoid depending on
+   * whether the developer machine currently has a printer plugged in. */
+  probePaths?: readonly string[];
   /** node-thermal-printer characterSet. Default PC852_LATIN2 (covers å/ä/ö
    * for Swedish names + clubs). */
   characterSet?: string;
@@ -55,12 +58,13 @@ export interface DriverOpts {
 
 export interface PrinterFactoryOpts {
   type: PrinterTypeId;
-  /** node-thermal-printer URL format: `printer:/dev/usb/lp0`. */
+  /** node-thermal-printer local-port/file interface, e.g. `/dev/usb/lp0`. */
   interface: string;
   characterSet: string;
 }
 
 const DEFAULT_QUEUE_CAP = 50;
+const DEFAULT_PROBE_PATHS = ['/dev/usb/lp0', '/dev/usb/lp1', '/dev/usb/lp2', '/dev/usb/lp3'];
 
 /** Construct the production sink. Returned object also exposes `dispose()`
  * so the Fastify onClose hook can drain the queue. */
@@ -81,8 +85,7 @@ export function createNodeThermalPrinterSink(
    * 'printer_offline' so the REST handler maps to 503. */
   function probePath(): string | null {
     if (opts.devicePath !== undefined) return opts.devicePath;
-    for (let i = 0; i < 4; i++) {
-      const p = `/dev/usb/lp${i}`;
+    for (const p of opts.probePaths ?? DEFAULT_PROBE_PATHS) {
       if (existsSync(p)) return p;
     }
     return null;
@@ -98,7 +101,7 @@ export function createNodeThermalPrinterSink(
     if (opts.printerFactory !== undefined) {
       return opts.printerFactory({
         type: printerType,
-        interface: `printer:${path ?? '/dev/null'}`,
+        interface: path ?? '/dev/null',
         characterSet,
       });
     }
@@ -116,7 +119,7 @@ export function createNodeThermalPrinterSink(
           : ntp.types['STAR'];
     return new ntp.printer({
       type: typeEnum,
-      interface: `printer:${path}`,
+      interface: path,
       characterSet,
       removeSpecialCharacters: false,
       options: { timeout: 5000 },

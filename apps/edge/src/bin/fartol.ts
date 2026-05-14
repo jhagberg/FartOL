@@ -44,6 +44,7 @@ import { eq } from 'drizzle-orm';
 import type { PrinterSink } from '../print/sink.ts';
 import { createStdoutPrinterSink } from '../print/stdout-sink.ts';
 import { createNodeThermalPrinterSink, type PrinterTypeId } from '../print/escposDriver.ts';
+import { createCupsPrinterSink } from '../print/cups-sink.ts';
 
 export interface CliOpts {
   port: number;
@@ -53,6 +54,39 @@ export interface CliOpts {
   noBridge: boolean;
   serialPath: string;
   competitionId: string | null;
+}
+
+export type PrinterConfig =
+  | { kind: 'stdout' }
+  | { kind: 'cups'; queueName: string }
+  | { kind: 'direct'; printerType: PrinterTypeId };
+
+const DEFAULT_CUPS_QUEUE = 'TSP143--STR_T-001-';
+
+function resolvePrinterType(rawType: string | undefined): PrinterTypeId {
+  return rawType === 'epson' || rawType === 'brother' ? rawType : 'star';
+}
+
+export function resolvePrinterConfig(
+  env: Record<string, string | undefined> = process.env
+): PrinterConfig {
+  const mode = env['FARTOL_PRINTER'];
+  if (mode === 'stdout') return { kind: 'stdout' };
+  if (mode === 'direct' || mode === 'escpos') {
+    return { kind: 'direct', printerType: resolvePrinterType(env['FARTOL_PRINTER_TYPE']) };
+  }
+  return {
+    kind: 'cups',
+    queueName: env['FARTOL_CUPS_QUEUE']?.trim() || DEFAULT_CUPS_QUEUE,
+  };
+}
+
+function createPrinterSink(config: PrinterConfig): PrinterSink {
+  if (config.kind === 'stdout') return createStdoutPrinterSink();
+  if (config.kind === 'direct') {
+    return createNodeThermalPrinterSink({ printerType: config.printerType });
+  }
+  return createCupsPrinterSink({ queueName: config.queueName });
 }
 
 const HELP = `fartol: FartOL edge bridge (Fastify HTTP/WS + SQLite event log + SI bridge).
@@ -313,22 +347,12 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
   const handle: DbHandle = openDatabase(dbPath);
   const nodeId = process.env['FARTOL_NODE_ID'] ?? ensureNodeId(handle);
 
-  // Printer sink selection: FARTOL_PRINTER=stdout swaps in the walking-
-  // skeleton JSON-line sink (useful in dev / CI where /dev/usb/lp* is
-  // absent); otherwise the production ESC/POS sink is wired. The
-  // FARTOL_PRINTER_TYPE env var picks star/epson/brother (default star
-  // for the Phase 1 bench unit — Star TSP143). probePath() inside the
-  // sink scans /dev/usb/lp{0..3} at print time so the operator doesn't
-  // need to specify the device path explicitly.
-  let printerSink: PrinterSink;
-  if (process.env['FARTOL_PRINTER'] === 'stdout') {
-    printerSink = createStdoutPrinterSink();
-  } else {
-    const rawType = process.env['FARTOL_PRINTER_TYPE'];
-    const printerType: PrinterTypeId =
-      rawType === 'epson' || rawType === 'brother' ? rawType : 'star';
-    printerSink = createNodeThermalPrinterSink({ printerType });
-  }
+  // Printer sink selection: default to the CUPS queue because the Phase 1
+  // Star TSP143IIIU prints reliably through Star's rastertostar CUPS
+  // driver. FARTOL_PRINTER=direct keeps the node-thermal-printer
+  // /dev/usb/lp* path available for compatible ESC/POS devices, and
+  // FARTOL_PRINTER=stdout keeps the JSON-line sink for dev / CI.
+  const printerSink = createPrinterSink(resolvePrinterConfig(process.env));
 
   const app: FastifyInstance = await buildServer({
     logger: true,

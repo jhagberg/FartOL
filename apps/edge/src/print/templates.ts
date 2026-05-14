@@ -90,7 +90,7 @@ export function formatElapsed(ms: number | null): string {
 /** Format the +M:SS leader-gap suffix used by every template's place line. */
 export function formatGap(behindMs: number | null): string {
   if (behindMs === null) return '';
-  if (behindMs === 0) return '★ Leder';
+  if (behindMs === 0) return 'Leder';
   return `+${formatElapsed(behindMs)} efter ledaren`;
 }
 

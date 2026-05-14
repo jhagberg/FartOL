@@ -139,6 +139,22 @@ function makeEnvelope(): PrintEnvelope {
 }
 
 describe('createNodeThermalPrinterSink (PATTERNS S-2 / S-3)', () => {
+  test('test 0: local USB devicePath is passed as a direct file interface', async () => {
+    const rec: FakeRec = { calls: [], executeCount: 0, connected: true };
+    const interfaces: string[] = [];
+    const sink = createNodeThermalPrinterSink({
+      devicePath: '/dev/usb/lp0',
+      printerFactory: (opts) => {
+        interfaces.push(opts.interface);
+        return makeFakePrinter(rec);
+      },
+    });
+
+    assert.equal(await sink.isPrinterConnected(), true);
+    assert.deepEqual(interfaces, ['/dev/usb/lp0']);
+    sink.dispose();
+  });
+
   test('test 1: end-to-end print() invokes clear → render → cut → execute on the fake', async () => {
     const rec: FakeRec = { calls: [], executeCount: 0, connected: true };
     const sink = createNodeThermalPrinterSink({
@@ -205,11 +221,13 @@ describe('createNodeThermalPrinterSink (PATTERNS S-2 / S-3)', () => {
     sink.dispose();
   });
 
-  test('test 4: no /dev/usb/lp* + no factory → print rejects with printer_offline', async () => {
-    // No devicePath, no factory — probePath() scans /dev/usb/lp{0..3};
-    // the dev box has no thermal printer plugged in, so buildPrinter
-    // returns null and print() rejects.
-    const sink = createNodeThermalPrinterSink({});
+  test('test 4: no probed printer path + no factory → print rejects with printer_offline', async () => {
+    // No devicePath, no factory, and guaranteed-missing probe paths:
+    // buildPrinter returns null and print() rejects. This must not depend
+    // on whether the developer machine currently has /dev/usb/lp0 plugged in.
+    const sink = createNodeThermalPrinterSink({
+      probePaths: ['/tmp/fartol-missing-lp0', '/tmp/fartol-missing-lp1'],
+    });
     await assert.rejects(
       () => sink.print(makeEnvelope()),
       (err: Error) => err.message === 'printer_offline'
