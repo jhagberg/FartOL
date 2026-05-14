@@ -1,0 +1,175 @@
+// Print-only renderer: each screen on its own page
+const { useState: pState } = React;
+const tt = window.useT('sv');
+const noop = () => {};
+
+const LogoMark = () => (
+  <svg viewBox="0 0 28 28" width="22" height="22" style={{display: 'block'}}>
+    <g transform="rotate(45 14 14)">
+      <rect x="4" y="4" width="20" height="10" fill="#ffffff" stroke="#1a1a1a" strokeWidth="1.4"/>
+      <rect x="4" y="14" width="20" height="10" fill="#F36F21" stroke="#1a1a1a" strokeWidth="1.4"/>
+    </g>
+  </svg>
+);
+
+function PrintPage({ label, sub, children }) {
+  return (
+    <section className="print-page">
+      <header className="print-head">
+        <LogoMark />
+        <b style={{fontSize: 14}}>FartOL</b>
+        <span className="print-tag muted">· Phase 1 · Single-laptop training MVP</span>
+        <span className="print-label" style={{marginLeft: 'auto'}}>{label}</span>
+        {sub && <span className="print-tag muted">{sub}</span>}
+      </header>
+      <div className="print-body">{children}</div>
+    </section>
+  );
+}
+
+/* ---------- Home page (no shell) ---------- */
+function HomePrint() {
+  return (
+    <div className="print-content">
+      <HomeView t={tt} competitions={window.MOCK_COMPETITIONS} onOpenWizard={noop} onOpenCompetition={noop} />
+    </div>
+  );
+}
+
+/* ---------- Wizard page — step 2, course imported ---------- */
+function WizardPrint() {
+  return (
+    <div className="print-content" style={{position: 'relative', background: 'rgba(20,20,30,0.18)', minHeight: '100%'}}>
+      <div style={{position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24}}>
+        <div className="modal" style={{width: 720, position: 'relative', boxShadow: '0 20px 60px rgba(0,0,0,0.2)'}}>
+          <div className="modal-head">
+            <h2>Ny tävling</h2>
+            <span className="muted mono" style={{marginLeft: 'auto', fontSize: 13}}>2/3</span>
+          </div>
+          <div className="wiz-steps" style={{display: 'flex', gap: 8, padding: '8px 22px 0'}}>
+            <div className="wiz-step done"><span className="num">✓</span><span><b>Skapa tävling</b><span style={{fontSize: 11}}>Skapa</span></span></div>
+            <div className="wiz-step active"><span className="num">2</span><span><b>Importera bana</b><span style={{fontSize: 11}}>Importera</span></span></div>
+            <div className="wiz-step"><span className="num">3</span><span><b>Starta avläsning</b><span style={{fontSize: 11}}>Klar</span></span></div>
+          </div>
+          <div className="modal-body">
+            <p className="muted" style={{margin: '0 0 16px'}}>Purple Pen .xml eller IOF XML 3.0 CourseData. Klasser skapas automatiskt.</p>
+            <div className="drop-zone has-file">
+              <div className="icon">✓</div>
+              <div style={{fontSize: 15, fontWeight: 600}}>Importerad: tisdag-bana-v20.xml</div>
+              <div className="mono" style={{fontSize: 12, marginTop: 6, color: 'var(--ok)'}}>Purple Pen · 6 klasser · 47 kontroller</div>
+            </div>
+            <div style={{marginTop: 16}}>
+              <div className="muted" style={{fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6}}>Skapade klasser</div>
+              <div className="class-chips" style={{display: 'flex', flexWrap: 'wrap', gap: 6}}>
+                {(window.MOCK_CLASSES || []).map(c => (
+                  <span key={c.id} className="class-chip">{c.name}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="modal-foot">
+            <button className="btn ghost">← Tillbaka</button>
+            <button className="btn ghost">Avbryt</button>
+            <div style={{marginLeft: 'auto'}}></div>
+            <button className="btn primary">Nästa →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Readout page ---------- */
+function ReadoutPrint({ read, tpl }) {
+  return (
+    <div className="print-content readout-print" data-tpl={tpl}>
+      <ReadoutView t={tt} density="med"
+        currentRead={read} history={window.MOCK_READS.slice(0, 6)}
+        onSimulate={noop} onPrint={noop} onSelectRead={noop}
+        walkupOpen={false} setWalkupOpen={noop} lastFlashKey={0}
+        autoPrint={false} setAutoPrint={noop}
+        defaultTpl={tpl} setDefaultTpl={noop} />
+    </div>
+  );
+}
+
+/* ---------- Walk-up modal page ---------- */
+function WalkupPrint() {
+  return (
+    <div className="print-content readout-print" style={{position: 'relative', background: 'rgba(20,20,30,0.18)'}}>
+      <ReadoutView t={tt} density="med"
+        currentRead={{cardNumber: 9128344, unknown: true, readTime: '14:34:02', status: 'PEND'}}
+        history={[{cardNumber: 9128344, unknown: true, readTime: '14:34:02', status: 'PEND'}, ...window.MOCK_READS.slice(0, 5)]}
+        onSimulate={noop} onPrint={noop} onSelectRead={noop}
+        walkupOpen={false} setWalkupOpen={noop} lastFlashKey={0}
+        autoPrint={false} setAutoPrint={noop}
+        defaultTpl="classic" setDefaultTpl={noop} />
+      <div style={{position: 'absolute', inset: 0, background: 'rgba(20,20,30,0.32)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24}}>
+        <div className="modal" style={{width: 560, position: 'relative', boxShadow: '0 20px 60px rgba(0,0,0,0.25)'}}>
+          <div className="modal-head">
+            <span style={{width: 28, height: 28, borderRadius: 6, background: 'var(--dnf-soft)', color: 'var(--dnf)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700}}>⚠</span>
+            <div>
+              <h2>Walk-up registrering</h2>
+              <div className="muted" style={{fontSize: 13, marginTop: 2}}>Okänd bricka avläst. Registrera deltagaren och fortsätt.</div>
+            </div>
+          </div>
+          <div className="modal-body">
+            <div style={{display: 'grid', gap: 16}}>
+              <div className="field">
+                <label>Bricknummer</label>
+                <input className="input mono" defaultValue="9128344" readOnly />
+              </div>
+              <div className="field">
+                <label>Namn *</label>
+                <input className="input" defaultValue="Sara Lindgren" readOnly />
+              </div>
+              <div className="field">
+                <label>Klubb</label>
+                <input className="input" defaultValue="StorTuna OK" readOnly />
+              </div>
+              <div className="field">
+                <label>Klass *</label>
+                <input className="input" defaultValue="D21 — Medel svår (4.8 km)" readOnly />
+              </div>
+            </div>
+          </div>
+          <div className="modal-foot">
+            <button className="btn ghost">Avbryt</button>
+            <button className="btn primary">Spara och bind</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Results page ---------- */
+function ResultsPrint() {
+  return (
+    <div className="print-content">
+      <ResultsView t={tt} fullscreen={false} setFullscreen={noop} />
+    </div>
+  );
+}
+
+function PrintApp() {
+  const erik = window.MOCK_READS[0];
+  const mikael = window.MOCK_READS[2];
+  return (
+    <div className="print-doc font-plex">
+      <PrintPage label="01 · Tävlingar" sub="Home"><HomePrint /></PrintPage>
+      <PrintPage label="02 · Ny tävling" sub="Wizard steg 2 av 3"><WizardPrint /></PrintPage>
+      <PrintPage label="03 · Avläsning · Erik Lindqvist" sub="Kvitto: Klassisk"><ReadoutPrint read={erik} tpl="classic" /></PrintPage>
+      <PrintPage label="04 · Avläsning · Erik Lindqvist" sub="Kvitto: Topp 4"><ReadoutPrint read={erik} tpl="top4" /></PrintPage>
+      <PrintPage label="05 · Avläsning · Erik Lindqvist" sub="Kvitto: Detaljerad (sträckplaceringar)"><ReadoutPrint read={erik} tpl="detailed" /></PrintPage>
+      <PrintPage label="06 · Avläsning · Mikael Sjöberg" sub="Felstämpling · Kvitto: Klassläge"><ReadoutPrint read={mikael} tpl="standing" /></PrintPage>
+      <PrintPage label="07 · Avläsning · Erik Lindqvist" sub="Kvitto: Barn (Skogis)"><ReadoutPrint read={erik} tpl="kids" /></PrintPage>
+      <PrintPage label="08 · Avläsning · Anna Persson" sub="Kvitto: Barn (Skogis)"><ReadoutPrint read={window.MOCK_READS[1]} tpl="kids" /></PrintPage>
+      <PrintPage label="09 · Avläsning · Karin Lund" sub="Kvitto: Barn (Skogis)"><ReadoutPrint read={window.MOCK_READS[3]} tpl="kids" /></PrintPage>
+      <PrintPage label="10 · Walk-up registrering" sub="Okänd bricka avläst"><WalkupPrint /></PrintPage>
+      <PrintPage label="11 · Liveresultat" sub="H21"><ResultsPrint /></PrintPage>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<PrintApp />);
