@@ -140,16 +140,67 @@ export function patchCompetition(id: string, body: CompetitionPatchInput): Promi
   });
 }
 
-/** Plan 12 three-click wizard end-point: name + date + classes + courses in one POST. */
-export function createCompetitionFromWizard(body: {
+// ---------------------------------------------------------------------------
+// Wizard atomic create + XML ingest (C-H3 LOCKED — plan 12)
+// ---------------------------------------------------------------------------
+//
+// The three-click wizard fires ONE POST to /api/competitions/from-wizard.
+// Per Codex review C-H3: HTTP requests cannot share a SQL transaction, so
+// the old two-call shape (createCompetition + importCompetitionFile) was
+// eligible for partial commit — an XSD failure after the competition
+// INSERT would leave an orphan row. The atomic endpoint wraps both
+// operations in one SQLite transaction; on any failure NO orphan row
+// persists. wizard.spec.ts test 2 is the e2e regression gate.
+
+export interface CreateFromWizardInput {
   name: string;
   date: string;
-  receipt_template?: string;
-  auto_print?: boolean;
-  classes?: ClassCreateInput[];
-  courses?: CourseCreateInput[];
-}): Promise<{ competition: CompetitionDTO; classes: ClassDTO[]; courses: CourseDTO[] }> {
-  return apiFetch('/api/competitions/from-wizard', { method: 'POST', body });
+  xml_file: { name: string; content_base64: string };
+}
+
+export interface CreateFromWizardOk {
+  competition_id: string;
+  kind: 'CourseData' | 'EntryList';
+  classes_created?: number;
+  controls_created?: number;
+  courses_created?: number;
+  competitors_created?: number;
+  classes_missing?: string[];
+  [extra: string]: unknown;
+}
+
+export interface CreateFromWizardErr {
+  error: string;
+  message?: string;
+  errors?: Array<{ line?: number; column?: number; message: string }>;
+  detail?: string;
+}
+
+/** Plan 12 wizard endpoint: ONE atomic POST that creates the competition
+ * and ingests the XML in a single SQL transaction (C-H3). Returns a
+ * tagged union so callers branch on `ok` without `instanceof ApiError`
+ * (the regression gate cares about the body shape, not the exception). */
+export async function createCompetitionFromWizard(
+  input: CreateFromWizardInput
+): Promise<
+  { ok: true; data: CreateFromWizardOk } | { ok: false; status: number; data: CreateFromWizardErr }
+> {
+  const res = await fetch('/api/competitions/from-wizard', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  const text = await res.text();
+  let parsed: unknown;
+  try {
+    parsed = text.length > 0 ? JSON.parse(text) : {};
+  } catch {
+    parsed = { error: 'parse_failed', detail: text };
+  }
+  if (res.status >= 200 && res.status < 300) {
+    return { ok: true, data: parsed as CreateFromWizardOk };
+  }
+  return { ok: false, status: res.status, data: parsed as CreateFromWizardErr };
 }
 
 // ---------------------------------------------------------------------------
