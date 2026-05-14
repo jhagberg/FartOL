@@ -39,12 +39,14 @@ import registerClubs from './routes/clubs.ts';
 import registerImportRoutes from './routes/import.ts';
 import registerCompetitionsFromWizard from './routes/competitionsFromWizard.ts';
 import registerSessionsRoutes from './routes/sessions.ts';
+import registerResultsRoute from './routes/results.ts';
 import wsPlugin from './ws/index.ts';
 import type { DbHandle } from './db/index.ts';
 import type { PrinterSink } from './print/sink.ts';
 import { createStdoutPrinterSink } from './print/stdout-sink.ts';
 import type { ChannelName } from '@fartol/shared-types';
 import { nextLocalSeq as defaultNextLocalSeq } from './db/seq.ts';
+import { createProjectionStore, type ProjectionStore } from './projection/store.ts';
 
 /** Broadcast sink — PATTERNS S-2. Plan 04 wires this as an OPTIONAL spy that
  * lets tests record wsBroadcast invocations without standing up a real WS
@@ -85,6 +87,9 @@ export interface BuildServerOpts {
    * trailing-edge SELECT (db/seq.ts). Plan 04 test 9 swaps in a throwing
    * fn to verify transactional atomicity. */
   nextLocalSeqFn?: NextLocalSeqFn;
+  /** Plan 08 — projection-store debounce window. Tests inject 0 for
+   * synchronous markDirty → recompute → broadcast assertions. */
+  projectionDebounceMs?: number;
 }
 
 export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyInstance> {
@@ -131,6 +136,22 @@ export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyIn
       (app as unknown as { wsBroadcast: typeof wrapped }).wsBroadcast = wrapped;
     }
 
+    // Plan 08: construct the projection store AFTER wsPlugin so the store
+    // can route broadcasts through the (possibly sink-wrapped) wsBroadcast.
+    // The store is the IO layer wrapping plan 07's pure reducer; it owns
+    // the cache + debounced recompute and only re-reads SQLite on
+    // markDirty. Dispose via Fastify's onClose so pending timers are
+    // cleared when the app shuts down.
+    const projectionStore = createProjectionStore({
+      handle: opts.dbHandle,
+      broadcast: (channel, envelope) => app.wsBroadcast(channel, envelope),
+      ...(opts.projectionDebounceMs !== undefined ? { debounceMs: opts.projectionDebounceMs } : {}),
+    });
+    app.decorate('projectionStore', projectionStore);
+    app.addHook('onClose', async () => {
+      projectionStore.dispose();
+    });
+
     await app.register(registerCompetitions);
     await app.register(registerClasses);
     await app.register(registerCourses);
@@ -142,6 +163,7 @@ export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyIn
     // app.activeCompetitionId on first request (the route module itself
     // restores from the config table during register).
     await app.register(registerSessionsRoutes);
+    await app.register(registerResultsRoute);
     await app.register(registerDevRoutes);
   }
 
@@ -163,5 +185,9 @@ declare module 'fastify' {
      * insert into events read this instead of importing nextLocalSeq
      * directly so tests can swap in a throwing fn for atomicity coverage. */
     fartolNextLocalSeq: NextLocalSeqFn;
+    /** Plan 08 — projection cache + debounced recompute + broadcast.
+     * Bridge + dev simulate-read + walk-up POST all call markDirty after
+     * mutations; hello handler reads `get/recomputeNow` for results_full. */
+    projectionStore: ProjectionStore;
   }
 }
