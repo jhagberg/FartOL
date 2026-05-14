@@ -36,6 +36,8 @@ import registerClasses from './routes/classes.ts';
 import registerCourses from './routes/courses.ts';
 import registerCompetitors from './routes/competitors.ts';
 import registerClubs from './routes/clubs.ts';
+import registerImportRoutes from './routes/import.ts';
+import registerCompetitionsFromWizard from './routes/competitionsFromWizard.ts';
 import wsPlugin from './ws/index.ts';
 import type { DbHandle } from './db/index.ts';
 import type { PrinterSink } from './print/sink.ts';
@@ -133,6 +135,8 @@ export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyIn
     await app.register(registerCourses);
     await app.register(registerCompetitors);
     await app.register(registerClubs);
+    await app.register(registerImportRoutes);
+    await app.register(registerCompetitionsFromWizard);
     await app.register(registerDevRoutes);
   }
 

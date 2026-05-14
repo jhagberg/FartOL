@@ -18,7 +18,7 @@
     "fartol": "./dist/bin/fartol.cjs"
   },
   "scripts": {
-    "build": "tsup && cp src/xml/IOF.xsd dist/xml/IOF.xsd",
+    "build": "tsup && mkdir -p dist/xml && cp src/xml/IOF.xsd dist/xml/IOF.xsd",
     "dev": "tsx watch src/bin/fartol.ts",
     "test": "node --test --test-reporter=spec --import tsx 'src/**/*.test.ts'",
     "test:watch": "node --test --watch --test-reporter=spec --import tsx 'src/**/*.test.ts'",
