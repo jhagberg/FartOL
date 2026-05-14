@@ -168,6 +168,7 @@
 
     <form
       class="body"
+      novalidate
       onsubmit={(e) => {
         e.preventDefault();
         void onSave();
