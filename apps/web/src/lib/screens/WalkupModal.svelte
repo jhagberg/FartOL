@@ -144,15 +144,7 @@
   }
 </script>
 
-<div
-  class="walkup-scrim"
-  role="presentation"
-  data-testid="walkup-overlay"
-  onclick={close}
-  onkeydown={(e) => {
-    if (e.key === 'Enter' || e.key === ' ') close();
-  }}
->
+<div class="walkup-scrim" role="presentation" data-testid="walkup-overlay" onclick={close}>
   <div
     class="walkup-modal"
     role="dialog"
