@@ -1,46 +1,37 @@
 <!--
   Authored for fartol. Not ported from upstream.
 
-  Readout view PLACEHOLDER. The real implementation lands in plan 13
-  (latest-read card + history list + receipt mirror + WS-subscribe).
-  Plan 12 only needs `/competition/<id>/readout` to resolve so the
-  wizard's `goto` target (after the atomic POST succeeds) lands on a
-  real page during e2e.
+  /competition/:id/readout — mounts the ReadoutView screen. The route
+  itself is a thin shell: it reads `id` from `$page.params` and forwards
+  it to ReadoutView, which owns all WS + REST wiring.
 
-  Renders the competition id from the URL so the wizard happy-path
-  e2e can assert the navigation worked (the spec checks the URL
-  pattern is a real UUID, not the `_new` literal sentinel).
+  C-M3 LOCKED: when the URL carries `?walkup=<cardNumber>`, plan 14
+  mounts <WalkupModal /> AS AN OVERLAY on this same route. There is no
+  separate /walkup route file anywhere in the codebase. Plan 14 will
+  extend this page (or ReadoutView) to render the overlay; for plan 13
+  the URL contract is the only commitment — the auto-redirect from
+  ReadoutView is the producer side of that contract.
 
   Locked by:
-  - 01-12-PLAN.md task 2 (placeholder)
-  - 01-13-PLAN.md (real readout component)
+  - 01-12-PLAN.md (wizard goto target = /readout)
+  - 01-13-PLAN.md task 2
+  - 01-REVIEWS.md §C-M3 (?walkup= variant, no /walkup route)
 -->
 <script lang="ts">
   import { page } from '$app/state';
-  const id = $derived(page.params['id'] ?? '');
+  import ReadoutView from '$lib/screens/ReadoutView.svelte';
+
+  const competitionId = $derived(page.params['id'] ?? '');
 </script>
 
-<section class="placeholder">
-  <h1>Avläsning</h1>
-  <p>Tävling: <code data-testid="readout-competition-id">{id}</code></p>
-  <p class="muted">Avläsningsvyn landar i plan 13.</p>
-</section>
+{#if competitionId}
+  <ReadoutView {competitionId} />
+{:else}
+  <p class="muted">…</p>
+{/if}
 
 <style>
-  .placeholder {
-    display: grid;
-    gap: 12px;
-  }
-  .placeholder h1 {
-    margin: 0;
-  }
   .muted {
     color: var(--fg-muted);
-  }
-  code {
-    font-family: var(--font-mono);
-    background: var(--bg-sunken);
-    padding: 2px 6px;
-    border-radius: 4px;
   }
 </style>

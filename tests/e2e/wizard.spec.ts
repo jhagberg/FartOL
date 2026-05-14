@@ -89,8 +89,10 @@ test('three-click wizard happy path (C-H3: ONE atomic POST)', async ({ page, req
   expect(fromWizard).toHaveLength(1);
   expect(oldCreate).toHaveLength(0);
 
-  // Sanity: the readout placeholder rendered with the new id.
-  await expect(page.getByTestId('readout-competition-id')).toBeVisible();
+  // Sanity: the readout view rendered (plan 13 replaced the placeholder
+  // with the real ReadoutView component; the test-id moved to
+  // `readout-view` accordingly).
+  await expect(page.getByTestId('readout-view')).toBeVisible();
   // The edge has the competition row.
   const list = await request.get('http://localhost:5173/api/competitions');
   expect(list.status()).toBe(200);
@@ -137,13 +139,17 @@ test('three-click wizard rollback on corrupt XML — C-H3 regression gate', asyn
   await expect(err).toContainText('IOF XML 3.0');
   expect(page.url()).toContain('/competition/_new?wizard=1');
 
-  // Codex C-H3 e2e regression gate: row count is unchanged. The
-  // server's atomic SQLite transaction rolled back; no orphan
-  // competition row persists.
+  // Codex C-H3 e2e regression gate: no orphan row persists. The strict
+  // `countBefore` snapshot used to be the assertion but plan 13 added
+  // tests/e2e/readout.spec.ts which creates competitions in a parallel
+  // worker (DB-isolation hassle called out in the plan). The
+  // "no row with our unique name" check below is the actual C-H3
+  // semantic — the corrupt wizard run MUST NOT have committed a row
+  // — and is parallel-worker safe. `countBefore` is referenced so
+  // ESLint doesn't flag it as unused.
+  void countBefore;
   const after = await request.get('http://localhost:5173/api/competitions');
   expect(after.status()).toBe(200);
   const afterBody = (await after.json()) as { competitions: { name: string }[] };
-  expect(afterBody.competitions.length).toBe(countBefore);
-  // Sanity: also assert the unique name does NOT appear in the list.
   expect(afterBody.competitions.some((c) => c.name === uniqueName)).toBe(false);
 });
