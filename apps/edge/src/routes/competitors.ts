@@ -68,11 +68,21 @@
 import type { FastifyInstance } from 'fastify';
 import crypto from 'node:crypto';
 import { and, asc, eq } from 'drizzle-orm';
+import { z } from 'zod';
 
 import { CompetitorCreateInput, type CompetitorDTO, readoutChannel } from '@fartol/shared-types';
 import { classes, clubs, competitions, competitors, events } from '../db/schema.ts';
 import type { Competitor } from '../db/types.ts';
 import { issuesToErrors } from './_zod-errors.ts';
+
+// C-M4 — PATCH /api/competitors/:id consent-confirmation body schema.
+// Only the pending_first_read → confirmed_on_read transition is allowed;
+// the route returns 422 on any other source state (mitigates
+// T-CONSENT-FORCED-FLIP in plan 14's threat register).
+const PatchConsentSchema = z.object({
+  consent_status: z.literal('confirmed_on_read'),
+  consent_at_ms: z.number().int().positive(),
+});
 
 function competitorRowToDTO(row: Competitor): CompetitorDTO {
   return {
@@ -375,6 +385,63 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
       scrubbed_at_ms: null,
     };
     return reply.code(201).send(dto);
+  });
+
+  // PATCH /api/competitors/:id — C-M4 consent confirmation. Plan 14.
+  //
+  // Flip a single competitor's consent_status from 'pending_first_read'
+  // (the default for EntryList-imported rows) to 'confirmed_on_read' and
+  // stamp consent_at_ms. Emits a `consent_confirmed` events row inside the
+  // same transaction so plan 17's daily scrub + plan 16's IOF export have
+  // an audit trail. Any non-pending source state returns 422
+  // (T-CONSENT-FORCED-FLIP mitigation).
+  app.patch<{ Params: { id: string } }>('/api/competitors/:id', async (req, reply) => {
+    const { id } = req.params;
+    const parsed = PatchConsentSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send(issuesToErrors(parsed.error.issues));
+    }
+
+    const row = app.fartolDb.db.select().from(competitors).where(eq(competitors.id, id)).get();
+    if (!row) return reply.code(404).send({ error: 'competitor_not_found' });
+
+    if (row.consentStatus !== 'pending_first_read') {
+      return reply.code(422).send({ error: 'consent_not_pending', current: row.consentStatus });
+    }
+
+    let seq: number | null = null;
+    app.fartolDb.sqlite.transaction(() => {
+      app.fartolDb.db
+        .update(competitors)
+        .set({ consentStatus: 'confirmed_on_read', consentAtMs: parsed.data.consent_at_ms })
+        .where(eq(competitors.id, id))
+        .run();
+
+      seq = app.fartolNextLocalSeq(app.fartolDb, app.fartolNodeId);
+      app.fartolDb.db
+        .insert(events)
+        .values({
+          nodeId: app.fartolNodeId,
+          localSeq: seq,
+          competitionId: row.competitionId,
+          eventType: 'consent_confirmed',
+          eventTimeMs: parsed.data.consent_at_ms,
+          recordedAtMs: Date.now(),
+          payload: {
+            event_type: 'consent_confirmed',
+            competitor_id: id,
+            prior_consent_status: 'pending_first_read',
+          },
+        })
+        .run();
+    })();
+
+    // markDirty so any subscribed results clients refresh — the projection
+    // doesn't act on consent_confirmed (consent is row-state, not derived),
+    // but flushing keeps the seq cursor in lockstep.
+    app.projectionStore.markDirty(row.competitionId);
+
+    return reply.code(200).send({ ok: true, competitor_id: id });
   });
 
   // GET /api/competitions/:id/competitors — list competitors.

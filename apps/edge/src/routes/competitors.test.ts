@@ -525,6 +525,177 @@ describe('competitors atomicity', () => {
   });
 });
 
+describe('competitors consent confirmation PATCH (plan 14 / C-M4)', () => {
+  let ctx: Ctx;
+
+  beforeEach(async () => {
+    ctx = await boot();
+  });
+
+  afterEach(async () => {
+    await ctx.app.close();
+    ctx.handle.close();
+  });
+
+  // EntryList imports land rows with consent_status='pending_first_read'
+  // + consent_at_ms=null. We seed via a raw INSERT (mirroring the path
+  // in apps/edge/src/ingest/entryImport.ts) so the PATCH route sees the
+  // same column shape it would in production.
+  function seedPendingCompetitor(
+    competitionId: string,
+    classId: string,
+    name: string = 'Anna Andersson',
+    cardNumber: number | null = 7501853
+  ): string {
+    const id = crypto.randomUUID();
+    ctx.handle.db
+      .insert(competitors)
+      .values({
+        id,
+        competitionId,
+        name,
+        club: 'StorTuna IF',
+        classId,
+        cardNumber,
+        consentAtMs: null,
+        consentStatus: 'pending_first_read',
+        scrubbedAtMs: null,
+      })
+      .run();
+    return id;
+  }
+
+  test('test 13: PATCH pending_first_read → confirmed_on_read; row updated + consent_confirmed event row written', async () => {
+    const { competitionId, classId } = await seedCompetitionAndClass(ctx.app);
+    const competitorId = seedPendingCompetitor(competitionId, classId);
+
+    const consentAtMs = 1_715_700_000_000;
+    const res = await ctx.app.inject({
+      method: 'PATCH',
+      url: `/api/competitors/${competitorId}`,
+      payload: { consent_status: 'confirmed_on_read', consent_at_ms: consentAtMs },
+    });
+    assert.equal(res.statusCode, 200);
+    const body = res.json() as { ok: boolean; competitor_id: string };
+    assert.equal(body.ok, true);
+    assert.equal(body.competitor_id, competitorId);
+
+    // Row reflects the flip.
+    const row = ctx.handle.db
+      .select()
+      .from(competitors)
+      .where(eq(competitors.id, competitorId))
+      .get();
+    assert.ok(row);
+    assert.equal(row.consentStatus, 'confirmed_on_read');
+    assert.equal(row.consentAtMs, consentAtMs);
+
+    // Exactly one consent_confirmed event row.
+    const evtRows = ctx.handle.db
+      .select()
+      .from(events)
+      .where(eq(events.competitionId, competitionId))
+      .all()
+      .filter((e) => e.eventType === 'consent_confirmed');
+    assert.equal(evtRows.length, 1);
+    const payload = evtRows[0]!.payload as {
+      event_type: string;
+      competitor_id: string;
+      prior_consent_status: string;
+    };
+    assert.equal(payload.event_type, 'consent_confirmed');
+    assert.equal(payload.competitor_id, competitorId);
+    assert.equal(payload.prior_consent_status, 'pending_first_read');
+  });
+
+  test('test 14: PATCH on already-explicit competitor → 422 consent_not_pending', async () => {
+    const { competitionId, classId } = await seedCompetitionAndClass(ctx.app);
+    // Walk-up creates a row with consent_status='explicit'.
+    const createRes = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/competitors',
+      payload: {
+        competition_id: competitionId,
+        name: 'Walked Up',
+        class_id: classId,
+        card_number: 8888888,
+        consent: true,
+      },
+    });
+    assert.equal(createRes.statusCode, 201);
+    const competitorId = (createRes.json() as { id: string }).id;
+
+    const res = await ctx.app.inject({
+      method: 'PATCH',
+      url: `/api/competitors/${competitorId}`,
+      payload: { consent_status: 'confirmed_on_read', consent_at_ms: Date.now() },
+    });
+    assert.equal(res.statusCode, 422);
+    const body = res.json() as { error: string; current: string };
+    assert.equal(body.error, 'consent_not_pending');
+    assert.equal(body.current, 'explicit');
+  });
+
+  test('test 15: PATCH on already-confirmed competitor → 422 consent_not_pending', async () => {
+    const { competitionId, classId } = await seedCompetitionAndClass(ctx.app);
+    const competitorId = seedPendingCompetitor(competitionId, classId);
+
+    // First flip — succeeds.
+    const r1 = await ctx.app.inject({
+      method: 'PATCH',
+      url: `/api/competitors/${competitorId}`,
+      payload: { consent_status: 'confirmed_on_read', consent_at_ms: 1_715_700_000_000 },
+    });
+    assert.equal(r1.statusCode, 200);
+
+    // Second flip on the same competitor — already confirmed → 422.
+    const r2 = await ctx.app.inject({
+      method: 'PATCH',
+      url: `/api/competitors/${competitorId}`,
+      payload: { consent_status: 'confirmed_on_read', consent_at_ms: 1_715_700_500_000 },
+    });
+    assert.equal(r2.statusCode, 422);
+    const body = r2.json() as { error: string; current: string };
+    assert.equal(body.error, 'consent_not_pending');
+    assert.equal(body.current, 'confirmed_on_read');
+  });
+
+  test('test 16: PATCH non-existent competitor → 404 competitor_not_found', async () => {
+    const res = await ctx.app.inject({
+      method: 'PATCH',
+      url: `/api/competitors/${crypto.randomUUID()}`,
+      payload: { consent_status: 'confirmed_on_read', consent_at_ms: Date.now() },
+    });
+    assert.equal(res.statusCode, 404);
+    const body = res.json() as { error: string };
+    assert.equal(body.error, 'competitor_not_found');
+  });
+
+  test('test 17: PATCH with bad body shape → 400 with structured errors', async () => {
+    const { competitionId, classId } = await seedCompetitionAndClass(ctx.app);
+    const competitorId = seedPendingCompetitor(competitionId, classId);
+
+    // Wrong literal — only 'confirmed_on_read' is accepted.
+    const res = await ctx.app.inject({
+      method: 'PATCH',
+      url: `/api/competitors/${competitorId}`,
+      payload: { consent_status: 'explicit', consent_at_ms: Date.now() },
+    });
+    assert.equal(res.statusCode, 400);
+    const body = res.json() as { errors: { path: string }[] };
+    assert.ok(Array.isArray(body.errors));
+    assert.ok(body.errors.some((e) => e.path === 'consent_status'));
+
+    // consent_at_ms must be a positive integer.
+    const r2 = await ctx.app.inject({
+      method: 'PATCH',
+      url: `/api/competitors/${competitorId}`,
+      payload: { consent_status: 'confirmed_on_read', consent_at_ms: -1 },
+    });
+    assert.equal(r2.statusCode, 400);
+  });
+});
+
 describe('clubs autocomplete (GET /api/clubs)', () => {
   let ctx: Ctx;
 

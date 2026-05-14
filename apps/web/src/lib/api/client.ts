@@ -253,6 +253,47 @@ export function createCompetitor(body: CompetitorCreateInput): Promise<Competito
 }
 
 // ---------------------------------------------------------------------------
+// Consent confirmation (C-M4) — PATCH /api/competitors/:id
+// ---------------------------------------------------------------------------
+//
+// One-time consent confirmation flip for EntryList-imported competitors
+// (consent_status='pending_first_read' → 'confirmed_on_read'). Returns a
+// tagged union so the toast component can branch without `instanceof
+// ApiError` — the surface is intentionally narrow (200 ok / non-2xx with
+// JSON body).
+
+export async function confirmConsent(
+  competitorId: string
+): Promise<
+  | { ok: true; data: { ok: true; competitor_id: string } }
+  | { ok: false; status: number; data: { error: string; message?: string; current?: string } }
+> {
+  const res = await fetch(`/api/competitors/${encodeURIComponent(competitorId)}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      consent_status: 'confirmed_on_read',
+      consent_at_ms: Date.now(),
+    }),
+  });
+  const text = await res.text();
+  let parsed: unknown;
+  try {
+    parsed = text.length > 0 ? JSON.parse(text) : {};
+  } catch {
+    parsed = { error: 'parse_failed' };
+  }
+  if (res.status === 200) {
+    return { ok: true, data: parsed as { ok: true; competitor_id: string } };
+  }
+  return {
+    ok: false,
+    status: res.status,
+    data: parsed as { error: string; message?: string; current?: string },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Manual DNF + un-DNF (plan 10)
 // ---------------------------------------------------------------------------
 
