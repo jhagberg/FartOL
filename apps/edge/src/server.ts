@@ -34,10 +34,31 @@ import registerDevRoutes from './routes/dev.ts';
 import registerCompetitions from './routes/competitions.ts';
 import registerClasses from './routes/classes.ts';
 import registerCourses from './routes/courses.ts';
+import registerCompetitors from './routes/competitors.ts';
+import registerClubs from './routes/clubs.ts';
 import wsPlugin from './ws/index.ts';
 import type { DbHandle } from './db/index.ts';
 import type { PrinterSink } from './print/sink.ts';
 import { createStdoutPrinterSink } from './print/stdout-sink.ts';
+import type { ChannelName } from '@fartol/shared-types';
+import { nextLocalSeq as defaultNextLocalSeq } from './db/seq.ts';
+
+/** Broadcast sink — PATTERNS S-2. Plan 04 wires this as an OPTIONAL spy that
+ * lets tests record wsBroadcast invocations without standing up a real WS
+ * client. When omitted (production / walking-skeleton), wsBroadcast falls
+ * through to the @fastify/websocket plugin's fan-out registered by wsPlugin. */
+export interface BroadcastSink {
+  record: (
+    channel: ChannelName,
+    envelope: { type: string; payload: unknown; seq?: number }
+  ) => void;
+}
+
+/** local_seq generator injection — PATTERNS S-2. Defaults to the real
+ * nextLocalSeq trailing-edge SELECT. Plan 04 test 9 (transaction atomicity)
+ * injects a throwing fn to verify the competitor + events insert rollback
+ * is a single atomic unit. */
+export type NextLocalSeqFn = (handle: DbHandle, nodeId: string) => number;
 
 export interface BuildServerOpts {
   /** Pass `false` to silence the Fastify pino logger (tests). Defaults to true. */
@@ -53,6 +74,14 @@ export interface BuildServerOpts {
    * for walking-skeleton + tests; production swaps in the ESC/POS driver
    * (plan 15). */
   printerSink?: PrinterSink;
+  /** Broadcast sink (PATTERNS S-2). When set, wsBroadcast ALSO calls
+   * `record(channel, envelope)` after the real fan-out — tests use this to
+   * assert which envelopes were emitted without standing up a WS client. */
+  broadcastSink?: BroadcastSink;
+  /** local_seq generator injection (PATTERNS S-2). Defaults to the real
+   * trailing-edge SELECT (db/seq.ts). Plan 04 test 9 swaps in a throwing
+   * fn to verify transactional atomicity. */
+  nextLocalSeqFn?: NextLocalSeqFn;
 }
 
 export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyInstance> {
@@ -79,11 +108,31 @@ export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyIn
     app.decorate('fartolDb', opts.dbHandle);
     app.decorate('fartolNodeId', opts.nodeId);
     app.decorate('printerSink', opts.printerSink ?? createStdoutPrinterSink());
+    app.decorate('fartolNextLocalSeq', opts.nextLocalSeqFn ?? defaultNextLocalSeq);
 
     await app.register(wsPlugin);
+
+    // PATTERNS S-2 broadcast sink: wrap the decorated wsBroadcast so the
+    // recording sink (when set) fires alongside the real fan-out. Tests
+    // assert on the sink; production never sees the wrapper because
+    // broadcastSink is undefined by default.
+    if (opts.broadcastSink) {
+      const realBroadcast = app.wsBroadcast.bind(app);
+      const sink = opts.broadcastSink;
+      const wrapped: typeof app.wsBroadcast = (channel, envelope) => {
+        realBroadcast(channel, envelope);
+        sink.record(channel, envelope);
+      };
+      // Re-decorate: Fastify forbids overwriting a decorator, so we mutate
+      // the existing slot directly. `as unknown as ...` to satisfy TS.
+      (app as unknown as { wsBroadcast: typeof wrapped }).wsBroadcast = wrapped;
+    }
+
     await app.register(registerCompetitions);
     await app.register(registerClasses);
     await app.register(registerCourses);
+    await app.register(registerCompetitors);
+    await app.register(registerClubs);
     await app.register(registerDevRoutes);
   }
 
@@ -96,10 +145,14 @@ export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyIn
   return app;
 }
 
-// Module augmentation for printerSink — wsPlugin already augments
-// fartolDb / fartolNodeId / wsBroadcast.
+// Module augmentation for printerSink + fartolNextLocalSeq. wsPlugin already
+// augments fartolDb / fartolNodeId / wsBroadcast.
 declare module 'fastify' {
   interface FastifyInstance {
     printerSink: PrinterSink;
+    /** PATTERNS S-2 — local_seq generator injection point. Routes that
+     * insert into events read this instead of importing nextLocalSeq
+     * directly so tests can swap in a throwing fn for atomicity coverage. */
+    fartolNextLocalSeq: NextLocalSeqFn;
   }
 }
