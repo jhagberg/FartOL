@@ -56,6 +56,16 @@ interface HistoryRow {
   competitor_name: string | null;
   status: PunchStatus;
   unmatched: boolean;
+  /** Raw card punches in card order. Codes match station numbers; the
+   * UI computes splits client-side from seconds_in_half_day. */
+  punches: Array<{ code: number; seconds_in_half_day: number; half_day: number }>;
+  /** Finish timestamp on the card, or null if the card never reached
+   * the finish station. Used by the UI to compute elapsed time. */
+  finish_seconds_in_half_day: number | null;
+  finish_half_day: number | null;
+  /** Start timestamp on the card, or null. */
+  start_seconds_in_half_day: number | null;
+  start_half_day: number | null;
 }
 
 interface ReadoutResponse {
@@ -119,6 +129,15 @@ export default async function registerReadoutRoute(app: FastifyInstance): Promis
           competitor_name: competitor?.name ?? null,
           status: view?.status ?? 'PEND',
           unmatched: !competitor,
+          punches: payload.punches.map((p) => ({
+            code: p.code,
+            seconds_in_half_day: p.seconds_in_half_day,
+            half_day: p.half_day,
+          })),
+          finish_seconds_in_half_day: payload.finish?.seconds_in_half_day ?? null,
+          finish_half_day: payload.finish?.half_day ?? null,
+          start_seconds_in_half_day: payload.start?.seconds_in_half_day ?? null,
+          start_half_day: payload.start?.half_day ?? null,
         };
       });
 

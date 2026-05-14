@@ -16,6 +16,12 @@ import type { ReceiptRead, ReceiptPunch } from '$lib/components/receipt-template
 
 export type ReadoutStatus = 'PEND' | 'OK' | 'MP' | 'DNF';
 
+export interface RawPunch {
+  code: number;
+  seconds_in_half_day: number;
+  half_day: number;
+}
+
 export interface ReadoutHistoryRow {
   event_time_ms: number;
   local_seq: number;
@@ -25,6 +31,11 @@ export interface ReadoutHistoryRow {
   competitor_name: string | null;
   status: ReadoutStatus;
   unmatched: boolean;
+  punches: RawPunch[];
+  finish_seconds_in_half_day: number | null;
+  finish_half_day: number | null;
+  start_seconds_in_half_day: number | null;
+  start_half_day: number | null;
 }
 
 export interface ReadoutResponse {
@@ -62,11 +73,54 @@ export function formatElapsed(ms: number | null): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+/** Format split as `M:SS` from a duration in half-day seconds. */
+function formatSplit(sec: number): string {
+  if (sec < 0) sec += 43200;
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+/** Convert raw card punches → ReceiptPunch[] with split + cumulative times.
+ * Splits are gap-from-previous; cumulative is gap-from-start (or first
+ * punch if no start). The half-day rollover is handled by adding 43200s
+ * when the delta would be negative. */
+export function rawPunchesToReceipt(
+  raw: RawPunch[],
+  startSecondsInHalfDay: number | null,
+  finishSecondsInHalfDay: number | null
+): ReceiptPunch[] {
+  if (raw.length === 0) return [];
+  const baseSec = startSecondsInHalfDay ?? raw[0]?.seconds_in_half_day ?? 0;
+  const result: ReceiptPunch[] = [];
+  let prevSec = baseSec;
+  for (let i = 0; i < raw.length; i++) {
+    const p = raw[i]!;
+    const splitSec = p.seconds_in_half_day - prevSec;
+    const cumSec = p.seconds_in_half_day - baseSec;
+    result.push({
+      code: p.code,
+      split: formatSplit(splitSec),
+      time: formatSplit(cumSec),
+      ok: true,
+    });
+    prevSec = p.seconds_in_half_day;
+  }
+  if (finishSecondsInHalfDay !== null) {
+    const splitSec = finishSecondsInHalfDay - prevSec;
+    const cumSec = finishSecondsInHalfDay - baseSec;
+    result.push({
+      code: 'F',
+      split: formatSplit(splitSec),
+      time: formatSplit(cumSec),
+      finish: true,
+    });
+  }
+  return result;
+}
+
 /** Build a ReceiptRead for the LatestReadCard + ReceiptMirror from a
- * history row + competition meta. Phase 1 stub: punches list comes back
- * empty for now because the projection pipeline doesn't surface per-
- * control splits to the readout endpoint yet; the templates render an
- * empty controls table without crashing. */
+ * history row + competition meta. */
 export function toReceiptRead(input: {
   row: ReadoutHistoryRow;
   className: string;
@@ -78,7 +132,13 @@ export function toReceiptRead(input: {
   elapsedMs?: number | null;
   place?: number | null;
 }): ReceiptRead {
-  const punches: ReceiptPunch[] = input.punches ?? [];
+  const punches: ReceiptPunch[] =
+    input.punches ??
+    rawPunchesToReceipt(
+      input.row.punches,
+      input.row.start_seconds_in_half_day,
+      input.row.finish_seconds_in_half_day
+    );
   return {
     cardNumber: input.row.card_number,
     name: input.row.competitor_name ?? 'Okänd',
