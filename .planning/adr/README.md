@@ -27,14 +27,12 @@ decisions, omit the optional sections.
 
 ## Index
 
-| ID | Title | Status |
-|---|---|---|
-| [0001](0001-reimplement-do-not-fork-meos.md) | Reimplement MeOS functionality, do not fork | accepted |
-| [0002](0002-three-tier-architecture.md) | Three-tier architecture: edge-bridge + browser + optional central | accepted |
-| [0003](0003-event-sourcing-as-core-data-model.md) | Event sourcing as the core data model | accepted |
-| [0004](0004-electricsql-is-read-sync-only.md) | ElectricSQL is used for read-sync only, not write-sync | accepted |
-| [0005](0005-sportident-code-isolated-mit.md) | SportIdent protocol code isolated in MIT-licensed package | accepted |
-| [0006](0006-tech-stack.md) | Tech stack: Node.js + Fastify + SQLite/Postgres + SvelteKit | accepted |
-| [0007](0007-standards-first-interop.md) | Standards-first interop: IOF XML, Eventor, ROC, SIRAP, MeOS TCP | accepted |
-| [0008](0008-working-name-fartol.md) | Working name "fartol" | accepted |
-| [0009](0009-v1-scope-clarification.md) | Clarify v1 scope: retag three Phase-2 requirements from v2 to v1 | accepted |
+| ID                                                | Title                                                             | Status   |
+| ------------------------------------------------- | ----------------------------------------------------------------- | -------- |
+| [0001](0001-reimplement-do-not-fork-meos.md)      | Reimplement MeOS functionality, do not fork                       | accepted |
+| [0002](0002-three-tier-architecture.md)           | Three-tier architecture: edge-bridge + browser + optional central | accepted |
+| [0003](0003-event-sourcing-as-core-data-model.md) | Event sourcing as the core data model                             | accepted |
+| [0004](0004-electricsql-is-read-sync-only.md)     | ElectricSQL is used for read-sync only, not write-sync            | accepted |
+| [0005](0005-sportident-code-isolated-mit.md)      | SportIdent protocol code isolated in MIT-licensed package         | accepted |
+| [0006](0006-tech-stack.md)                        | Tech stack: Node.js + Fastify + SQLite/Postgres + SvelteKit       | accepted |
+| [0007](0007-standards-first-interop.md)           | Standards-first interop: IOF XML, Eventor, ROC, SIRAP, MeOS TCP   | accepted |

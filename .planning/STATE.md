@@ -383,11 +383,11 @@ pnpm typecheck && pnpm test` exit 0 (8 skipped tests). Commits
   preserved verbatim. Commit `81eccbe`.
 
 - 2026-05-12 — Migrated DEC-001..008 from inline `STATE.md` to MADR
-  ADRs in `.planning/adr/`. Added ADR-0009 capturing the v1/v2 scope
-  clarification (REQ-UI-008, REQ-STD-004, REQ-OPS-004 retagged from
-  `(v2)` to `(v1)`). Removed Yjs v1/v2 open question (resolved by
-  ADR-0009). Dropped `/gsd-map-codebase` from "next action" — repo
-  is greenfield. Commit `cbd6fb6`.
+  ADRs in `.planning/adr/`. Retagged REQ-UI-008, REQ-STD-004,
+  REQ-OPS-004 from `(v2)` to `(v1)` to match the bucket definitions.
+  Removed Yjs v1/v2 open question (resolved by the retag — Phase 2
+  needs REQ-UI-008). Dropped `/gsd-map-codebase` from "next action" —
+  repo is greenfield. Commit `cbd6fb6`.
 
 (GSD will append entries here as the project progresses. Format:
 `YYYY-MM-DD - what changed - why`.)

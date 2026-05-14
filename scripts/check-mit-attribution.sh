@@ -26,6 +26,7 @@ ALLOWLIST=(
   "packages/sportident/src/bin/record.test.ts"
   "packages/sportident/src/bin/replay.test.ts"
   "packages/sportident/src/bin/replay-jonas-fixtures.test.ts"
+  "packages/sportident/src/bin/parseArgs.test.ts"
   # Events util — replacement (no upstream code), wraps node:events
   "packages/sportident/src/utils/events.ts"
   # Integration tests authored for fartol
