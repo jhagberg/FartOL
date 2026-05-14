@@ -71,6 +71,8 @@
   import SplitsTable from '$lib/components/SplitsTable.svelte';
   import HistoryList from '$lib/components/HistoryList.svelte';
   import ReceiptMirror from '$lib/components/ReceiptMirror.svelte';
+  import WalkupModal from '$lib/screens/WalkupModal.svelte';
+  import ConsentConfirmationToast from '$lib/components/ConsentConfirmationToast.svelte';
   import type { ReceiptTemplate, ReceiptPunch } from '$lib/components/receipt-templates/types.ts';
   import {
     type ReadoutResponse,
@@ -115,6 +117,19 @@
   // modal when this is non-null; for plan 13 we expose the same signal
   // so the auto-redirect skips when the modal is already open.
   const walkupCard = $derived(page.url.searchParams.get('walkup'));
+
+  // C-M4 consent-confirmation toast state (plan 14). Set when a card_read
+  // resolves to a competitor with consent_status='pending_first_read' AND
+  // the operator has not already dismissed it this session.
+  let pendingConsentToast: {
+    competitorId: string;
+    competitorName: string;
+    className: string;
+  } | null = $state(null);
+  /** Per-session set of competitor ids the operator has dismissed (chose
+   * "Avfärda") so the toast doesn't re-pop on subsequent reads for the
+   * same runner. consent_status stays 'pending_first_read' server-side. */
+  const dismissedConsentForCompetitorIds: Set<string> = new Set();
 
   // --- derived UI shapes ----------------------------------------------------
 
@@ -292,9 +307,12 @@
   function onCardRead(payload: { card_number: number; card_type: string }): void {
     // The server-side broadcast carries the envelope but the readout-row
     // status + competitor binding live in the projection. Refetch /readout
-    // for the authoritative shape — keeps card_number + status in sync
-    // with the projection cache.
-    void refetchReadout().then(() => triggerCardReadSideEffects(payload.card_number));
+    // AND /competitors for the authoritative shape — keeps card_number,
+    // status, AND consent_status in sync (C-M4 toast reads consent_status
+    // from the competitor row, not the readout history).
+    void Promise.all([refetchReadout(), refetchCompetitors()]).then(() =>
+      triggerCardReadSideEffects(payload.card_number)
+    );
   }
 
   function triggerCardReadSideEffects(cardNumber: number): void {
@@ -318,6 +336,41 @@
         void goto(`/competition/${competitionId}/readout?walkup=${cardNumber}`);
       }, 600);
     }
+
+    // C-M4: first card_read for a competitor whose consent_status ===
+    // 'pending_first_read' surfaces the one-time confirmation toast. The
+    // toast is local UI sugar — the card_read is fully accepted server-
+    // side regardless of consent state. We refetch competitors on every
+    // card_read (card_bound + card_read both trigger refetch indirectly)
+    // so the lookup reflects the current server-side state.
+    if (top && top.competitor_id && !top.unmatched && pendingConsentToast === null) {
+      const competitor = competitorsById.get(top.competitor_id);
+      if (
+        competitor &&
+        competitor.consent_status === 'pending_first_read' &&
+        !dismissedConsentForCompetitorIds.has(competitor.id)
+      ) {
+        const cls = classesById.get(competitor.class_id);
+        pendingConsentToast = {
+          competitorId: competitor.id,
+          competitorName: competitor.name,
+          className: cls?.name ?? '—',
+        };
+      }
+    }
+  }
+
+  function onConsentToastResolved(action: 'confirmed' | 'dismissed'): void {
+    if (pendingConsentToast === null) return;
+    if (action === 'dismissed') {
+      dismissedConsentForCompetitorIds.add(pendingConsentToast.competitorId);
+    } else {
+      // On 'confirmed' we refetch competitors so consent_status reflects
+      // the server-side flip ('confirmed_on_read'); subsequent reads for
+      // this runner won't re-trigger the toast.
+      void refetchCompetitors();
+    }
+    pendingConsentToast = null;
   }
 
   // --- handlers -------------------------------------------------------------
@@ -522,6 +575,23 @@
 
   {#if toastMessage}
     <div class="toast" role="status" data-testid="toast">{toastMessage}</div>
+  {/if}
+
+  {#if walkupCard !== null}
+    <WalkupModal
+      cardNumber={Number(walkupCard)}
+      {competitionId}
+      {classes}
+    />
+  {/if}
+
+  {#if pendingConsentToast}
+    <ConsentConfirmationToast
+      competitorId={pendingConsentToast.competitorId}
+      competitorName={pendingConsentToast.competitorName}
+      className={pendingConsentToast.className}
+      onResolved={onConsentToastResolved}
+    />
   {/if}
 </div>
 
