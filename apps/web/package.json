@@ -18,7 +18,8 @@
     "lint": "eslint src"
   },
   "dependencies": {
-    "@fartol/shared-types": "workspace:*"
+    "@fartol/shared-types": "workspace:*",
+    "i18next": "^26.1.0"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.10",

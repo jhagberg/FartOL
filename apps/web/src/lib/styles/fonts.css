@@ -1,0 +1,23 @@
+/*
+ * Authored for fartol. Not ported from upstream.
+ *
+ * Web-font imports for the 4 LOCKED font-pair alternates (UI-SPEC §Typography).
+ * Imported once from +layout.svelte; the runtime [data-font-pair="X"] selector
+ * in tokens.css picks which family-stack the UI binds. We load all four eagerly
+ * so the Tweaks panel toggle is instant — there is no fallback flash when an
+ * operator switches pairs at the readout table.
+ *
+ * `display=swap` lets the browser render with the system fallback before the
+ * Google-hosted file resolves; this is what gives Phase 1 a fast first paint
+ * on the localhost laptop without blocking on the network.
+ *
+ * Locked by:
+ * - 01-UI-SPEC.md §Design System (IBM Plex Sans + Mono defaults)
+ * - 01-UI-SPEC.md §Typography (4-pair font alternates)
+ * - 01-11-PLAN.md task 1
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap');
