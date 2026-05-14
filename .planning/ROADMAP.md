@@ -63,8 +63,8 @@ This is the hardest single technical milestone. Everything else is
   - [x] 01-03-PLAN.md — Wave 0: WebSocket plugin + walking-skeleton e2e (simulate-read → DB → REST → WS → stdout print sink)
   - [x] 01-04-PLAN.md — Wave 1: Competition + class + course + competitor CRUD + clubs autocomplete + Zod schemas
   - [x] 01-05-PLAN.md — Wave 1: XML importer (Purple Pen + IOF 3.0 EntryList + CourseData), XSD validation, T-FILE-IMPORT mitigation
-  - [ ] 01-06-PLAN.md — Wave 2: SI bridge wiring (SiMainStation → events table + WS broadcast); bench-replay tests
-  - [ ] 01-07-PLAN.md — Wave 2: Pure reducer (CompetitionState) + DNF/MP detection + idempotency tests
+  - [x] 01-06-PLAN.md — Wave 2: SI bridge wiring (SiMainStation → events table + WS broadcast); bench-replay tests
+  - [x] 01-07-PLAN.md — Wave 2: Pure reducer (CompetitionState) + DNF/MP detection + idempotency tests
   - [ ] 01-08-PLAN.md — Wave 3: ProjectionStore + WS results: channel + GET /api/competitions/:id/results
   - [ ] 01-09-PLAN.md — Wave 3: Card-to-competitor matching index + retroactive auto-bind + readout endpoint
   - [ ] 01-10-PLAN.md — Wave 3: Manual-DNF / un-DNF REST + walk-up replace-card path
