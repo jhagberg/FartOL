@@ -21,6 +21,9 @@ import { fileURLToPath } from 'node:url';
 import { realpathSync } from 'node:fs';
 
 import { buildServer } from '../server.ts';
+import { openDatabase } from '../db/index.ts';
+import { ensureNodeId } from '../db/node-id.ts';
+import type { DbHandle } from '../db/index.ts';
 
 export interface CliOpts {
   port: number;
@@ -125,13 +128,32 @@ export function parseArgs(argv: string[]): CliOpts {
 
 export async function main(argv: string[] = process.argv.slice(2)): Promise<void> {
   const opts = parseArgs(argv);
-  const app: FastifyInstance = await buildServer({ logger: true });
+
+  // Plan 02 owns openDatabase + ensureNodeId; plan 03 wires them into the
+  // bin lifecycle so the bridge has a stable per-install node_id + an
+  // initialised events table. FARTOL_DB_PATH env var defaults to opts.dbPath
+  // so e2e harnesses (Playwright) can point at a tmp file without overriding
+  // argv.
+  const dbPath = process.env['FARTOL_DB_PATH'] ?? opts.dbPath;
+  const handle: DbHandle = openDatabase(dbPath);
+  const nodeId = process.env['FARTOL_NODE_ID'] ?? ensureNodeId(handle);
+
+  const app: FastifyInstance = await buildServer({
+    logger: true,
+    dbHandle: handle,
+    nodeId,
+  });
 
   const shutdown = async (code: number): Promise<void> => {
     try {
       await app.close();
     } catch {
       // best-effort
+    }
+    try {
+      handle.close();
+    } catch {
+      // best-effort — db may already be closed
     }
     process.exit(code);
   };
@@ -141,6 +163,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
   });
 
   process.on('uncaughtException', (err: Error) => {
+    // No PII in error messages per RESEARCH §Security Domain.
     process.stderr.write(`uncaughtException: ${err.stack ?? err.message}\n`);
     void shutdown(1);
   });
