@@ -38,6 +38,7 @@ import registerCompetitors from './routes/competitors.ts';
 import registerClubs from './routes/clubs.ts';
 import registerImportRoutes from './routes/import.ts';
 import registerCompetitionsFromWizard from './routes/competitionsFromWizard.ts';
+import registerSessionsRoutes from './routes/sessions.ts';
 import wsPlugin from './ws/index.ts';
 import type { DbHandle } from './db/index.ts';
 import type { PrinterSink } from './print/sink.ts';
@@ -137,6 +138,10 @@ export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyIn
     await app.register(registerClubs);
     await app.register(registerImportRoutes);
     await app.register(registerCompetitionsFromWizard);
+    // Sessions registers BEFORE dev routes so dev.ts can read
+    // app.activeCompetitionId on first request (the route module itself
+    // restores from the config table during register).
+    await app.register(registerSessionsRoutes);
     await app.register(registerDevRoutes);
   }
 

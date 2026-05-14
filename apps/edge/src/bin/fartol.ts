@@ -6,15 +6,27 @@
 // app cleanly and exits 0. Uncaught exceptions and unhandled promise
 // rejections log to stderr and exit 1 (RESEARCH Pitfall 9).
 //
-// Pattern S-7: `parseArgs` and `main` are exported so unit tests can
-// exercise them without booting the listener. The `isEntrypoint` guard
-// at the bottom is the only place that calls main(); tests import
-// parseArgs directly.
+// Plan 06 extension: the bin now owns the SI bridge lifecycle.
+//   - On boot (unless --no-bridge), open the SerialTransport at --serial-path
+//     (default /dev/ttyUSB0), construct a SiMainStation, and call
+//     attachBridge(station, {...}). The bridge subscribes the 5-event listener
+//     set; events flow into the events table via insertEvent.
+//   - getActiveCompetitionId reads `app.activeCompetitionId` on every event
+//     (no cached copy — operator toggles via /api/sessions/active-competition).
+//   - On open failure / spontaneous close, retry on the 250ms/500ms/1s/2s/5s
+//     backoff schedule (RESEARCH Pitfall 4 — serialport EBUSY). After 5
+//     consecutive failures the bridge bails and the operator can re-trigger
+//     via POST /api/sessions/reconnect-bridge (the bin exposes this via the
+//     `app.reconnectBridge` decoration).
+//   - The route exposing reconnect-bridge already returns 503 when
+//     reconnectBridge is undefined — tests and --no-bridge boots stay clean.
 //
-// Threat register T-WS-FAN-OUT: --bind-host defaults to 127.0.0.1. The
-// argv parser refuses to accept --bind-host 0.0.0.0 unless --allow-lan
-// is ALSO present, so a stray `fartol --bind-host 0.0.0.0` cannot expose
-// the bridge to the LAN by accident.
+// Pattern S-7: `parseArgs` + `main` are exported so unit tests can exercise
+// them without booting the listener. The `isEntrypoint` guard at the bottom
+// is the only place that calls main(); tests import parseArgs directly.
+//
+// Threat register T-WS-FAN-OUT: --bind-host defaults to 127.0.0.1. The argv
+// parser refuses 0.0.0.0 unless --allow-lan is ALSO present.
 
 import type { FastifyInstance } from 'fastify';
 import { fileURLToPath } from 'node:url';
@@ -24,15 +36,22 @@ import { buildServer } from '../server.ts';
 import { openDatabase } from '../db/index.ts';
 import { ensureNodeId } from '../db/node-id.ts';
 import type { DbHandle } from '../db/index.ts';
+import { SerialTransport, SiMainStation } from '@fartol/sportident';
+import { attachBridge } from '../si/bridge.ts';
+import type { AttachedBridge } from '../si/bridge.ts';
+import { config } from '../db/schema.ts';
 
 export interface CliOpts {
   port: number;
   bindHost: string;
   dbPath: string;
   allowLan: boolean;
+  noBridge: boolean;
+  serialPath: string;
+  competitionId: string | null;
 }
 
-const HELP = `fartol: FartOL edge bridge (Fastify HTTP/WS + SQLite event log).
+const HELP = `fartol: FartOL edge bridge (Fastify HTTP/WS + SQLite event log + SI bridge).
 
 Usage:
   fartol [options]
@@ -42,21 +61,20 @@ Options:
   --bind-host <host>       Listen host (default 127.0.0.1). Use of 0.0.0.0
                            or any non-loopback address requires --allow-lan
                            as a guard against accidental LAN exposure.
-  --db-path <path>         SQLite database path (default ./fartol.db). The
-                           DB itself lands in plan 02; this flag is parsed
-                           now so the bin signature stays stable.
-  --allow-lan              Permit non-loopback --bind-host values. Required
-                           when --bind-host is 0.0.0.0 or any IP not in the
-                           127.0.0.0/8 / ::1 / localhost set.
+  --db-path <path>         SQLite database path (default ./fartol.db).
+  --serial-path <path>     SerialPort device path (default /dev/ttyUSB0).
+                           Ignored when --no-bridge is set.
+  --no-bridge              Skip SI bridge attach. Useful for offline tests,
+                           UI dev, and CI where /dev/ttyUSB0 is unavailable.
+  --competition-id <id>    Set the bridge's active competition at boot.
+                           Equivalent to POST /api/sessions/active-competition
+                           after listen. Overrides whatever the config table
+                           had persisted from a prior run.
+  --allow-lan              Permit non-loopback --bind-host values.
   --help, -h               Show this help.
 `;
 
-const LOOPBACK_HOSTS = new Set([
-  '127.0.0.1',
-  '::1',
-  'localhost',
-  '0', // ipv4 shorthand for 0.0.0.0 — also LAN-exposing
-]);
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', '::1', 'localhost', '0']);
 
 function isLoopback(host: string): boolean {
   if (LOOPBACK_HOSTS.has(host)) return host !== '0';
@@ -70,6 +88,9 @@ export function parseArgs(argv: string[]): CliOpts {
     bindHost: '127.0.0.1',
     dbPath: './fartol.db',
     allowLan: false,
+    noBridge: false,
+    serialPath: '/dev/ttyUSB0',
+    competitionId: null,
   };
 
   const valueFor = (
@@ -105,6 +126,16 @@ export function parseArgs(argv: string[]): CliOpts {
       const { value, consumed } = valueFor('--db-path', a, i);
       opts.dbPath = value;
       i += consumed;
+    } else if (a === '--serial-path' || a.startsWith('--serial-path=')) {
+      const { value, consumed } = valueFor('--serial-path', a, i);
+      opts.serialPath = value;
+      i += consumed;
+    } else if (a === '--no-bridge') {
+      opts.noBridge = true;
+    } else if (a === '--competition-id' || a.startsWith('--competition-id=')) {
+      const { value, consumed } = valueFor('--competition-id', a, i);
+      opts.competitionId = value;
+      i += consumed;
     } else if (a === '--allow-lan') {
       opts.allowLan = true;
     } else if (a === '--help' || a === '-h') {
@@ -115,7 +146,6 @@ export function parseArgs(argv: string[]): CliOpts {
     }
   }
 
-  // T-WS-FAN-OUT gate: non-loopback bind requires explicit --allow-lan.
   if (!isLoopback(opts.bindHost) && !opts.allowLan) {
     throw new Error(
       `--bind-host '${opts.bindHost}' would expose the bridge to the LAN. ` +
@@ -126,14 +156,123 @@ export function parseArgs(argv: string[]): CliOpts {
   return opts;
 }
 
+/** Reconnect backoff schedule (RESEARCH Pitfall 4 — serialport EBUSY). */
+const BACKOFF_MS = [250, 500, 1000, 2000, 5000] as const;
+
+/** Lifecycle manager for the SI bridge. Owns the current SerialTransport +
+ * SiMainStation + AttachedBridge. Reconnect runs the backoff chain; bail
+ * after BACKOFF_MS.length consecutive failures (operator can re-arm via
+ * POST /api/sessions/reconnect-bridge). */
+class BridgeLifecycle {
+  private transport: SerialTransport | null = null;
+  private station: SiMainStation | null = null;
+  private attached: AttachedBridge | null = null;
+  private shutdownRequested = false;
+  private attempt = 0;
+  private readonly app: FastifyInstance;
+  private readonly handle: DbHandle;
+  private readonly nodeId: string;
+  private readonly serialPath: string;
+
+  constructor(app: FastifyInstance, handle: DbHandle, nodeId: string, serialPath: string) {
+    this.app = app;
+    this.handle = handle;
+    this.nodeId = nodeId;
+    this.serialPath = serialPath;
+  }
+
+  async start(): Promise<void> {
+    this.shutdownRequested = false;
+    await this.openAttempt();
+  }
+
+  private async openAttempt(): Promise<void> {
+    if (this.shutdownRequested) return;
+    try {
+      const transport = new SerialTransport({ path: this.serialPath, baudRate: 38400 });
+      const station = new SiMainStation(transport);
+      const attached = attachBridge(station, {
+        handle: this.handle,
+        nodeId: this.nodeId,
+        getActiveCompetitionId: () => this.app.activeCompetitionId,
+        broadcast: (channel, envelope) => this.app.wsBroadcast(channel, envelope),
+      });
+      // Wire reconnect on spontaneous close.
+      station.on('connectionChanged', (state) => {
+        if (state === 'closed' || state === 'error') {
+          if (!this.shutdownRequested) this.scheduleReconnect();
+        }
+      });
+      await transport.open();
+      this.transport = transport;
+      this.station = station;
+      this.attached = attached;
+      this.attempt = 0;
+      // Drive the handshake — this also emits connectionChanged:open via the
+      // station's readCards() path.
+      await station.readCards();
+    } catch (err) {
+      this.app.log.warn({ err: errMsg(err) }, 'SI bridge open failed');
+      this.scheduleReconnect();
+    }
+  }
+
+  private scheduleReconnect(): void {
+    if (this.shutdownRequested) return;
+    if (this.attempt >= BACKOFF_MS.length) {
+      this.app.log.error(
+        'SI bridge reconnect exhausted — operator can POST /api/sessions/reconnect-bridge'
+      );
+      return;
+    }
+    const delay = BACKOFF_MS[this.attempt]!;
+    this.attempt++;
+    this.app.log.info({ delay, attempt: this.attempt }, 'scheduling SI bridge reconnect');
+    setTimeout(() => {
+      // Tear down any half-attached state before retrying.
+      void this.teardownCurrent().then(() => this.openAttempt());
+    }, delay);
+  }
+
+  async reconnectNow(): Promise<void> {
+    this.attempt = 0;
+    await this.teardownCurrent();
+    await this.openAttempt();
+  }
+
+  async stop(): Promise<void> {
+    this.shutdownRequested = true;
+    await this.teardownCurrent();
+  }
+
+  private async teardownCurrent(): Promise<void> {
+    if (this.attached) {
+      try {
+        this.attached.detach();
+      } catch {
+        /* best-effort */
+      }
+      this.attached = null;
+    }
+    if (this.station) {
+      try {
+        await this.station.close();
+      } catch {
+        /* best-effort */
+      }
+      this.station = null;
+    }
+    this.transport = null;
+  }
+}
+
+function errMsg(err: unknown): string {
+  return err instanceof Error ? (err.stack ?? err.message) : String(err);
+}
+
 export async function main(argv: string[] = process.argv.slice(2)): Promise<void> {
   const opts = parseArgs(argv);
 
-  // Plan 02 owns openDatabase + ensureNodeId; plan 03 wires them into the
-  // bin lifecycle so the bridge has a stable per-install node_id + an
-  // initialised events table. FARTOL_DB_PATH env var defaults to opts.dbPath
-  // so e2e harnesses (Playwright) can point at a tmp file without overriding
-  // argv.
   const dbPath = process.env['FARTOL_DB_PATH'] ?? opts.dbPath;
   const handle: DbHandle = openDatabase(dbPath);
   const nodeId = process.env['FARTOL_NODE_ID'] ?? ensureNodeId(handle);
@@ -144,16 +283,46 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
     nodeId,
   });
 
+  // Optional CLI override for the active competition. Routes/sessions.ts
+  // already restored from the config table during register, so we only
+  // overwrite if the operator passed --competition-id.
+  if (opts.competitionId !== null) {
+    app.activeCompetitionId = opts.competitionId;
+    // Persist so the next restart honours the override.
+    handle.db
+      .insert(config)
+      .values({ key: 'active_competition_id', value: opts.competitionId })
+      .onConflictDoUpdate({
+        target: config.key,
+        set: { value: opts.competitionId },
+      })
+      .run();
+  }
+
+  let lifecycle: BridgeLifecycle | null = null;
+  if (!opts.noBridge) {
+    lifecycle = new BridgeLifecycle(app, handle, nodeId, opts.serialPath);
+    app.reconnectBridge = () => lifecycle!.reconnectNow();
+    // Kick off the first open in the background — listen returns first so
+    // /api/health responds even if /dev/ttyUSB0 takes time to enumerate.
+    void lifecycle.start();
+  }
+
   const shutdown = async (code: number): Promise<void> => {
+    try {
+      if (lifecycle) await lifecycle.stop();
+    } catch {
+      /* best-effort */
+    }
     try {
       await app.close();
     } catch {
-      // best-effort
+      /* best-effort */
     }
     try {
       handle.close();
     } catch {
-      // best-effort — db may already be closed
+      /* best-effort — db may already be closed */
     }
     process.exit(code);
   };
@@ -163,14 +332,12 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
   });
 
   process.on('uncaughtException', (err: Error) => {
-    // No PII in error messages per RESEARCH §Security Domain.
-    process.stderr.write(`uncaughtException: ${err.stack ?? err.message}\n`);
+    process.stderr.write(`uncaughtException: ${errMsg(err)}\n`);
     void shutdown(1);
   });
 
   process.on('unhandledRejection', (reason: unknown) => {
-    const message = reason instanceof Error ? (reason.stack ?? reason.message) : String(reason);
-    process.stderr.write(`unhandledRejection: ${message}\n`);
+    process.stderr.write(`unhandledRejection: ${errMsg(reason)}\n`);
     void shutdown(1);
   });
 
@@ -188,7 +355,6 @@ const isEntrypoint = ((): boolean => {
 
 if (isEntrypoint)
   main().catch((err: unknown) => {
-    const message = err instanceof Error ? (err.stack ?? err.message) : String(err);
-    process.stderr.write(`fatal: ${message}\n`);
+    process.stderr.write(`fatal: ${errMsg(err)}\n`);
     process.exit(1);
   });

@@ -7,29 +7,39 @@
 // then returns `{ error: 'Not found' }` for any /api/__dev/* path —
 // indistinguishable from "no such endpoint."
 //
-// /api/__dev/simulate-read is the walking-skeleton vertical:
-//   - inserts a card_read event into the events table (single transaction)
-//   - broadcasts via WS readout:<competitionId> with seq populated
-//   - calls printerSink.print() so the stdout sink emits one JSON line
+// /api/__dev/simulate-read is the walking-skeleton + bridge-parity vertical:
+//   - inserts a card_read event into the events table via the SINGLE
+//     `insertEvent` helper (apps/edge/src/si/eventInserter.ts) — same path
+//     the real SI bridge uses, so seq + recorded_at_ms semantics are
+//     identical between dev and prod inputs.
+//   - emits a payload in the FULL CardReadEvent shape — start/finish/check/
+//     clear all null (no real card here), card_holder null, punch_count
+//     equal to punches.length. Plan 06 codex C-H2: the wire shape is
+//     consistent with what the real bridge writes; plan 07's reducer needs
+//     no special-case branch for dev payloads.
+//   - broadcasts via WS readout:<competition_id> with seq populated.
+//   - calls printerSink.print() so the stdout sink emits one JSON line.
 //
-// Plan 06 Task 2 refactors this handler to call insertEvent + populate the
-// full CardReadEvent shape (start/finish/check/clear/card_holder/punch_count)
-// per codex C-H2. For plan 03 the simplified shape is fine — walking
-// skeleton placeholder, not the production wire shape.
+// Walking-skeleton convenience: if `competition_id` is unknown the route
+// auto-seeds the competition row so the FK accepts the events insert. Plan
+// 11's three-click wizard + plan 06's bin/fartol.ts replace this with a
+// "competition must exist" check on the real path.
 //
 // Locked by:
+// - .planning/phases/01-single-laptop-training-mvp/01-06-PLAN.md task 2
+//   (refactor to use insertEvent + full CardReadEvent payload shape)
 // - .planning/phases/01-single-laptop-training-mvp/01-03-PLAN.md task 2
-// - .planning/phases/01-single-laptop-training-mvp/01-RESEARCH.md
-//   §"Open Question 5" (simulate-read consumes Phase 0 Jonas fixtures)
-// - .planning/phases/01-single-laptop-training-mvp/01-UI-SPEC.md
-//   §"Tweaks panel" (Simulate-read is dev-only, behind env / ?dev=1)
+//   (original walking-skeleton wiring)
+// - .planning/phases/01-single-laptop-training-mvp/01-REVIEWS.md §C-H2
 
 import type { FastifyInstance } from 'fastify';
 
-import { events, competitions } from '../db/schema.ts';
-import { nextLocalSeq } from '../db/seq.ts';
+import { competitions } from '../db/schema.ts';
+import { insertEvent } from '../si/eventInserter.ts';
 import { readoutChannel } from '@fartol/shared-types';
 import { eq } from 'drizzle-orm';
+import type { EventPayload } from '../db/schema.ts';
+import type { NdjsonPunch } from '@fartol/sportident';
 
 interface SimulateReadBody {
   competition_id?: unknown;
@@ -90,13 +100,11 @@ export default async function registerDevRoutes(app: FastifyInstance): Promise<v
     }
 
     const eventTimeMs = Date.now();
-    const recordedAtMs = eventTimeMs;
 
     // Walking-skeleton convenience: auto-create the competition row if
-    // the operator hasn't run the three-click wizard yet. The full
-    // create-competition flow lands in plan 11; this stub keeps the
-    // walking-skeleton vertical operable without it (plan 06 + plan 11
-    // will replace this with a real competition-must-exist check).
+    // the operator hasn't run the three-click wizard yet. Without this
+    // the events.competition_id FK fails. Plan 11's wizard replaces this
+    // with a real "competition must exist" check.
     const existing = app.fartolDb.db
       .select({ id: competitions.id })
       .from(competitions)
@@ -114,60 +122,48 @@ export default async function registerDevRoutes(app: FastifyInstance): Promise<v
         .run();
     }
 
-    // Wrap the seq fetch + insert in a single transaction. better-sqlite3's
-    // sync transaction API works under drizzle's prepared statements because
-    // both ultimately call the same underlying handle.
-    let seq = 0;
-    app.fartolDb.sqlite.transaction(() => {
-      seq = nextLocalSeq(app.fartolDb, app.fartolNodeId);
-      app.fartolDb.db
-        .insert(events)
-        .values({
-          nodeId: app.fartolNodeId,
-          localSeq: seq,
-          competitionId: validated.competition_id,
-          eventType: 'card_read',
-          eventTimeMs,
-          recordedAtMs,
-          payload: {
-            // Plan-03 simplified card_read shape (plan 06 Task 2 lifts to
-            // the full CardReadEvent shape with start/finish/check/clear/
-            // card_holder/punch_count). Tests in dev.test.ts assert on
-            // these fields directly.
-            event_type: 'card_read',
-            card_number: validated.card_number,
-            card_type: validated.card_type,
-            start: null,
-            finish: null,
-            check: null,
-            clear: null,
-            punch_count: validated.punches.length,
-            // Walking-skeleton stores the simulate-read punches as
-            // NdjsonPunch-shaped rows even though the input shape is
-            // simpler. Half-day=0/weekday=null are placeholders the bridge
-            // (plan 06) replaces with real values.
-            punches: validated.punches.map((p) => ({
-              code: p.control_code,
-              seconds_in_half_day: p.time_ms === null ? null : Math.floor(p.time_ms / 1000),
-              half_day: 0,
-              weekday: null,
-            })) as never,
-            card_holder: null,
-          },
-        })
-        .run();
-    })();
+    // Build the dev-path CardReadEvent payload. start/finish/check/clear are
+    // null because there's no real card here — the synthetic input has
+    // control_code + an optional time_ms only. punches are mapped onto the
+    // NdjsonPunch shape so the column stays a valid CardReadEvent (plan 07
+    // reducer reads payload.punches[].code without branching on origin).
+    const punches: NdjsonPunch[] = validated.punches.map((p) => ({
+      code: p.control_code,
+      seconds_in_half_day: p.time_ms === null ? 0 : Math.max(0, Math.floor(p.time_ms / 1000)),
+      half_day: 0,
+      weekday: null,
+    }));
+    const payload: EventPayload = {
+      event_type: 'card_read',
+      card_number: validated.card_number,
+      card_type: validated.card_type,
+      start: null,
+      finish: null,
+      check: null,
+      clear: null,
+      punch_count: punches.length,
+      punches,
+      card_holder: null,
+    };
+
+    // Single insertion path — same helper the real SI bridge uses.
+    const inserted = insertEvent(
+      app.fartolDb,
+      app.fartolNodeId,
+      'card_read',
+      eventTimeMs,
+      payload,
+      validated.competition_id
+    );
 
     // Broadcast to the readout: channel so the SvelteKit walking-skeleton
-    // page renders the card_read live.
+    // page renders the card_read live. Dev simulate-read always knows the
+    // competition_id explicitly — the channel is built from the body, not
+    // from app.activeCompetitionId.
     app.wsBroadcast(readoutChannel(validated.competition_id), {
       type: 'card_read',
-      payload: {
-        card_number: validated.card_number,
-        card_type: validated.card_type,
-        punches: validated.punches,
-      },
-      seq,
+      payload,
+      seq: inserted.local_seq,
     });
 
     // Walking-skeleton "thermal print" — stdout-sink writes one JSON line.
@@ -178,6 +174,6 @@ export default async function registerDevRoutes(app: FastifyInstance): Promise<v
       data: { punches: validated.punches },
     });
 
-    return reply.code(201).send({ local_seq: seq, broadcasted: true });
+    return reply.code(201).send({ local_seq: inserted.local_seq, broadcasted: true });
   });
 }
