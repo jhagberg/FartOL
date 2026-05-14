@@ -23,7 +23,9 @@ export interface CompetitionDTO {
 
 /** Competitor row as exposed over REST. Consent metadata flows through
  * plans 14 (import path) and 17 (walk-up registration); the three
- * consent_status arms cover all entry routes in Phase 1. */
+ * consent_status arms cover all entry routes in Phase 1. scrubbed_at_ms
+ * is set by plan 17's daily retention scrub (REQ-PRIV-002) — non-null
+ * indicates an anonymized row. */
 export interface CompetitorDTO {
   id: string;
   competition_id: string;
@@ -33,6 +35,7 @@ export interface CompetitorDTO {
   card_number: number | null;
   consent_at_ms: number | null;
   consent_status: 'explicit' | 'pending_first_read' | 'confirmed_on_read';
+  scrubbed_at_ms: number | null;
 }
 
 /** Bridge health probe. node_id is a stable per-install identifier; the

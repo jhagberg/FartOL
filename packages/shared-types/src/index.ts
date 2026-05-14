@@ -26,6 +26,11 @@ export { EVENT_SCHEMA_VERSION } from './events.ts';
 // --- REST DTOs -------------------------------------------------------------
 export type { CompetitionDTO, CompetitorDTO, HealthDTO } from './dtos.ts';
 
+// --- DB DTO interfaces -----------------------------------------------------
+// Plain DTO interfaces describing the REST/WS wire shape for plan 02's
+// schema tables. Drizzle row types live in apps/edge/src/db/types.ts (C-H5).
+export type { EventDTO, ClassDTO, ControlDTO, CourseDTO, CourseControlDTO, ClubDTO } from './db.ts';
+
 // --- WebSocket envelopes ---------------------------------------------------
 export type { ChannelName, WsEnvelope, WsHelloMessage, WsSubscribeMessage } from './ws.ts';
 export { readoutChannel, resultsChannel } from './ws.ts';
