@@ -16,7 +16,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@fartol/sportident": "workspace:*"
+    "@fartol/sportident": "workspace:*",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "tsx": "^4.20.0",

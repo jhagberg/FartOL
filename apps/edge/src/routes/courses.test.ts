@@ -1,0 +1,183 @@
+// Authored for fartol. Not ported from upstream.
+//
+// node:test coverage for the courses REST CRUD. Covers:
+//
+//   - POST course with embedded controls (auto-created in the same tx);
+//     GET returns the controls in order_idx ASC.
+//   - POST course against a non-existent competition_id returns 404.
+//   - GET listing returns courses ordered by name ASC; controls per course
+//     ordered by order_idx ASC.
+//
+// Locked by:
+// - .planning/phases/01-single-laptop-training-mvp/01-04-PLAN.md task 1
+
+import { describe, test, beforeEach, afterEach } from 'node:test';
+import assert from 'node:assert/strict';
+
+import { buildServer } from '../server.ts';
+import { openDatabase } from '../db/index.ts';
+import { ensureNodeId } from '../db/node-id.ts';
+import type { DbHandle } from '../db/index.ts';
+import type { FastifyInstance } from 'fastify';
+
+interface Ctx {
+  app: FastifyInstance;
+  handle: DbHandle;
+}
+
+async function boot(): Promise<Ctx> {
+  const handle = openDatabase(':memory:');
+  const nodeId = ensureNodeId(handle);
+  const app = await buildServer({ logger: false, dbHandle: handle, nodeId });
+  return { app, handle };
+}
+
+async function newCompetition(app: FastifyInstance, name = 'Comp'): Promise<string> {
+  const res = await app.inject({
+    method: 'POST',
+    url: '/api/competitions',
+    payload: { name, date: '2026-05-22' },
+  });
+  return (res.json() as { id: string }).id;
+}
+
+describe('courses REST CRUD', () => {
+  let ctx: Ctx;
+
+  beforeEach(async () => {
+    ctx = await boot();
+  });
+
+  afterEach(async () => {
+    await ctx.app.close();
+    ctx.handle.close();
+  });
+
+  test('test 1: POST course with controls; GET returns it with controls in order_idx ASC', async () => {
+    const compId = await newCompetition(ctx.app);
+    const postRes = await ctx.app.inject({
+      method: 'POST',
+      url: `/api/competitions/${compId}/courses`,
+      payload: {
+        name: 'Blå',
+        controls: [
+          { control_code: 31, order_idx: 0 },
+          { control_code: 32, order_idx: 1 },
+        ],
+      },
+    });
+    assert.equal(postRes.statusCode, 201);
+    const created = postRes.json() as {
+      id: string;
+      name: string;
+      controls: { control_code: number; order_idx: number }[];
+    };
+    assert.equal(created.name, 'Blå');
+    assert.equal(created.controls.length, 2);
+
+    const getRes = await ctx.app.inject({
+      method: 'GET',
+      url: `/api/competitions/${compId}/courses`,
+    });
+    assert.equal(getRes.statusCode, 200);
+    const list = (
+      getRes.json() as {
+        courses: { id: string; controls: { control_code: number; order_idx: number }[] }[];
+      }
+    ).courses;
+    assert.equal(list.length, 1);
+    const course = list[0];
+    assert.ok(course);
+    assert.equal(course.controls.length, 2);
+    assert.equal(course.controls[0]?.control_code, 31);
+    assert.equal(course.controls[0]?.order_idx, 0);
+    assert.equal(course.controls[1]?.control_code, 32);
+    assert.equal(course.controls[1]?.order_idx, 1);
+  });
+
+  test('test 2: POST course with non-existent competition_id returns 404', async () => {
+    const res = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/competitions/00000000-0000-0000-0000-000000000000/courses',
+      payload: {
+        name: 'Phantom',
+        controls: [{ control_code: 31, order_idx: 0 }],
+      },
+    });
+    assert.equal(res.statusCode, 404);
+  });
+
+  test('test 3: GET courses returns courses sorted by name ASC; controls per course sorted by order_idx', async () => {
+    const compId = await newCompetition(ctx.app);
+    // Insert in non-alpha order; expect GET to sort ASC.
+    await ctx.app.inject({
+      method: 'POST',
+      url: `/api/competitions/${compId}/courses`,
+      payload: {
+        name: 'Röd',
+        controls: [
+          { control_code: 50, order_idx: 1 },
+          { control_code: 40, order_idx: 0 },
+        ],
+      },
+    });
+    await ctx.app.inject({
+      method: 'POST',
+      url: `/api/competitions/${compId}/courses`,
+      payload: {
+        name: 'Blå',
+        controls: [{ control_code: 31, order_idx: 0 }],
+      },
+    });
+
+    const getRes = await ctx.app.inject({
+      method: 'GET',
+      url: `/api/competitions/${compId}/courses`,
+    });
+    const list = (
+      getRes.json() as {
+        courses: { name: string; controls: { control_code: number; order_idx: number }[] }[];
+      }
+    ).courses;
+    assert.equal(list.length, 2);
+    // Blå < Röd in JS string compare.
+    assert.equal(list[0]?.name, 'Blå');
+    assert.equal(list[1]?.name, 'Röd');
+    // Röd's controls sorted by order_idx: 40 (order 0) before 50 (order 1).
+    const röd = list[1];
+    assert.ok(röd);
+    assert.equal(röd.controls[0]?.control_code, 40);
+    assert.equal(röd.controls[1]?.control_code, 50);
+  });
+
+  test('test 4: POST course with empty body returns 400', async () => {
+    const compId = await newCompetition(ctx.app);
+    const res = await ctx.app.inject({
+      method: 'POST',
+      url: `/api/competitions/${compId}/courses`,
+      payload: {},
+    });
+    assert.equal(res.statusCode, 400);
+  });
+
+  test('test 5: classes nested route — POST then GET roundtrip', async () => {
+    const compId = await newCompetition(ctx.app);
+    const postRes = await ctx.app.inject({
+      method: 'POST',
+      url: `/api/competitions/${compId}/classes`,
+      payload: { name: 'H21', short_name: 'H21E' },
+    });
+    assert.equal(postRes.statusCode, 201);
+    const created = postRes.json() as { id: string; name: string; short_name: string | null };
+    assert.equal(created.name, 'H21');
+    assert.equal(created.short_name, 'H21E');
+
+    const listRes = await ctx.app.inject({
+      method: 'GET',
+      url: `/api/competitions/${compId}/classes`,
+    });
+    const list = (listRes.json() as { classes: { id: string }[] }).classes;
+    assert.equal(list.length, 1);
+    assert.equal(list[0]?.id, created.id);
+  });
+});

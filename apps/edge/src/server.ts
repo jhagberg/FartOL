@@ -31,6 +31,9 @@ import sensible from '@fastify/sensible';
 
 import { registerHealthRoute } from './routes/health.ts';
 import registerDevRoutes from './routes/dev.ts';
+import registerCompetitions from './routes/competitions.ts';
+import registerClasses from './routes/classes.ts';
+import registerCourses from './routes/courses.ts';
 import wsPlugin from './ws/index.ts';
 import type { DbHandle } from './db/index.ts';
 import type { PrinterSink } from './print/sink.ts';
@@ -78,6 +81,9 @@ export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyIn
     app.decorate('printerSink', opts.printerSink ?? createStdoutPrinterSink());
 
     await app.register(wsPlugin);
+    await app.register(registerCompetitions);
+    await app.register(registerClasses);
+    await app.register(registerCourses);
     await app.register(registerDevRoutes);
   }
 

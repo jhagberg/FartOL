@@ -1,15 +1,17 @@
 // Authored for fartol. Not ported from upstream.
 //
-// Plain DTO interfaces describing the REST/WS wire shape (snake_case). Per
-// codex review C-H5, `packages/shared-types/` is a pure DTO package — zero
-// upward imports from `apps/`, zero `drizzle-orm` import. Drizzle row types
-// live in `apps/edge/src/db/types.ts`. apps/edge is responsible for mapping
-// internal rows to these DTOs at response boundaries (plan 04 wires the
-// route handlers + mappers).
+// Plain DTO interfaces describing the REST/WS wire shape (snake_case) for
+// the subset of plan 02 schema tables that do NOT yet have a Zod schema in
+// dtos.ts. Per codex review C-H5, `packages/shared-types/` is a pure DTO
+// package — zero upward imports from `apps/`, zero `drizzle-orm` import.
+// Drizzle row types live in `apps/edge/src/db/types.ts`. apps/edge is
+// responsible for mapping internal rows to these DTOs at response
+// boundaries.
 //
-// These interfaces are hand-mirrored from the Drizzle schema; if the schema
-// drifts, the apps/edge mapper layer bridges the gap and this file is
-// updated to match. PATTERNS S-6 locks snake_case at the wire boundary.
+// Plan 04 moved Class / Course / CourseControl / Club to Zod schemas (see
+// dtos.ts). EventDTO + ControlDTO stay here as plain interfaces; the events
+// projection (plan 08) + control management (post-Phase-1) will lift them
+// when they need server-side validation.
 //
 // Locked by:
 // - .planning/phases/01-single-laptop-training-mvp/01-CONTEXT.md D-08
@@ -18,8 +20,6 @@
 //   (snake_case at the I/O boundary)
 // - .planning/phases/01-single-laptop-training-mvp/01-REVIEWS.md §C-H5
 //   (zero upward apps/ imports, zero drizzle-orm import)
-// - .planning/phases/01-single-laptop-training-mvp/01-REVIEWS.md §C-M4
-//   (consent_status is a fixed three-arm string union)
 
 /** Event row as exposed over REST. Mirrors the Drizzle `events` table.
  * `payload` is `unknown` here because the discriminated EventPayload
@@ -35,36 +35,11 @@ export interface EventDTO {
   payload: unknown;
 }
 
-export interface ClassDTO {
-  id: string;
-  competition_id: string;
-  name: string;
-  short_name: string | null;
-}
-
+/** Control row — physical SI control box record. Plan 04 does NOT wire a
+ * CRUD route for controls (they are auto-created as side effect of course
+ * imports in plan 05); this DTO exists for future use. */
 export interface ControlDTO {
   id: string;
   competition_id: string;
   code: number;
-}
-
-export interface CourseDTO {
-  id: string;
-  competition_id: string;
-  name: string;
-  class_id: string | null;
-  length_m: number | null;
-  climb_m: number | null;
-}
-
-export interface CourseControlDTO {
-  id: string;
-  course_id: string;
-  control_id: string;
-  order_idx: number;
-}
-
-export interface ClubDTO {
-  name: string;
-  last_seen_at_ms: number;
 }
