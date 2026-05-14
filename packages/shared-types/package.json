@@ -1,0 +1,25 @@
+{
+  "name": "@fartol/shared-types",
+  "version": "0.0.0",
+  "description": "Shared TS types for the FartOL workspace (NDJSON events, REST DTOs, WS envelopes)",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "node --test --test-reporter=spec --import tsx 'src/**/*.test.ts'",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fartol/sportident": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.0",
+    "typescript": "^5.6.3"
+  }
+}

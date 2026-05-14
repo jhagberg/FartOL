@@ -6,3 +6,4 @@
 # See .planning/phases/00-hardware-proof/00-01-SUMMARY.md for the full rationale.
 packages:
   - 'packages/*'
+  - 'apps/*'
