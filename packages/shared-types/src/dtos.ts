@@ -183,31 +183,90 @@ export const CompetitorDTO = z.object({
 });
 export type CompetitorDTO = z.infer<typeof CompetitorDTO>;
 
-export const CompetitorCreateInput = z.object({
-  competition_id: UUID,
-  /** UI-SPEC §"Walk-up modal" — minLength 2. `.trim()` normalises trailing
-   * whitespace before length is checked. */
-  name: z.string().trim().min(2).max(200),
-  /** Optional autocomplete. Empty string + missing key both collapse to null
-   * via the transform so the DB sees a single shape. */
-  club: z
-    .string()
-    .trim()
-    .max(120)
-    .nullable()
-    .optional()
-    .transform((v) => (v === undefined || v === '' ? null : v)),
-  class_id: UUID,
-  card_number: POSITIVE_INT.nullable()
-    .optional()
-    .transform((v) => v ?? null),
-  /** REQ-PRIV-001 — explicit consent literal. The server attests
-   * `consent_at_ms = Date.now()`; the client cannot backdate. */
-  consent: z.literal(true),
-  /** C-M4: walk-up POST is always 'explicit'. Omitted = server default
-   * 'explicit' (mirrors the schema column DEFAULT from plan 02). */
-  consent_status: z.literal('explicit').optional(),
-});
+/**
+ * Walk-up POST input — two modes selected by presence of
+ * `replace_card_for_competitor_id`:
+ *
+ *   - **Create mode (default — D-04 walk-up first-class):** name +
+ *     class_id + consent are required; the handler inserts a brand-new
+ *     competitor row plus optional card_bound event.
+ *   - **Replace mode (plan 10):** the operator notices a misread Bricka
+ *     and corrects it without creating a duplicate row. Only
+ *     `card_number` is required at the wire; the handler UPDATEs the
+ *     existing competitor row's card_number and emits a card_bound event
+ *     preserving the original `consent_at_ms` (REQ-PRIV-001 — consent
+ *     was already given at walk-up; only the card number is corrected).
+ *
+ * **Zod superRefine + optional() quirk:** every per-mode field is
+ * declared `.optional()` at the base shape so the base-layer parse never
+ * errors on a missing key — `superRefine` then enforces the per-mode
+ * required set with explicit `path` strings. Putting `.min(2)` directly
+ * on an `.optional()` field is fine (the constraint only fires when the
+ * value is present; missing keys skip it). The custom issues fall
+ * through `issuesToErrors` unchanged so the SvelteKit form sees the
+ * same { path, code, message } shape as the structural failures.
+ */
+export const CompetitorCreateInput = z
+  .object({
+    competition_id: UUID,
+    /** UI-SPEC §"Walk-up modal" — minLength 2. `.trim()` normalises
+     * trailing whitespace before length is checked. Optional at the base
+     * layer; the superRefine below enforces presence in create mode. */
+    name: z.string().trim().min(2).max(200).optional(),
+    /** Optional autocomplete. Empty string + missing key both collapse
+     * to null via the transform so the DB sees a single shape. */
+    club: z
+      .string()
+      .trim()
+      .max(120)
+      .nullable()
+      .optional()
+      .transform((v) => (v === undefined || v === '' ? null : v)),
+    /** Optional at the base layer; superRefine enforces in create mode. */
+    class_id: UUID.optional(),
+    card_number: POSITIVE_INT.nullable()
+      .optional()
+      .transform((v) => v ?? null),
+    /** REQ-PRIV-001 — explicit consent literal in create mode. Replace
+     * mode does NOT require re-consent (the original row's
+     * consent_at_ms is preserved). */
+    consent: z.literal(true).optional(),
+    /** C-M4: walk-up POST is always 'explicit'. Omitted = server
+     * default 'explicit' (mirrors the schema column DEFAULT from
+     * plan 02). */
+    consent_status: z.literal('explicit').optional(),
+    /** Plan 10 — when set, the POST handler UPDATEs the named
+     * competitor's card_number (operator-corrected misread) instead of
+     * creating a new row. consent_at_ms is preserved. */
+    replace_card_for_competitor_id: UUID.optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (val.replace_card_for_competitor_id !== undefined) {
+      // Replace mode: card_number is the only required field.
+      if (val.card_number === null || val.card_number === undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['card_number'],
+          message: 'card_number required for replace',
+        });
+      }
+    } else {
+      // Create mode (default): name + class_id + consent literal required.
+      if (val.name === undefined) {
+        ctx.addIssue({ code: 'custom', path: ['name'], message: 'name required' });
+      }
+      if (val.class_id === undefined) {
+        ctx.addIssue({ code: 'custom', path: ['class_id'], message: 'class_id required' });
+      }
+      if (val.consent !== true) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['consent'],
+          message: 'consent required',
+        });
+      }
+    }
+  });
 export type CompetitorCreateInput = z.infer<typeof CompetitorCreateInput>;
 
 // ---------------------------------------------------------------------------

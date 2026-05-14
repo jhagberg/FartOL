@@ -5,41 +5,65 @@
 // modal (plan 14) consumes.
 //
 // Routes registered here:
-//   - POST /api/competitors                              — walk-up create + optional card_bound event (atomic)
+//   - POST /api/competitors                              — walk-up create OR replace-card (atomic)
 //   - GET  /api/competitions/:id/competitors             — list competitors for a competition
 //   - GET  /api/competitions/:id/competitors/:competitorId  — single competitor (walk-up modal pre-fill)
 //
-// Workflow for POST /api/competitors:
+// POST /api/competitors has TWO modes selected by the request body:
 //
-//   1. Zod safeParse(CompetitorCreateInput) → 400 with structured errors if
-//      consent !== true OR any field fails.
-//   2. Verify competition_id exists → 404 if not.
-//   3. Verify class_id exists AND belongs to competition_id → 422 if
-//      semantically wrong (T-CLASS-COMP-MISMATCH).
-//   4. If card_number provided, check the partial unique index — another
-//      competitor in this competition holding the same card → 409 with
-//      `{ error: 'card_taken', existing_competitor_id }`. Operator-visible
-//      UI in plan 14 surfaces this.
-//   5. In a single sqlite.transaction:
-//        - Insert competitor row with consent_at_ms = Date.now(), consent
-//          status default 'explicit', scrubbed_at_ms = null.
-//        - If club non-null + non-empty, upsert clubs row (ON CONFLICT name
-//          DO UPDATE last_seen_at_ms).
-//        - If card_number provided, insert events row eventType='card_bound'
-//          + payload with competitor_id + card_number + walkup=true +
-//          consent_at_ms. local_seq via app.fartolNextLocalSeq (PATTERNS
-//          S-2 injection so test 9 can swap a throwing fn).
-//   6. After commit, if card_number provided, app.wsBroadcast on
-//      readout:<competition_id> with type='card_bound' + payload.
-//   7. Return 201 + CompetitorDTO.
+//   **Create mode (default — D-04 walk-up first-class):**
+//     1. Zod safeParse(CompetitorCreateInput) → 400 with structured errors
+//        if consent !== true OR any required field fails.
+//     2. Verify competition_id exists → 404 if not.
+//     3. Verify class_id exists AND belongs to competition_id → 422 if
+//        semantically wrong (T-CLASS-COMP-MISMATCH).
+//     4. If card_number provided, check the partial unique index — another
+//        competitor in this competition holding the same card → 409 with
+//        `{ error: 'card_taken', existing_competitor_id }`.
+//     5. In a single sqlite.transaction:
+//          - Insert competitor row with consent_at_ms = Date.now(), consent
+//            status default 'explicit', scrubbed_at_ms = null.
+//          - If club non-null + non-empty, upsert clubs row.
+//          - If card_number provided, insert events row eventType='card_bound'.
+//            local_seq via app.fartolNextLocalSeq (PATTERNS S-2 injection).
+//     6. After commit, if card_number provided, app.wsBroadcast on
+//        readout:<competition_id> with type='card_bound' + payload.
+//     7. Return 201 + CompetitorDTO.
 //
-// REQ-PRIV-001: server attests consent_at_ms (Date.now()); the client cannot
-// backdate. T-CONSENT-BYPASS mitigation lives in the Zod literal `true`.
+//   **Replace-card mode (plan 10 — operator corrects misread Bricka):**
+//     1. body.replace_card_for_competitor_id is set; Zod requires
+//        card_number, everything else optional.
+//     2. Verify the named competitor exists AND belongs to body.competition_id
+//        → 404 if either check fails. Cross-competition reject is the
+//        T-CROSS-COMP-REPLACE mitigation (mirrors T-CROSS-COMP-MANUAL).
+//     3. Verify the new card_number is not already taken by a DIFFERENT
+//        competitor in this competition → 409 'card_taken' (the partial
+//        unique index would catch this at INSERT time, but a pre-flight
+//        SELECT returns a structured response instead of a raw constraint
+//        error). If the same competitor already holds this card_number,
+//        the UPDATE is a no-op but the card_bound event is still emitted.
+//     4. In a single sqlite.transaction:
+//          - UPDATE competitors SET card_number=? WHERE id=?.
+//          - Insert events row eventType='card_bound' + payload preserving
+//            the original consent_at_ms (REQ-PRIV-001). local_seq via
+//            app.fartolNextLocalSeq.
+//     5. After commit, app.wsBroadcast on readout:<competition_id> with
+//        type='card_bound' + payload AND projectionStore.markDirty so the
+//        re-binding clears pending_unknown_cards on next recompute.
+//     6. Return 200 + updated CompetitorDTO.
+//
+// REQ-PRIV-001: server attests consent_at_ms (Date.now()) in create mode;
+// preserves the original row's consent_at_ms in replace mode (consent was
+// already given at walk-up; only the card number is corrected). The Zod
+// literal `true` on `consent` in create mode prevents T-CONSENT-BYPASS.
 //
 // Locked by:
 // - .planning/phases/01-single-laptop-training-mvp/01-04-PLAN.md task 2
+// - .planning/phases/01-single-laptop-training-mvp/01-10-PLAN.md task 2
+//   (replace-card-for-competitor extension)
 // - .planning/phases/01-single-laptop-training-mvp/01-CONTEXT.md D-04 D-11
-// - .planning/phases/01-single-laptop-training-mvp/01-UI-SPEC.md §"Walk-up modal"
+// - .planning/phases/01-single-laptop-training-mvp/01-UI-SPEC.md
+//   §"Walk-up modal" (Bricka editable to correct misread)
 
 import type { FastifyInstance } from 'fastify';
 import crypto from 'node:crypto';
@@ -65,7 +89,8 @@ function competitorRowToDTO(row: Competitor): CompetitorDTO {
 }
 
 export default async function registerCompetitors(app: FastifyInstance): Promise<void> {
-  // POST /api/competitors — walk-up registration (D-04 first-class).
+  // POST /api/competitors — walk-up registration (D-04 first-class) OR
+  // replace-card-for-competitor (plan 10 misread correction).
   app.post('/api/competitors', async (req, reply) => {
     const parsed = CompetitorCreateInput.safeParse(req.body);
     if (!parsed.success) {
@@ -73,7 +98,7 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
     }
     const input = parsed.data;
 
-    // (2) Competition must exist.
+    // (2) Competition must exist (both modes).
     const compRow = app.fartolDb.db
       .select({ id: competitions.id })
       .from(competitions)
@@ -81,11 +106,154 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
       .get();
     if (!compRow) return reply.code(404).send({ error: 'competition not found' });
 
+    // -------------------------------------------------------------------
+    // Replace-card mode — operator corrects a misread Bricka. Zod has
+    // already enforced that card_number is non-null here.
+    // -------------------------------------------------------------------
+    if (input.replace_card_for_competitor_id !== undefined) {
+      // (3r) Locate the target competitor scoped to this competition.
+      // Cross-competition reject (T-CROSS-COMP-REPLACE) — 404 even when
+      // the id exists in some other competition.
+      const target = app.fartolDb.db
+        .select()
+        .from(competitors)
+        .where(
+          and(
+            eq(competitors.id, input.replace_card_for_competitor_id),
+            eq(competitors.competitionId, input.competition_id)
+          )
+        )
+        .get();
+      if (!target) return reply.code(404).send({ error: 'competitor_not_found' });
+
+      // input.card_number is guaranteed non-null by Zod superRefine. TS
+      // narrows on the explicit check.
+      const newCardNumber = input.card_number;
+      if (newCardNumber === null) {
+        // Belt-and-braces — Zod superRefine should have caught this.
+        return reply.code(400).send({
+          errors: [
+            { path: 'card_number', code: 'custom', message: 'card_number required for replace' },
+          ],
+        });
+      }
+
+      // (4r) Collision check — another competitor in this competition
+      // already holds the new card. The partial unique index would
+      // throw at UPDATE time but the pre-flight SELECT returns a
+      // structured 409 (mirrors create-mode behavior).
+      if (newCardNumber !== target.cardNumber) {
+        const collision = app.fartolDb.db
+          .select({ id: competitors.id })
+          .from(competitors)
+          .where(
+            and(
+              eq(competitors.competitionId, input.competition_id),
+              eq(competitors.cardNumber, newCardNumber)
+            )
+          )
+          .get();
+        if (collision && collision.id !== target.id) {
+          return reply
+            .code(409)
+            .send({ error: 'card_taken', existing_competitor_id: collision.id });
+        }
+      }
+
+      // (5r) Atomic UPDATE + card_bound event. consent_at_ms preserved.
+      const now = Date.now();
+      let seq: number | null = null;
+      app.fartolDb.sqlite.transaction(() => {
+        app.fartolDb.db
+          .update(competitors)
+          .set({ cardNumber: newCardNumber })
+          .where(eq(competitors.id, target.id))
+          .run();
+
+        // PATTERNS S-2 injection — same path as create mode so test 9
+        // covers both branches.
+        seq = app.fartolNextLocalSeq(app.fartolDb, app.fartolNodeId);
+        app.fartolDb.db
+          .insert(events)
+          .values({
+            nodeId: app.fartolNodeId,
+            localSeq: seq,
+            competitionId: input.competition_id,
+            eventType: 'card_bound',
+            eventTimeMs: now,
+            recordedAtMs: now,
+            payload: {
+              event_type: 'card_bound',
+              competitor_id: target.id,
+              card_number: newCardNumber,
+              walkup: true,
+              // REQ-PRIV-001: preserve the original consent timestamp.
+              // Fallback to `now` only if the row pre-existed without a
+              // consent_at_ms (legacy data from plan 05 EntryList import).
+              consent_at_ms: target.consentAtMs ?? now,
+            },
+          })
+          .run();
+      })();
+
+      if (seq !== null) {
+        app.wsBroadcast(readoutChannel(input.competition_id), {
+          type: 'card_bound',
+          payload: {
+            competitor_id: target.id,
+            card_number: newCardNumber,
+            competition_id: input.competition_id,
+            class_id: target.classId,
+            name: target.name,
+            club: target.club,
+          },
+          seq,
+        });
+        app.projectionStore.markDirty(input.competition_id);
+      }
+
+      const dto: CompetitorDTO = {
+        id: target.id,
+        competition_id: input.competition_id,
+        name: target.name,
+        club: target.club,
+        class_id: target.classId,
+        card_number: newCardNumber,
+        consent_at_ms: target.consentAtMs,
+        consent_status: target.consentStatus,
+        scrubbed_at_ms: target.scrubbedAtMs,
+      };
+      return reply.code(200).send(dto);
+    }
+
+    // -------------------------------------------------------------------
+    // Create mode — D-04 walk-up first-class.
+    //
+    // Zod superRefine has already enforced name + class_id + consent
+    // presence in this branch, so the narrowing below is safe. TS
+    // cannot infer the narrowing across superRefine; the explicit
+    // checks are belt-and-braces against a misconfigured schema.
+    // -------------------------------------------------------------------
+    if (input.name === undefined || input.class_id === undefined) {
+      // Unreachable in practice — superRefine ran above.
+      return reply.code(400).send({
+        errors: [
+          {
+            path: input.name === undefined ? 'name' : 'class_id',
+            code: 'custom',
+            message: 'required',
+          },
+        ],
+      });
+    }
+    const createName = input.name;
+    const createClassId = input.class_id;
+
     // (3) Class must exist AND belong to the competition.
     const classRow = app.fartolDb.db
       .select({ id: classes.id, competitionId: classes.competitionId })
       .from(classes)
-      .where(eq(classes.id, input.class_id))
+      .where(eq(classes.id, createClassId))
       .get();
     if (!classRow) return reply.code(422).send({ error: 'class not found' });
     if (classRow.competitionId !== input.competition_id) {
@@ -123,9 +291,9 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
         .values({
           id: competitorId,
           competitionId: input.competition_id,
-          name: input.name,
+          name: createName,
           club: input.club,
-          classId: input.class_id,
+          classId: createClassId,
           cardNumber: input.card_number,
           consentAtMs: now,
           consentStatus: 'explicit',
@@ -180,8 +348,8 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
           competitor_id: competitorId,
           card_number: input.card_number,
           competition_id: input.competition_id,
-          class_id: input.class_id,
-          name: input.name,
+          class_id: createClassId,
+          name: createName,
           club: input.club,
         },
         seq,
@@ -198,9 +366,9 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
     const dto: CompetitorDTO = {
       id: competitorId,
       competition_id: input.competition_id,
-      name: input.name,
+      name: createName,
       club: input.club,
-      class_id: input.class_id,
+      class_id: createClassId,
       card_number: input.card_number,
       consent_at_ms: now,
       consent_status: 'explicit',

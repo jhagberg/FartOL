@@ -285,6 +285,190 @@ describe('competitors walk-up registration', () => {
   });
 });
 
+describe('competitors replace-card-for-competitor (plan 10)', () => {
+  let ctx: Ctx;
+
+  beforeEach(async () => {
+    ctx = await boot();
+  });
+
+  afterEach(async () => {
+    await ctx.app.close();
+    ctx.handle.close();
+  });
+
+  test('test 10: replace card_number for an existing competitor → 200; row UPDATEd; card_bound event emitted; consent_at_ms preserved', async () => {
+    const { competitionId, classId } = await seedCompetitionAndClass(ctx.app);
+    // Create competitor with initial card_number 1111111.
+    const createRes = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/competitors',
+      payload: {
+        competition_id: competitionId,
+        name: 'Misread Magnus',
+        club: null,
+        class_id: classId,
+        card_number: 1111111,
+        consent: true,
+      },
+    });
+    assert.equal(createRes.statusCode, 201);
+    const created = createRes.json() as { id: string; consent_at_ms: number };
+    const originalConsentAtMs = created.consent_at_ms;
+    assert.ok(originalConsentAtMs > 0);
+
+    // Replace card_number with 2222222 — the operator-corrected value.
+    const replaceRes = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/competitors',
+      payload: {
+        competition_id: competitionId,
+        card_number: 2222222,
+        replace_card_for_competitor_id: created.id,
+      },
+    });
+    assert.equal(replaceRes.statusCode, 200);
+    const body = replaceRes.json() as {
+      id: string;
+      card_number: number;
+      consent_at_ms: number;
+      name: string;
+    };
+    assert.equal(body.id, created.id);
+    assert.equal(body.card_number, 2222222);
+    assert.equal(body.name, 'Misread Magnus');
+    // REQ-PRIV-001: consent_at_ms is preserved across the replace.
+    assert.equal(body.consent_at_ms, originalConsentAtMs);
+
+    // DB row reflects the new card_number; consent_at_ms unchanged.
+    const compRow = ctx.handle.db
+      .select()
+      .from(competitors)
+      .where(eq(competitors.id, created.id))
+      .get();
+    assert.ok(compRow);
+    assert.equal(compRow.cardNumber, 2222222);
+    assert.equal(compRow.consentAtMs, originalConsentAtMs);
+
+    // Two card_bound events now exist for this competitor — the original
+    // create event and the replace event. The latest one carries the new
+    // card_number and the ORIGINAL consent_at_ms in payload.
+    const cardBoundRows = ctx.handle.db
+      .select()
+      .from(events)
+      .where(eq(events.competitionId, competitionId))
+      .all()
+      .filter((e) => e.eventType === 'card_bound');
+    assert.equal(cardBoundRows.length, 2);
+    const latest = cardBoundRows.sort((a, b) => b.localSeq - a.localSeq)[0];
+    assert.ok(latest);
+    const payload = latest.payload as {
+      event_type: string;
+      competitor_id: string;
+      card_number: number;
+      walkup: boolean;
+      consent_at_ms: number;
+    };
+    assert.equal(payload.competitor_id, created.id);
+    assert.equal(payload.card_number, 2222222);
+    assert.equal(payload.walkup, true);
+    assert.equal(payload.consent_at_ms, originalConsentAtMs);
+  });
+
+  test('test 11 (T-CROSS-COMP-REPLACE): replace target in a DIFFERENT competition → 404', async () => {
+    const a = await seedCompetitionAndClass(ctx.app);
+    const b = await seedCompetitionAndClass(ctx.app);
+    // Create competitor in competition b.
+    const createRes = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/competitors',
+      payload: {
+        competition_id: b.competitionId,
+        name: 'In B',
+        club: null,
+        class_id: b.classId,
+        card_number: 3333333,
+        consent: true,
+      },
+    });
+    const competitorIdInB = (createRes.json() as { id: string }).id;
+
+    // Try to replace it via competition a — must 404 even though the
+    // competitor exists in competition b.
+    const res = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/competitors',
+      payload: {
+        competition_id: a.competitionId,
+        card_number: 4444444,
+        replace_card_for_competitor_id: competitorIdInB,
+      },
+    });
+    assert.equal(res.statusCode, 404);
+    // The competitor's card_number in competition b is unchanged.
+    const compRow = ctx.handle.db
+      .select()
+      .from(competitors)
+      .where(eq(competitors.id, competitorIdInB))
+      .get();
+    assert.equal(compRow?.cardNumber, 3333333);
+  });
+
+  test('test 12: replace with a card_number already taken by a DIFFERENT competitor in the same competition → 409', async () => {
+    const { competitionId, classId } = await seedCompetitionAndClass(ctx.app);
+    // Two competitors with different cards.
+    const alice = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/competitors',
+      payload: {
+        competition_id: competitionId,
+        name: 'Alice',
+        club: null,
+        class_id: classId,
+        card_number: 5555555,
+        consent: true,
+      },
+    });
+    const bob = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/competitors',
+      payload: {
+        competition_id: competitionId,
+        name: 'Bob',
+        club: null,
+        class_id: classId,
+        card_number: 6666666,
+        consent: true,
+      },
+    });
+    const aliceId = (alice.json() as { id: string }).id;
+    const bobId = (bob.json() as { id: string }).id;
+
+    // Try to replace Alice's card_number with Bob's existing one → 409.
+    const res = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/competitors',
+      payload: {
+        competition_id: competitionId,
+        card_number: 6666666,
+        replace_card_for_competitor_id: aliceId,
+      },
+    });
+    assert.equal(res.statusCode, 409);
+    const body = res.json() as { error: string; existing_competitor_id: string };
+    assert.equal(body.error, 'card_taken');
+    assert.equal(body.existing_competitor_id, bobId);
+
+    // Alice's card unchanged.
+    const aliceRow = ctx.handle.db
+      .select()
+      .from(competitors)
+      .where(eq(competitors.id, aliceId))
+      .get();
+    assert.equal(aliceRow?.cardNumber, 5555555);
+  });
+});
+
 describe('competitors atomicity', () => {
   // Standalone describe so we can pass a custom nextLocalSeqFn that throws.
 
