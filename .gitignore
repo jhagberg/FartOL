@@ -4,6 +4,12 @@ node_modules/
 # Build output
 dist/
 coverage/
+.svelte-kit/
+apps/web/build/
+
+# Playwright
+playwright-report/
+test-results/
 
 # Logs
 *.log

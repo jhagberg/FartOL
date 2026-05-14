@@ -10,17 +10,21 @@
     "node": ">=22.18.0"
   },
   "scripts": {
+    "dev": "pnpm --parallel --filter ./apps/* dev",
     "lint": "pnpm -r --if-present run lint && pnpm run lint:attribution",
     "lint:attribution": "bash scripts/check-mit-attribution.sh || echo 'check-mit-attribution.sh not yet present (Plan 05 lands it); skipping'",
     "format": "prettier --write '**/*.{ts,js,cjs,mjs,md,yml,yaml,json}'",
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "pnpm -r --if-present run test",
+    "test:quick": "pnpm --filter @fartol/edge test && pnpm --filter @fartol/shared-types test && pnpm --filter @fartol/web test",
+    "e2e": "playwright test",
     "prepare": "lefthook install"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.5.0",
     "@commitlint/config-conventional": "^19.5.0",
     "@eslint/js": "^9.15.0",
+    "@playwright/test": "^1.60.0",
     "@types/node": "^22.10.0",
     "eslint": "^9.15.0",
     "globals": "^15.12.0",
