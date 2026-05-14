@@ -192,6 +192,10 @@ describe('parseTrainerArgs', () => {
     assert.throws(() => parseTrainerArgs(['--course', '136,abc']), /comma-separated/);
   });
 
+  test('decimal code in --course throws (no silent truncation)', () => {
+    assert.throws(() => parseTrainerArgs(['--course', '110.5,136']), /comma-separated/);
+  });
+
   test('empty --course= throws', () => {
     assert.throws(() => parseTrainerArgs(['--course=']), /--course requires a value/);
   });

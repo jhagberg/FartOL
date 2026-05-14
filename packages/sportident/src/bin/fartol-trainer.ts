@@ -94,7 +94,7 @@ export const parseTrainerArgs = (argv: string[]): TrainerOpts => {
       i += consumed;
     } else if (a === '--course' || a.startsWith('--course=')) {
       const { value, consumed } = valueFor('--course', a, i);
-      const codes = value.split(',').map((s) => Number.parseInt(s.trim(), 10));
+      const codes = value.split(',').map((s) => Number(s.trim()));
       if (codes.some((c) => !Number.isInteger(c) || c < 0))
         throw new Error(`--course must be comma-separated non-negative integers (got: ${value})`);
       if (codes.length === 0) throw new Error('--course must include at least one code');
