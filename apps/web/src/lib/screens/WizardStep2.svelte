@@ -70,8 +70,8 @@
     const cleaned = head
       .replace(/^﻿/, '')
       .replace(/<\?xml[^?]*\?>/i, '')
-      .replace(/<!--[\s\S]*?(?:-->|$)/g, '')
-      .replace(/<!\[CDATA\[[\s\S]*?(?:\]\]>|$)/g, '');
+      .replace(new RegExp('<!--[\\s\\S]*?(?:-->|$)', 'g'), '')
+      .replace(new RegExp('<!\\[CDATA\\[[\\s\\S]*?(?:\\]\\]>|$)', 'g'), '');
     const root = cleaned.match(/<\s*([A-Za-z_][A-Za-z0-9_-]*)/);
     if (!root) {
       onerror(

@@ -35,14 +35,7 @@
 <svelte:window on:keydown={onKey} />
 
 {#if open}
-  <div
-    class="modal-scrim"
-    role="presentation"
-    onclick={onScrimClick}
-    onkeydown={(e) => {
-      if (e.key === 'Enter' || e.key === ' ') onClose?.();
-    }}
-  >
+  <div class="modal-scrim" role="presentation" onclick={onScrimClick}>
     <div class="modal" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()}>
       {#if head}
         <header class="modal-head">{@render head()}</header>
