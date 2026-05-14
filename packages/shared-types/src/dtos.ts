@@ -211,6 +211,29 @@ export const CompetitorCreateInput = z.object({
 export type CompetitorCreateInput = z.infer<typeof CompetitorCreateInput>;
 
 // ---------------------------------------------------------------------------
+// Plan 10 — manual DNF override + un-DNF reversal.
+//
+// REST inputs for POST /api/competitions/:id/competitors/:competitorId/manual-dnf
+// and .../un-dnf. The un-DNF endpoint takes no body; the schema is exported
+// for symmetry with ManualDnfInput so SvelteKit can declare both `import`
+// types together (plan 13 readout view).
+//
+// UI-SPEC §"Manual DNF override": the reason field is operator-typed,
+// length-capped at 500 to fit the receipt template + readout-row tooltip.
+// ---------------------------------------------------------------------------
+
+export const ManualDnfInput = z.object({
+  reason: z.string().min(1).max(500),
+});
+export type ManualDnfInput = z.infer<typeof ManualDnfInput>;
+
+/** Un-DNF takes no body (presence of the POST is the action). Exported as a
+ * passthrough object so SvelteKit `import type` consumers can reference a
+ * matching name; the route handler does NOT parse the body. */
+export const UnDnfInput = z.object({}).passthrough();
+export type UnDnfInput = z.infer<typeof UnDnfInput>;
+
+// ---------------------------------------------------------------------------
 // Club — walk-up autocomplete cache.
 // ---------------------------------------------------------------------------
 

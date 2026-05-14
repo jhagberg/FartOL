@@ -44,6 +44,8 @@ export {
   CourseControlDTO,
   CompetitorDTO,
   CompetitorCreateInput,
+  ManualDnfInput,
+  UnDnfInput,
   ClubDTO,
   HealthDTO,
 } from './dtos.ts';
