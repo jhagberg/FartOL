@@ -30,6 +30,11 @@
   import AppShell from '../lib/layout/AppShell.svelte';
   import TweaksPanel from '../lib/components/TweaksPanel.svelte';
   import { tweaks, applyTweaksToRoot } from '../lib/stores/tweaks.svelte.ts';
+  import {
+    bridgeStatus,
+    toStationStatus,
+    toWsStatus,
+  } from '../lib/stores/bridgeStatus.svelte.ts';
 
   let { children } = $props();
 
@@ -49,7 +54,11 @@
   });
 </script>
 
-<AppShell onOpenSettings={() => (tweaksOpen = true)}>
+<AppShell
+  onOpenSettings={() => (tweaksOpen = true)}
+  stationStatus={toStationStatus(bridgeStatus.value)}
+  wsStatus={toWsStatus(bridgeStatus.value)}
+>
   {@render children()}
 </AppShell>
 

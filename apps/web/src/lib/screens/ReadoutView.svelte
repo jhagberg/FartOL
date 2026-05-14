@@ -49,6 +49,7 @@
   import { goto } from '$app/navigation';
   import { t } from '$lib/i18n/index.ts';
   import { tweaks } from '$lib/stores/tweaks.svelte.ts';
+  import { bridgeStatus } from '$lib/stores/bridgeStatus.svelte.ts';
   import { WsClient } from '$lib/ws/client.ts';
   import { readoutChannel, type WsEnvelope } from '@fartol/shared-types';
   import type {
@@ -74,7 +75,7 @@
   import ReceiptMirror from '$lib/components/ReceiptMirror.svelte';
   import WalkupModal from '$lib/screens/WalkupModal.svelte';
   import ConsentConfirmationToast from '$lib/components/ConsentConfirmationToast.svelte';
-  import type { ReceiptTemplate, ReceiptPunch } from '$lib/components/receipt-templates/types.ts';
+  import type { ReceiptTemplate } from '$lib/components/receipt-templates/types.ts';
   import {
     type ReadoutResponse,
     type ReadoutHistoryRow,
@@ -176,12 +177,25 @@
     };
   });
 
-  /** Build the ReceiptMirror input. */
+  /** Build the ReceiptMirror input. Punches + elapsed are derived inside
+   * toReceiptRead from the raw card data on the history row. */
   const receiptRead = $derived.by(() => {
     const row = currentRow;
     if (!row || row.unmatched) return null;
     const competitor = row.competitor_id ? competitorsById.get(row.competitor_id) : null;
     const cls = competitor ? classesById.get(competitor.class_id) : null;
+    // Elapsed in ms: finish - start (or first-punch fallback) on the
+    // half-day clock; add a half-day's worth of seconds if the delta
+    // wraps negative.
+    let elapsedMs: number | null = null;
+    if (row.finish_seconds_in_half_day !== null) {
+      const base = row.start_seconds_in_half_day ?? row.punches[0]?.seconds_in_half_day ?? null;
+      if (base !== null) {
+        let delta = row.finish_seconds_in_half_day - base;
+        if (delta < 0) delta += 43200;
+        elapsedMs = delta * 1000;
+      }
+    }
     return toReceiptRead({
       row,
       className: cls?.name ?? '—',
@@ -189,8 +203,7 @@
       club: competitor?.club ?? null,
       competitionName: competition?.name ?? '',
       competitionDate: competition?.date ?? '',
-      punches: [] as ReceiptPunch[],
-      elapsedMs: null,
+      elapsedMs,
       place: null,
     });
   });
@@ -287,9 +300,23 @@
   // --- WS envelope dispatch -------------------------------------------------
 
   function handleWs(env: WsEnvelope): void {
-    switch (env.type) {
+    // Replay envelopes wrap the live event payload one layer deeper:
+    // { type: 'replay', payload: { event_type, ...fields } }. Live
+    // broadcasts have type === event_type. Unwrap and re-dispatch so
+    // both paths share the same downstream logic.
+    if (env.type === 'replay') {
+      const inner = env.payload as { event_type?: string } | null;
+      if (!inner || typeof inner.event_type !== 'string') return;
+      handleLiveEvent(inner.event_type, inner);
+      return;
+    }
+    handleLiveEvent(env.type, env.payload);
+  }
+
+  function handleLiveEvent(eventType: string, payload: unknown): void {
+    switch (eventType) {
       case 'card_read':
-        onCardRead(env.payload as { card_number: number; card_type: string });
+        onCardRead(payload as { card_number: number; card_type: string });
         break;
       case 'manual_dnf':
       case 'un_dnf':
@@ -300,6 +327,13 @@
         void refetchCompetitors();
         void refetchReadout();
         break;
+      case 'connection_changed': {
+        const state = (payload as { state: string }).state;
+        if (state === 'open' || state === 'opening' || state === 'closed' || state === 'error') {
+          bridgeStatus.set(state);
+        }
+        break;
+      }
       default:
         break;
     }
