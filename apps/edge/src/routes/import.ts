@@ -47,6 +47,7 @@ import { parseIofXml } from '../xml/parse.ts';
 import { validateXml } from '../xml/validate.ts';
 import { ingestCourseData } from '../ingest/courseImport.ts';
 import { ingestEntryList } from '../ingest/entryImport.ts';
+import { autoBindNewCompetitors } from '../projection/auto-bind.ts';
 
 export default async function registerImportRoutes(app: FastifyInstance): Promise<void> {
   // 5 MB body cap, single file per request. T-LARGE-BODY-DOS mitigation.
@@ -121,7 +122,16 @@ export default async function registerImportRoutes(app: FastifyInstance): Promis
         return reply.code(201).send({ kind: 'CourseData', ...result });
       } else {
         const result = ingestEntryList(app.fartolDb, competitionId, parsed.data, Date.now());
-        return reply.code(201).send({ kind: 'EntryList', ...result });
+        // Plan 09: close the import-after-read race. The bridge may have
+        // already inserted card_read events for cards belonging to the
+        // newly-imported competitors. autoBindNewCompetitors emits one
+        // synthetic card_bound per match so the next reduce() drops the
+        // card from pending_unknown_cards AND attaches the prior read.
+        const autoBind = autoBindNewCompetitors(app.fartolDb, competitionId, app.fartolNodeId);
+        if (autoBind.bound.length > 0) {
+          app.projectionStore.markDirty(competitionId);
+        }
+        return reply.code(201).send({ kind: 'EntryList', ...result, auto_bound: autoBind.bound });
       }
     } catch (e) {
       const msg = (e as Error).message ?? 'ingest failed';

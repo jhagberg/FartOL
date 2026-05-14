@@ -12,5 +12,6 @@ export { reduce } from './reduce.ts';
 export type { ReduceInput, CourseWithControlCodes } from './reduce.ts';
 export { detectStatus } from './dnfMp.ts';
 export type { DetectInput, StatusResult } from './dnfMp.ts';
-export { matchCardToCompetitor } from './matching.ts';
+export { matchCardToCompetitor, buildCardIndex } from './matching.ts';
+export type { CardIndex } from './matching.ts';
 export { halfDayClockToMs, diffMs } from './halfDayClockMath.ts';

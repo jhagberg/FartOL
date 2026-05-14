@@ -36,7 +36,7 @@
 import type { Event, Competitor, Course, Class } from '../db/types.ts';
 import type { EventPayload } from '../db/schema.ts';
 import { detectStatus } from './dnfMp.ts';
-import { matchCardToCompetitor } from './matching.ts';
+import { buildCardIndex } from './matching.ts';
 import type { CompetitionState, CompetitorView, ResultView } from './types.ts';
 
 /** Course extended with the in-order list of expected control codes. Plan 08
@@ -79,6 +79,13 @@ export function reduce(input: ReduceInput): CompetitionState {
     (c) => c.competitionId === input.competition_id
   );
 
+  // Plan 09: build the cardNumber → Competitor index ONCE per reduce() call
+  // so the card_read case below is O(1) instead of O(n) linear scan. For
+  // 1000 events × 40 competitors this drops the inner work from ~40k
+  // comparisons to ~1000 Map.get() calls. Externally-visible behavior is
+  // identical to the plan-07 linear scan — same fixture, same output.
+  const cardIndex = buildCardIndex(competitorsByCompetition);
+
   // Course lookup by class_id for fast per-event MP detection. A course may
   // legitimately have classId=null during XML import; those competitors get
   // an empty expected list and thus MP / OK based purely on punches presence.
@@ -118,7 +125,7 @@ export function reduce(input: ReduceInput): CompetitionState {
     const payload = e.payload as EventPayload;
     switch (payload.event_type) {
       case 'card_read': {
-        const competitor = matchCardToCompetitor(payload.card_number, competitorsByCompetition);
+        const competitor = cardIndex.get(payload.card_number) ?? null;
         if (competitor === null) {
           pendingUnknownCards.add(payload.card_number);
           break;
