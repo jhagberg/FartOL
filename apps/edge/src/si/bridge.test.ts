@@ -46,10 +46,12 @@ import { eq, isNull } from 'drizzle-orm';
 import { openDatabase } from '../db/index.ts';
 import type { DbHandle } from '../db/index.ts';
 import { events } from '../db/schema.ts';
-import { attachBridge } from './bridge.ts';
+import { attachBridge, type BridgeOpts } from './bridge.ts';
 import type { ChannelName } from '@fartol/shared-types';
 import type { ProjectionStore } from '../projection/store.ts';
 import type { CompetitionState } from '../projection/types.ts';
+import type { PrinterSink, PrintEnvelope } from '../print/sink.ts';
+import { createProjectionStore } from '../projection/store.ts';
 
 const HERE = path.dirname(url.fileURLToPath(import.meta.url));
 const FIXTURE_DIR = path.resolve(
@@ -483,6 +485,224 @@ describe('SI bridge — offline PlaybackTransport replay against Jonas fixtures'
         assert.equal(id, 'comp-1', `markDirty must target comp-1; got ${id}`);
       }
     } finally {
+      ctx.handle.close();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Plan 15 — auto-print bridge wiring.
+//
+// We do NOT use fake timers here because mock.timers (node:test) conflicts
+// with the PlaybackTransport's real setImmediate / setTimeout chain that
+// drives the SiMainStation handshake. Instead we set autoPrintDelayMs=0
+// (production default = 400) and use a real-await window. The
+// production timing (400ms) is covered by parseArgs / unit-level tests
+// and the bench smoke; what matters here is the CONDITIONAL FIRING +
+// C-M2 contract (recomputeNow before envelope construction + unknown-
+// card skip with stderr warning).
+//
+// Locked by 01-15-PLAN.md task 2b.
+// ---------------------------------------------------------------------------
+
+interface AutoPrintCtx extends ReplayCtx {
+  printed: PrintEnvelope[];
+  stderrChunks: string[];
+}
+
+/** Capture process.stderr.write into a buffer for the unknown-card-skip
+ * assertion. Restored on test teardown. */
+function captureStderr(chunks: string[]): () => void {
+  const orig = process.stderr.write.bind(process.stderr);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (process.stderr.write as any) = (chunk: string | Uint8Array, ...rest: unknown[]): boolean => {
+    chunks.push(typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf8'));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (orig as any)(chunk, ...rest);
+  };
+  return () => {
+    process.stderr.write = orig;
+  };
+}
+
+async function bootAutoPrintCtx(): Promise<AutoPrintCtx> {
+  const handle = openDatabase(':memory:');
+  // Seed comp-auto with auto_print=1 + comp-no-auto with auto_print=0.
+  handle.sqlite
+    .prepare(
+      `INSERT INTO competitions (id, name, date, receipt_template, auto_print, created_at_ms)
+       VALUES ('comp-auto', 'Auto', '2026-01-01', 'classic', 1, 0),
+              ('comp-no-auto', 'NoAuto', '2026-01-01', 'classic', 0, 0)`
+    )
+    .run();
+  return { handle, broadcasts: [], markDirtyCalls: [], printed: [], stderrChunks: [] };
+}
+
+function makePrinterSink(printed: PrintEnvelope[]): PrinterSink {
+  return {
+    async isPrinterConnected(): Promise<boolean> {
+      return true;
+    },
+    async print(envelope: PrintEnvelope): Promise<void> {
+      printed.push(envelope);
+    },
+  };
+}
+
+async function replayWithAutoPrint(
+  ctx: AutoPrintCtx,
+  slug: string,
+  competitionId: string | null,
+  getCompetition: NonNullable<BridgeOpts['getCompetition']>
+): Promise<void> {
+  const raw = fs.readFileSync(path.join(FIXTURE_DIR, `${slug}-jonas-001.bytes.hex`), 'utf8');
+  const steps = parseTranscript(raw);
+  const transport = new PlaybackTransport(steps);
+  const station = new SiMainStation(transport);
+  const printerSink = makePrinterSink(ctx.printed);
+  const projectionStore = createProjectionStore({
+    handle: ctx.handle,
+    broadcast: () => {},
+    debounceMs: 0,
+  });
+  const attached = attachBridge(station, {
+    handle: ctx.handle,
+    nodeId: 'node-auto',
+    getActiveCompetitionId: () => competitionId,
+    broadcast: (channel, envelope) => {
+      ctx.broadcasts.push({ channel, envelope });
+    },
+    projectionStore,
+    printerSink,
+    getCompetition,
+    // Tests run the auto-print path inline (delay 0) so we don't have to
+    // fight with the PlaybackTransport's tick loop. The 400ms default is
+    // documented in apps/edge/src/si/bridge.ts and exercised on the bench.
+    autoPrintDelayMs: 0,
+  });
+  try {
+    await transport.open();
+    await station.readCards();
+    await transport.pumpRemaining();
+    // Give pending auto-print setTimeout(...0) callbacks a tick to fire.
+    await new Promise((r) => setTimeout(r, 50));
+    await station.close();
+  } finally {
+    attached.detach();
+    projectionStore.dispose();
+  }
+}
+
+describe('SI bridge — plan 15 auto-print wiring', () => {
+  test('auto-print fires when auto_print=true and competitor is known', async () => {
+    const ctx = await bootAutoPrintCtx();
+    const restore = captureStderr(ctx.stderrChunks);
+    try {
+      // Seed a class + competitor matching the SI10 fixture card (7501853).
+      ctx.handle.sqlite
+        .prepare(
+          `INSERT INTO classes (id, competition_id, name) VALUES ('cls-1', 'comp-auto', 'H21')`
+        )
+        .run();
+      ctx.handle.sqlite
+        .prepare(
+          `INSERT INTO competitors (id, competition_id, name, club, class_id, card_number, consent_at_ms, consent_status, scrubbed_at_ms)
+           VALUES ('cmp-anna', 'comp-auto', 'Anna', 'OK Test', 'cls-1', 7501853, 0, 'explicit', NULL)`
+        )
+        .run();
+      await replayWithAutoPrint(ctx, 'si10', 'comp-auto', () => ({
+        id: 'comp-auto',
+        name: 'Auto',
+        date: '2026-01-01',
+        receipt_template: 'classic',
+        auto_print: true,
+      }));
+      assert.equal(ctx.printed.length, 1, 'one auto-print envelope must fire');
+      const envelope = ctx.printed[0]!;
+      assert.equal(envelope.competition_id, 'comp-auto');
+      assert.equal(envelope.card_number, 7501853);
+      const data = envelope.data as { competitor: { id: string } };
+      assert.equal(
+        data.competitor.id,
+        'cmp-anna',
+        'envelope.data.competitor must be the resolved competitor (C-M2 — post-recompute projection)'
+      );
+    } finally {
+      restore();
+      ctx.handle.close();
+    }
+  });
+
+  test('auto-print does NOT fire when competition.auto_print=false', async () => {
+    const ctx = await bootAutoPrintCtx();
+    const restore = captureStderr(ctx.stderrChunks);
+    try {
+      ctx.handle.sqlite
+        .prepare(
+          `INSERT INTO classes (id, competition_id, name) VALUES ('cls-2', 'comp-no-auto', 'H21')`
+        )
+        .run();
+      ctx.handle.sqlite
+        .prepare(
+          `INSERT INTO competitors (id, competition_id, name, club, class_id, card_number, consent_at_ms, consent_status, scrubbed_at_ms)
+           VALUES ('cmp-b', 'comp-no-auto', 'B', NULL, 'cls-2', 7501853, 0, 'explicit', NULL)`
+        )
+        .run();
+      await replayWithAutoPrint(ctx, 'si10', 'comp-no-auto', () => ({
+        id: 'comp-no-auto',
+        name: 'NoAuto',
+        date: '2026-01-01',
+        receipt_template: 'classic',
+        auto_print: false,
+      }));
+      assert.equal(ctx.printed.length, 0, 'no auto-print when auto_print=false');
+    } finally {
+      restore();
+      ctx.handle.close();
+    }
+  });
+
+  test('auto-print does NOT fire when activeCompetitionId is null', async () => {
+    const ctx = await bootAutoPrintCtx();
+    const restore = captureStderr(ctx.stderrChunks);
+    try {
+      await replayWithAutoPrint(ctx, 'si10', null, () => ({
+        id: 'comp-auto',
+        name: 'Auto',
+        date: '2026-01-01',
+        receipt_template: 'classic',
+        auto_print: true,
+      }));
+      assert.equal(ctx.printed.length, 0, 'no auto-print when activeCompetitionId is null');
+    } finally {
+      restore();
+      ctx.handle.close();
+    }
+  });
+
+  test('C-M2: auto-print skipped + stderr warning when card is unknown', async () => {
+    const ctx = await bootAutoPrintCtx();
+    const restore = captureStderr(ctx.stderrChunks);
+    try {
+      // Do NOT seed a competitor for card 7501853 — the SI10 fixture's
+      // card will arrive as an unknown card. C-M2 says: skip + warn.
+      await replayWithAutoPrint(ctx, 'si10', 'comp-auto', () => ({
+        id: 'comp-auto',
+        name: 'Auto',
+        date: '2026-01-01',
+        receipt_template: 'classic',
+        auto_print: true,
+      }));
+      assert.equal(ctx.printed.length, 0, 'no print on unknown card (C-M2)');
+      const stderr = ctx.stderrChunks.join('');
+      assert.match(
+        stderr,
+        /auto-print skipped/,
+        `stderr must contain 'auto-print skipped'; got: ${stderr}`
+      );
+      assert.match(stderr, /7501853/, `stderr must mention the card number; got: ${stderr}`);
+    } finally {
+      restore();
       ctx.handle.close();
     }
   });

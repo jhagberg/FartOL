@@ -65,6 +65,7 @@
     unDnf as apiUnDnf,
     patchCompetition,
     devSimulateRead,
+    printReceipt as apiPrintReceipt,
   } from '$lib/api/client.ts';
   import LatestReadCard from '$lib/components/LatestReadCard.svelte';
   import PunchGrid from '$lib/components/PunchGrid.svelte';
@@ -460,7 +461,22 @@
 
   function onPrintClick(): void {
     if (autoPrint) return;
+    const competitorId = latestReadProp?.competitorId ?? null;
+    if (competitorId === null) {
+      // Nothing to print — unknown card / empty state. UI-SPEC says the
+      // button is disabled in that case, but the keyboard 'P' shortcut
+      // can still fire — surface a benign toast.
+      toast(t('ro.printed'));
+      return;
+    }
+    // Optimistic toast — plan 15 ESC/POS print is async via the bridge.
     toast(t('ro.printed'));
+    void apiPrintReceipt(competitionId, competitorId, selectedTemplate).catch((err: Error) => {
+      // UI-SPEC §"Error states" — 503/429 surface as
+      // "Utskrift misslyckades — Kontrollera papper i Star TSP143."
+      const msg = err.message ?? 'unknown';
+      toast(`Utskrift misslyckades (${msg})`);
+    });
   }
 
   function onKeydown(ev: KeyboardEvent): void {

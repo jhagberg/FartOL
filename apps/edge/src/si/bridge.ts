@@ -35,11 +35,22 @@ import type { SiMainStation, BaseSiCard, FrameError, ConnectionState } from '@fa
 import { readoutChannel } from '@fartol/shared-types';
 import type { ChannelName } from '@fartol/shared-types';
 
+import { and, asc, eq } from 'drizzle-orm';
+
 import { cardTypeFromNumber } from './cardType.ts';
 import { buildCardReadPayload } from './cardReadPayload.ts';
 import { insertEvent } from './eventInserter.ts';
 import type { DbHandle } from '../db/index.ts';
 import type { ProjectionStore } from '../projection/store.ts';
+import type { PrinterSink, PrintEnvelope, ReceiptData, ReceiptTemplate } from '../print/sink.ts';
+import {
+  competitors,
+  classes as classesTable,
+  courses,
+  courseControls,
+  controls as controlsTable,
+} from '../db/schema.ts';
+import { skogisFromInput } from '@fartol/shared-types';
 
 /** Hex-encode a byte buffer for `frame_error.raw`. Mirrors the convention
  * used by NdjsonEmitter (uppercase hex pairs joined by spaces). */
@@ -70,6 +81,27 @@ export interface BridgeOpts {
    * projection). B-2 contract: with no active competition, neither
    * broadcast nor markDirty fire. */
   projectionStore: ProjectionStore;
+  /** Plan 15 — auto-print path. Wired in the bin (apps/edge/src/bin/
+   * fartol.ts) from app.printerSink. Optional so plan-06 / plan-08
+   * tests that don't exercise auto-print can keep their existing
+   * fixtures untouched (those tests gate the auto-print enqueue path
+   * behind getCompetition returning a row with auto_print=true; without
+   * the printerSink injected, auto-print stays silent). */
+  printerSink?: PrinterSink;
+  /** Plan 15 — competition row lookup for the auto-print gate. Returns
+   * null when the competition doesn't exist (race with delete) or when
+   * the bin chose not to wire the auto-print path. */
+  getCompetition?: (competitionId: string) => {
+    id: string;
+    name: string;
+    date: string;
+    receipt_template: ReceiptTemplate;
+    auto_print: boolean;
+  } | null;
+  /** Plan 15 — override of the auto-print delay (default 400ms; UI-SPEC
+   * §"Readout view live behavior"). Tests pass 0 alongside fake timers
+   * for deterministic 400ms assertions. */
+  autoPrintDelayMs?: number;
 }
 
 export interface AttachedBridge {
@@ -86,6 +118,12 @@ export interface AttachedBridge {
  * importing this file does NOT subscribe; attach must be called explicitly.
  */
 export function attachBridge(station: SiMainStation, opts: BridgeOpts): AttachedBridge {
+  /** Plan 15 — track pending setTimeout ids for the auto-print delay so
+   * detach() can clear them (otherwise a fake-timer test's pending
+   * timeout leaks across teardown). */
+  const pendingAutoPrints = new Set<ReturnType<typeof setTimeout>>();
+  const autoPrintDelayMs = opts.autoPrintDelayMs ?? 400;
+
   /** Plan 06 + plan 08 LOCKED conditional. The B-2 contract: when no active
    * competition is set, neither broadcast nor markDirty fire. card_inserted +
    * card_read mark the projection dirty so the WS results channel re-pushes
@@ -101,6 +139,125 @@ export function attachBridge(station: SiMainStation, opts: BridgeOpts): Attached
     if (activeId === null) return; // T-IDLE-CHANNEL-LEAK + B-2 + plan-08 markDirty skip
     opts.broadcast(readoutChannel(activeId), { type, payload, seq });
     if (markDirty) opts.projectionStore.markDirty(activeId);
+  }
+
+  /** Plan 15 LOCKED — auto-print enqueue path. C-M2 contract: this
+   * function calls projectionStore.recomputeNow synchronously inside the
+   * 400ms setTimeout callback BEFORE reading projection state. The
+   * 50ms-debounced markDirty path (plan 08) may not have completed by
+   * 400ms on CPU-bound recomputes, so the explicit recompute here
+   * guarantees the just-read card is reflected in the print envelope.
+   * Unknown-card race (walk-up not yet completed): we skip the print
+   * with a stderr warning rather than fabricating an empty envelope. */
+  function enqueueAutoPrint(activeId: string, cardNumber: number): void {
+    if (opts.printerSink === undefined) return;
+    // Force-fresh projection (C-M2). recomputeNow is synchronous.
+    const projection = opts.projectionStore.recomputeNow(activeId);
+    if (projection === null) {
+      process.stderr.write(`auto-print skipped: projection unavailable for ${activeId}\n`);
+      return;
+    }
+    // Resolve competitor by card_number.
+    const competitorRow = opts.handle.db
+      .select()
+      .from(competitors)
+      .where(and(eq(competitors.competitionId, activeId), eq(competitors.cardNumber, cardNumber)))
+      .get();
+    if (!competitorRow) {
+      process.stderr.write(
+        `auto-print skipped: unknown card ${cardNumber} in competition ${activeId}\n`
+      );
+      return;
+    }
+    const view = projection.competitors.get(competitorRow.id);
+    if (!view) {
+      process.stderr.write(
+        `auto-print skipped: competitor ${competitorRow.id} absent from recomputed projection\n`
+      );
+      return;
+    }
+    const comp = opts.getCompetition?.(activeId);
+    if (!comp) return;
+    const classRow = opts.handle.db
+      .select()
+      .from(classesTable)
+      .where(eq(classesTable.id, competitorRow.classId))
+      .get();
+    if (!classRow) return;
+    const courseRow = opts.handle.db
+      .select()
+      .from(courses)
+      .where(and(eq(courses.competitionId, activeId), eq(courses.classId, classRow.id)))
+      .get();
+    const controlCodes: number[] = [];
+    if (courseRow) {
+      const rows = opts.handle.db
+        .select({ code: controlsTable.code, idx: courseControls.orderIdx })
+        .from(courseControls)
+        .innerJoin(controlsTable, eq(controlsTable.id, courseControls.controlId))
+        .where(eq(courseControls.courseId, courseRow.id))
+        .orderBy(asc(courseControls.orderIdx))
+        .all();
+      for (const r of rows) controlCodes.push(r.code);
+    }
+    const classRows = projection.results_by_class.get(classRow.id) ?? [];
+    const selfRow = classRows.find((r) => r.competitor_id === competitorRow.id);
+    const leaderRow = classRows.find((r) => r.place === 1);
+    const template: ReceiptTemplate = comp.receipt_template;
+
+    let skogisStats: ReceiptData['skogisStats'] | undefined;
+    if (template === 'kids') {
+      const sk = skogisFromInput({
+        cardNumber: view.card_number ?? 0,
+        name: view.name,
+        club: view.club,
+        classId: view.class_id,
+        status: view.status,
+        place: selfRow?.place ?? null,
+        controlCount: view.latest_punches.length,
+        bestLegs: 0,
+        totalLegs: Math.max(1, view.latest_punches.length),
+        startersInClass: Math.max(1, classRows.length),
+      });
+      skogisStats = sk.stats;
+    }
+
+    const data: ReceiptData = {
+      competitor: view,
+      competition: {
+        id: comp.id,
+        name: comp.name,
+        date: comp.date,
+        receipt_template: comp.receipt_template,
+        auto_print: comp.auto_print,
+      },
+      classObj: { id: classRow.id, name: classRow.name },
+      course: courseRow
+        ? {
+            id: courseRow.id,
+            name: courseRow.name,
+            length_m: courseRow.lengthM,
+            climb_m: courseRow.climbM,
+            control_codes: controlCodes,
+          }
+        : { id: '', name: '', length_m: null, climb_m: null, control_codes: [] },
+      placeContext: {
+        place: selfRow?.place ?? null,
+        behind_leader_ms: selfRow?.behind_leader_ms ?? null,
+        leader_name: leaderRow?.name ?? null,
+        class_rows: classRows,
+      },
+      ...(skogisStats !== undefined ? { skogisStats } : {}),
+    };
+    const envelope: PrintEnvelope = {
+      template,
+      competition_id: activeId,
+      card_number: view.card_number ?? 0,
+      data,
+    };
+    opts.printerSink.print(envelope).catch((err: Error) => {
+      process.stderr.write(`auto-print failed: ${err.message}\n`);
+    });
   }
 
   const onCardInserted = (card: BaseSiCard): void => {
@@ -124,6 +281,24 @@ export function attachBridge(station: SiMainStation, opts: BridgeOpts): Attached
     const activeId = opts.getActiveCompetitionId();
     const r = insertEvent(opts.handle, opts.nodeId, 'card_read', Date.now(), payload, activeId);
     maybeBroadcastAndMarkDirty('card_read', payload, r.local_seq, true);
+
+    // Plan 15 — auto-print gate. Fires the print ~400ms after the
+    // card_read row is committed (matches UI-SPEC §"Readout view live
+    // behavior" timing). Gated by activeCompetitionId !== null AND
+    // competition.auto_print === true. The C-M2 contract lives in
+    // enqueueAutoPrint, which awaits recomputeNow inline before reading
+    // projection state.
+    if (activeId !== null && opts.printerSink !== undefined && opts.getCompetition !== undefined) {
+      const comp = opts.getCompetition(activeId);
+      if (comp?.auto_print === true) {
+        const cardNumber = card.cardNumber;
+        const timeoutId = setTimeout(() => {
+          pendingAutoPrints.delete(timeoutId);
+          enqueueAutoPrint(activeId, cardNumber);
+        }, autoPrintDelayMs);
+        pendingAutoPrints.add(timeoutId);
+      }
+    }
   };
 
   const onCardRemoved = (cardNumber: number): void => {
@@ -182,6 +357,12 @@ export function attachBridge(station: SiMainStation, opts: BridgeOpts): Attached
     detach(): void {
       if (detached) return;
       detached = true;
+      // Plan 15 — clear any pending auto-print timeouts so they don't
+      // fire after teardown (matters for fake-timer tests + Fastify
+      // onClose cleanup; otherwise a tick after detach() emits an
+      // unexpected print or hits a closed db handle).
+      for (const t of pendingAutoPrints) clearTimeout(t);
+      pendingAutoPrints.clear();
       station.off('cardInserted', onCardInserted);
       station.off('cardRead', onCardRead);
       station.off('cardRemoved', onCardRemoved);

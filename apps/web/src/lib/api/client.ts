@@ -356,6 +356,32 @@ export function getResults(competitionId: string): Promise<unknown> {
 }
 
 // ---------------------------------------------------------------------------
+// Print (plan 15) — ESC/POS thermal print for the 6 receipt templates.
+// ---------------------------------------------------------------------------
+
+export type ReceiptTemplateId = 'classic' | 'standing' | 'detailed' | 'top4' | 'minimal' | 'kids';
+
+/** POST /api/competitions/:id/print-receipt — queue an ESC/POS print job
+ * (template defaults to competition.receipt_template when omitted). The
+ * server resolves the projection / placeContext / skogisStats; the
+ * client never carries any of that. Returns the queue position so the
+ * UI can show a toast that distinguishes "printing" from "queued behind
+ * N prints". */
+export function printReceipt(
+  competitionId: string,
+  competitorId: string,
+  template?: ReceiptTemplateId
+): Promise<{ queued: boolean; queue_position: number }> {
+  return apiFetch(`/api/competitions/${encodeURIComponent(competitionId)}/print-receipt`, {
+    method: 'POST',
+    body: {
+      competitor_id: competitorId,
+      ...(template !== undefined ? { template } : {}),
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Clubs (walk-up autocomplete cache)
 // ---------------------------------------------------------------------------
 

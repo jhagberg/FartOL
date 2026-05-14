@@ -39,7 +39,8 @@ import type { DbHandle } from '../db/index.ts';
 import { SerialTransport, SiMainStation } from '@fartol/sportident';
 import { attachBridge } from '../si/bridge.ts';
 import type { AttachedBridge } from '../si/bridge.ts';
-import { config } from '../db/schema.ts';
+import { config, competitions } from '../db/schema.ts';
+import { eq } from 'drizzle-orm';
 import type { PrinterSink } from '../print/sink.ts';
 import { createStdoutPrinterSink } from '../print/stdout-sink.ts';
 import { createNodeThermalPrinterSink, type PrinterTypeId } from '../print/escposDriver.ts';
@@ -204,6 +205,33 @@ class BridgeLifecycle {
         // re-derive within the debounce window. Skipped when no active
         // competition is set (B-2 contract).
         projectionStore: this.app.projectionStore,
+        // Plan 15: auto-print path. Gated by activeCompetitionId !== null
+        // AND competition.auto_print === true. The bridge calls
+        // printerSink.print ~400ms after the card_read insert (the
+        // recomputeNow C-M2 contract lives inside the bridge's
+        // enqueueAutoPrint).
+        printerSink: this.app.printerSink,
+        getCompetition: (competitionId) => {
+          const row = this.handle.db
+            .select()
+            .from(competitions)
+            .where(eq(competitions.id, competitionId))
+            .get();
+          if (!row) return null;
+          return {
+            id: row.id,
+            name: row.name,
+            date: row.date,
+            receipt_template: row.receiptTemplate as
+              | 'classic'
+              | 'standing'
+              | 'detailed'
+              | 'top4'
+              | 'minimal'
+              | 'kids',
+            auto_print: row.autoPrint,
+          };
+        },
       });
       // Wire reconnect on spontaneous close.
       station.on('connectionChanged', (state) => {
