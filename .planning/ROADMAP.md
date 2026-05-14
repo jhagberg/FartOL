@@ -61,8 +61,8 @@ This is the hardest single technical milestone. Everything else is
   - [x] 01-01-PLAN.md — Wave 0: monorepo scaffold (apps/edge + apps/web + packages/shared-types) + repo-root e2e config
   - [x] 01-02-PLAN.md — Wave 0 [BLOCKING]: Drizzle schema + embedded migrator + append-only triggers + node_id persistence
   - [x] 01-03-PLAN.md — Wave 0: WebSocket plugin + walking-skeleton e2e (simulate-read → DB → REST → WS → stdout print sink)
-  - [ ] 01-04-PLAN.md — Wave 1: Competition + class + course + competitor CRUD + clubs autocomplete + Zod schemas
-  - [ ] 01-05-PLAN.md — Wave 1: XML importer (Purple Pen + IOF 3.0 EntryList + CourseData), XSD validation, T-FILE-IMPORT mitigation
+  - [x] 01-04-PLAN.md — Wave 1: Competition + class + course + competitor CRUD + clubs autocomplete + Zod schemas
+  - [x] 01-05-PLAN.md — Wave 1: XML importer (Purple Pen + IOF 3.0 EntryList + CourseData), XSD validation, T-FILE-IMPORT mitigation
   - [ ] 01-06-PLAN.md — Wave 2: SI bridge wiring (SiMainStation → events table + WS broadcast); bench-replay tests
   - [ ] 01-07-PLAN.md — Wave 2: Pure reducer (CompetitionState) + DNF/MP detection + idempotency tests
   - [ ] 01-08-PLAN.md — Wave 3: ProjectionStore + WS results: channel + GET /api/competitions/:id/results
