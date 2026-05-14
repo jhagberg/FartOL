@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<EntryList
+    xmlns="http://www.orienteering.org/datastandard/3.0"
+    iofVersion="3.0"
+    createTime="2026-05-14T12:00:00Z"
+    creator="fartol-test">
+  <Event>
+    <Name>StorTuna Tisdag</Name>
+  </Event>
+  <PersonEntry>
+    <Person>
+      <Name>
+        <Family>Andersson</Family>
+        <Given>Anna</Given>
+      </Name>
+    </Person>
+    <Organisation>
+      <Name>StorTuna OK</Name>
+    </Organisation>
+    <ControlCard punchingSystem="SI">7501853</ControlCard>
+    <Class>
+      <Name>H21</Name>
+    </Class>
+  </PersonEntry>
+  <PersonEntry>
+    <Person>
+      <Name>
+        <Family>Berg</Family>
+        <Given>Bo</Given>
+      </Name>
+    </Person>
+    <Organisation>
+      <Name>StorTuna OK</Name>
+    </Organisation>
+    <Class>
+      <Name>H21</Name>
+    </Class>
+  </PersonEntry>
+  <PersonEntry>
+    <Person>
+      <Name>
+        <Family>Carlsson</Family>
+        <Given>Cia</Given>
+      </Name>
+    </Person>
+    <ControlCard punchingSystem="SI">1428824</ControlCard>
+    <Class>
+      <Name>D21</Name>
+    </Class>
+  </PersonEntry>
+</EntryList>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- C-H3 regression fixture: structurally well-formed XML that FAILS XSD
+     validation. Used by competitionsFromWizard.test.ts test 2 to drive an
+     XSD-failure path through the atomic /api/competitions/from-wizard
+     endpoint and assert zero orphan competition rows persist.
+
+     The XSD violation: the Course element below omits its required <Name>
+     child. IOF.xsd `Course` complex type declares <xsd:element name="Name"
+     type="xsd:string"/> with no minOccurs="0" — the Name element is
+     mandatory. fast-xml-parser accepts the document (it's syntactically
+     well-formed); libxml2 rejects it with a missing-required-child error. -->
+<CourseData
+    xmlns="http://www.orienteering.org/datastandard/3.0"
+    iofVersion="3.0"
+    createTime="2026-05-14T12:00:00Z">
+  <Event>
+    <Name>Corrupt Sample</Name>
+  </Event>
+  <RaceCourseData>
+    <Control>
+      <Id>31</Id>
+    </Control>
+    <Course>
+      <!-- Name child intentionally omitted — XSD-invalid. CourseControl
+           cardinality of >=2 satisfied below so we hit the missing-Name
+           constraint cleanly. -->
+      <CourseControl type="Start">
+        <Control>S1</Control>
+      </CourseControl>
+      <CourseControl type="Finish">
+        <Control>F1</Control>
+      </CourseControl>
+    </Course>
+  </RaceCourseData>
+</CourseData>

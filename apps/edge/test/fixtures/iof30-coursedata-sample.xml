@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CourseData
+    xmlns="http://www.orienteering.org/datastandard/3.0"
+    iofVersion="3.0"
+    createTime="2026-05-14T12:00:00Z"
+    creator="fartol-test">
+  <Event>
+    <Name>StorTuna Tisdag</Name>
+    <Class>
+      <Name>H21</Name>
+      <ShortName>H21</ShortName>
+    </Class>
+    <Class>
+      <Name>D21</Name>
+      <ShortName>D21</ShortName>
+    </Class>
+  </Event>
+  <RaceCourseData>
+    <Control>
+      <Id>31</Id>
+    </Control>
+    <Control>
+      <Id>32</Id>
+    </Control>
+    <Control>
+      <Id>33</Id>
+    </Control>
+    <Control>
+      <Id>34</Id>
+    </Control>
+    <Course>
+      <Name>Bana 1</Name>
+      <Length>3500</Length>
+      <Climb>45</Climb>
+      <CourseControl type="Start">
+        <Control>S1</Control>
+      </CourseControl>
+      <CourseControl>
+        <Control>31</Control>
+      </CourseControl>
+      <CourseControl>
+        <Control>32</Control>
+      </CourseControl>
+      <CourseControl>
+        <Control>33</Control>
+      </CourseControl>
+      <CourseControl>
+        <Control>34</Control>
+      </CourseControl>
+      <CourseControl type="Finish">
+        <Control>F1</Control>
+      </CourseControl>
+    </Course>
+    <Course>
+      <Name>Bana 2</Name>
+      <Length>2800</Length>
+      <Climb>30</Climb>
+      <CourseControl type="Start">
+        <Control>S1</Control>
+      </CourseControl>
+      <CourseControl>
+        <Control>34</Control>
+      </CourseControl>
+      <CourseControl>
+        <Control>33</Control>
+      </CourseControl>
+      <CourseControl>
+        <Control>32</Control>
+      </CourseControl>
+      <CourseControl>
+        <Control>31</Control>
+      </CourseControl>
+      <CourseControl type="Finish">
+        <Control>F1</Control>
+      </CourseControl>
+    </Course>
+    <ClassCourseAssignment>
+      <ClassName>H21</ClassName>
+      <CourseName>Bana 1</CourseName>
+    </ClassCourseAssignment>
+    <ClassCourseAssignment>
+      <ClassName>D21</ClassName>
+      <CourseName>Bana 2</CourseName>
+    </ClassCourseAssignment>
+  </RaceCourseData>
+</CourseData>
