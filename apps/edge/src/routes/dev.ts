@@ -166,6 +166,13 @@ export default async function registerDevRoutes(app: FastifyInstance): Promise<v
       seq: inserted.local_seq,
     });
 
+    // Plan 08: mark the projection dirty so the results: channel re-
+    // broadcasts within the debounce window + GET /api/competitions/:id/
+    // results reflects the new card_read on next read. Dev simulate-read
+    // doesn't gate on app.activeCompetitionId — the body's competition_id
+    // is the explicit target.
+    app.projectionStore.markDirty(validated.competition_id);
+
     // Walking-skeleton "thermal print" — stdout-sink writes one JSON line.
     await app.printerSink.print({
       template: 'classic',

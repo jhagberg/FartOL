@@ -39,10 +39,13 @@ import websocket from '@fastify/websocket';
 import type { FastifyInstance } from 'fastify';
 import type { WebSocket } from 'ws';
 
+import { eq } from 'drizzle-orm';
+
 import type { ChannelName, WsHelloMessage, WsSubscribeMessage } from '@fartol/shared-types';
 import { isValidChannel, channelKind, isValidSeq } from './channels.ts';
 import { replayChannel } from './replay.ts';
 import type { DbHandle } from '../db/index.ts';
+import { classes as classesTable } from '../db/schema.ts';
 
 // ---------------------------------------------------------------------------
 // FastifyInstance decoration — wsBroadcast + fartolDb + fartolNodeId.
@@ -191,14 +194,49 @@ async function wsPlugin(app: FastifyInstance): Promise<void> {
           }
         }
       } else {
-        // C-M1 stub: `results:` hello emits NO `replay` envelopes. Plan 08
-        // lifts this branch into a `results_full` emission. The contract
-        // — `results:` channels never receive raw event replay — is the
-        // mitigation; the branch is a no-op in plan 03.
-        app.log.debug(
-          { channel: ch },
-          'ws hello on results channel — results_full not yet wired (plan 08)'
-        );
+        // C-M1 LOCKED: `results:` channel hello. Plan 03 stubbed this as a
+        // no-op; plan 08 lifts it to emit EXACTLY ONE `results_full`
+        // envelope carrying the current projection state. The contract
+        // from plan 03 survives: ZERO `replay` envelopes on a results:
+        // channel under any condition. If the projection lookup fails
+        // (unknown competition) we emit NOTHING — the WS hello succeeds
+        // (socket stays open) but no state is replayed. Do NOT fall
+        // through to any `replay` codepath.
+        const competitionId = ch.slice('results:'.length);
+        let projection = app.projectionStore.get(competitionId);
+        if (projection === null) projection = app.projectionStore.recomputeNow(competitionId);
+        if (projection !== null) {
+          const classRows = app.fartolDb.db
+            .select({ id: classesTable.id, name: classesTable.name })
+            .from(classesTable)
+            .where(eq(classesTable.competitionId, competitionId))
+            .all();
+          const payload = {
+            classes: classRows.map((c) => ({
+              class_id: c.id,
+              class_name: c.name,
+              rows: projection!.results_by_class.get(c.id) ?? [],
+            })),
+            pending_unknown_cards: projection.pending_unknown_cards,
+          };
+          if (socket.readyState === 1 /* OPEN */) {
+            try {
+              socket.send(
+                JSON.stringify({
+                  type: 'results_full',
+                  channel: ch,
+                  payload,
+                  seq: projection.last_event_seq,
+                })
+              );
+            } catch {
+              // Dead connection — close handler will clean up. Do NOT
+              // attempt any fallback emission.
+            }
+          }
+        }
+        // If projection is null (unknown competition), emit NOTHING. The
+        // C-M1 contract is preserved.
       }
     }
   }

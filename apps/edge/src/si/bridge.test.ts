@@ -48,6 +48,8 @@ import type { DbHandle } from '../db/index.ts';
 import { events } from '../db/schema.ts';
 import { attachBridge } from './bridge.ts';
 import type { ChannelName } from '@fartol/shared-types';
+import type { ProjectionStore } from '../projection/store.ts';
+import type { CompetitionState } from '../projection/types.ts';
 
 const HERE = path.dirname(url.fileURLToPath(import.meta.url));
 const FIXTURE_DIR = path.resolve(
@@ -156,6 +158,22 @@ interface BroadcastCall {
 interface ReplayCtx {
   handle: DbHandle;
   broadcasts: BroadcastCall[];
+  /** Plan 08 spy — counts markDirty calls per replay. */
+  markDirtyCalls: string[];
+}
+
+/** No-op projection store with a markDirty counter. Plan 08 wired the
+ * bridge to call store.markDirty after card_inserted + card_read; the
+ * other three events must NOT call markDirty. */
+function makeSpyProjectionStore(markDirtyCalls: string[]): ProjectionStore {
+  return {
+    get: (): CompetitionState | null => null,
+    markDirty: (id) => {
+      markDirtyCalls.push(id);
+    },
+    recomputeNow: (): CompetitionState | null => null,
+    dispose: () => {},
+  };
 }
 
 async function bootCtx(): Promise<ReplayCtx> {
@@ -168,7 +186,7 @@ async function bootCtx(): Promise<ReplayCtx> {
               ('comp-2', 'C2', '2026-01-01', 'classic', 0, 0)`
     )
     .run();
-  return { handle, broadcasts: [] };
+  return { handle, broadcasts: [], markDirtyCalls: [] };
 }
 
 async function replayFixtureThroughBridge(
@@ -187,6 +205,7 @@ async function replayFixtureThroughBridge(
     broadcast: (channel, envelope) => {
       ctx.broadcasts.push({ channel, envelope });
     },
+    projectionStore: makeSpyProjectionStore(ctx.markDirtyCalls),
   });
   try {
     await transport.open();
@@ -381,6 +400,7 @@ describe('SI bridge — offline PlaybackTransport replay against Jonas fixtures'
         nodeId: 'node-detach',
         getActiveCompetitionId: () => null,
         broadcast: () => {},
+        projectionStore: makeSpyProjectionStore([]),
       });
       // Detach BEFORE driving any events — no events should land.
       attached.detach();
@@ -424,6 +444,43 @@ describe('SI bridge — offline PlaybackTransport replay against Jonas fixtures'
       const seqs = new Set(after2.map((r) => r.localSeq));
       for (let s = 1; s <= max2; s++) {
         assert.ok(seqs.has(s), `local_seq ${s} missing`);
+      }
+    } finally {
+      ctx.handle.close();
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Plan 08 — markDirty B-2 regression gates.
+  // ---------------------------------------------------------------------------
+
+  test('test 9 (plan 08 B-2): markDirty NOT invoked when activeCompetitionId is null', async () => {
+    const ctx = await bootCtx();
+    try {
+      await replayFixtureThroughBridge(ctx, 'si10', () => null);
+      assert.equal(
+        ctx.markDirtyCalls.length,
+        0,
+        `bridge must not markDirty when no active competition; got ${ctx.markDirtyCalls.length}`
+      );
+    } finally {
+      ctx.handle.close();
+    }
+  });
+
+  test('test 10 (plan 08): markDirty fires on card_inserted + card_read when active competition is set', async () => {
+    const ctx = await bootCtx();
+    try {
+      await replayFixtureThroughBridge(ctx, 'si10', () => 'comp-1');
+      // SI10 fixture replays at least one card_inserted + one card_read.
+      // Each calls markDirty once.
+      assert.ok(
+        ctx.markDirtyCalls.length >= 2,
+        `expected markDirty >= 2 (card_inserted + card_read); got ${ctx.markDirtyCalls.length}`
+      );
+      // Every call must target the active competition.
+      for (const id of ctx.markDirtyCalls) {
+        assert.equal(id, 'comp-1', `markDirty must target comp-1; got ${id}`);
       }
     } finally {
       ctx.handle.close();

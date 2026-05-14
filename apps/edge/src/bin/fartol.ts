@@ -196,6 +196,11 @@ class BridgeLifecycle {
         nodeId: this.nodeId,
         getActiveCompetitionId: () => this.app.activeCompetitionId,
         broadcast: (channel, envelope) => this.app.wsBroadcast(channel, envelope),
+        // Plan 08: bridge marks the projection dirty after relevant events so
+        // the WS results channel + REST GET /api/competitions/:id/results
+        // re-derive within the debounce window. Skipped when no active
+        // competition is set (B-2 contract).
+        projectionStore: this.app.projectionStore,
       });
       // Wire reconnect on spontaneous close.
       station.on('connectionChanged', (state) => {

@@ -39,6 +39,7 @@ import { cardTypeFromNumber } from './cardType.ts';
 import { buildCardReadPayload } from './cardReadPayload.ts';
 import { insertEvent } from './eventInserter.ts';
 import type { DbHandle } from '../db/index.ts';
+import type { ProjectionStore } from '../projection/store.ts';
 
 /** Hex-encode a byte buffer for `frame_error.raw`. Mirrors the convention
  * used by NdjsonEmitter (uppercase hex pairs joined by spaces). */
@@ -61,6 +62,14 @@ export interface BridgeOpts {
     channel: ChannelName,
     envelope: { type: string; payload: unknown; seq?: number }
   ) => void;
+  /** Plan 08 — projection-store hook. The bridge calls
+   * `projectionStore.markDirty(id)` after every event that COULD change
+   * the projection (card_inserted, card_read) — but ONLY when
+   * getActiveCompetitionId() !== null. card_removed / frame_error /
+   * connection_changed never mark dirty (they don't influence the
+   * projection). B-2 contract: with no active competition, neither
+   * broadcast nor markDirty fire. */
+  projectionStore: ProjectionStore;
 }
 
 export interface AttachedBridge {
@@ -77,10 +86,21 @@ export interface AttachedBridge {
  * importing this file does NOT subscribe; attach must be called explicitly.
  */
 export function attachBridge(station: SiMainStation, opts: BridgeOpts): AttachedBridge {
-  function maybeBroadcast(type: string, payload: unknown, seq: number): void {
+  /** Plan 06 + plan 08 LOCKED conditional. The B-2 contract: when no active
+   * competition is set, neither broadcast nor markDirty fire. card_inserted +
+   * card_read mark the projection dirty so the WS results channel re-pushes
+   * within the debounce window; the other three events don't influence the
+   * projection. */
+  function maybeBroadcastAndMarkDirty(
+    type: string,
+    payload: unknown,
+    seq: number,
+    markDirty: boolean
+  ): void {
     const activeId = opts.getActiveCompetitionId();
-    if (activeId === null) return; // T-IDLE-CHANNEL-LEAK: no phantom channel
+    if (activeId === null) return; // T-IDLE-CHANNEL-LEAK + B-2 + plan-08 markDirty skip
     opts.broadcast(readoutChannel(activeId), { type, payload, seq });
+    if (markDirty) opts.projectionStore.markDirty(activeId);
   }
 
   const onCardInserted = (card: BaseSiCard): void => {
@@ -91,7 +111,7 @@ export function attachBridge(station: SiMainStation, opts: BridgeOpts): Attached
       card_type: cardTypeFromNumber(card.cardNumber),
     };
     const r = insertEvent(opts.handle, opts.nodeId, 'card_inserted', Date.now(), payload, activeId);
-    maybeBroadcast('card_inserted', payload, r.local_seq);
+    maybeBroadcastAndMarkDirty('card_inserted', payload, r.local_seq, true);
   };
 
   const onCardRead = (card: BaseSiCard): void => {
@@ -103,7 +123,7 @@ export function attachBridge(station: SiMainStation, opts: BridgeOpts): Attached
     const payload = buildCardReadPayload(card);
     const activeId = opts.getActiveCompetitionId();
     const r = insertEvent(opts.handle, opts.nodeId, 'card_read', Date.now(), payload, activeId);
-    maybeBroadcast('card_read', payload, r.local_seq);
+    maybeBroadcastAndMarkDirty('card_read', payload, r.local_seq, true);
   };
 
   const onCardRemoved = (cardNumber: number): void => {
@@ -113,7 +133,7 @@ export function attachBridge(station: SiMainStation, opts: BridgeOpts): Attached
       card_number: cardNumber,
     };
     const r = insertEvent(opts.handle, opts.nodeId, 'card_removed', Date.now(), payload, activeId);
-    maybeBroadcast('card_removed', payload, r.local_seq);
+    maybeBroadcastAndMarkDirty('card_removed', payload, r.local_seq, false);
   };
 
   const onFrameError = (err: FrameError): void => {
@@ -127,7 +147,7 @@ export function attachBridge(station: SiMainStation, opts: BridgeOpts): Attached
       raw: toHexBytes(err.raw_bytes),
     };
     const r = insertEvent(opts.handle, opts.nodeId, 'frame_error', Date.now(), payload, activeId);
-    maybeBroadcast('frame_error', payload, r.local_seq);
+    maybeBroadcastAndMarkDirty('frame_error', payload, r.local_seq, false);
   };
 
   const onConnectionChanged = (state: ConnectionState): void => {
@@ -148,7 +168,7 @@ export function attachBridge(station: SiMainStation, opts: BridgeOpts): Attached
       payload,
       activeId
     );
-    maybeBroadcast('connection_changed', payload, r.local_seq);
+    maybeBroadcastAndMarkDirty('connection_changed', payload, r.local_seq, false);
   };
 
   station.on('cardInserted', onCardInserted);
