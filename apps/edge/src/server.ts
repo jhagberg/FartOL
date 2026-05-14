@@ -40,6 +40,7 @@ import registerImportRoutes from './routes/import.ts';
 import registerCompetitionsFromWizard from './routes/competitionsFromWizard.ts';
 import registerSessionsRoutes from './routes/sessions.ts';
 import registerResultsRoute from './routes/results.ts';
+import registerReadoutRoute from './routes/readout.ts';
 import wsPlugin from './ws/index.ts';
 import type { DbHandle } from './db/index.ts';
 import type { PrinterSink } from './print/sink.ts';
@@ -164,6 +165,7 @@ export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyIn
     // restores from the config table during register).
     await app.register(registerSessionsRoutes);
     await app.register(registerResultsRoute);
+    await app.register(registerReadoutRoute);
     await app.register(registerDevRoutes);
   }
 
