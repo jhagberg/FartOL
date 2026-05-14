@@ -40,6 +40,9 @@ import { SerialTransport, SiMainStation } from '@fartol/sportident';
 import { attachBridge } from '../si/bridge.ts';
 import type { AttachedBridge } from '../si/bridge.ts';
 import { config } from '../db/schema.ts';
+import type { PrinterSink } from '../print/sink.ts';
+import { createStdoutPrinterSink } from '../print/stdout-sink.ts';
+import { createNodeThermalPrinterSink, type PrinterTypeId } from '../print/escposDriver.ts';
 
 export interface CliOpts {
   port: number;
@@ -282,10 +285,28 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
   const handle: DbHandle = openDatabase(dbPath);
   const nodeId = process.env['FARTOL_NODE_ID'] ?? ensureNodeId(handle);
 
+  // Printer sink selection: FARTOL_PRINTER=stdout swaps in the walking-
+  // skeleton JSON-line sink (useful in dev / CI where /dev/usb/lp* is
+  // absent); otherwise the production ESC/POS sink is wired. The
+  // FARTOL_PRINTER_TYPE env var picks star/epson/brother (default star
+  // for the Phase 1 bench unit — Star TSP143). probePath() inside the
+  // sink scans /dev/usb/lp{0..3} at print time so the operator doesn't
+  // need to specify the device path explicitly.
+  let printerSink: PrinterSink;
+  if (process.env['FARTOL_PRINTER'] === 'stdout') {
+    printerSink = createStdoutPrinterSink();
+  } else {
+    const rawType = process.env['FARTOL_PRINTER_TYPE'];
+    const printerType: PrinterTypeId =
+      rawType === 'epson' || rawType === 'brother' ? rawType : 'star';
+    printerSink = createNodeThermalPrinterSink({ printerType });
+  }
+
   const app: FastifyInstance = await buildServer({
     logger: true,
     dbHandle: handle,
     nodeId,
+    printerSink,
   });
 
   // Optional CLI override for the active competition. Routes/sessions.ts

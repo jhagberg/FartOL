@@ -1,0 +1,111 @@
+// Authored for fartol. Not ported from upstream.
+//
+// Template dispatcher + the structural type for the subset of
+// node-thermal-printer's API that the templates use (ThermalPrinterLike).
+// Six templates: classic, standing, detailed, top4, minimal, kids. Each
+// is a pure async (printer, data) -> void function — no I/O of its own,
+// no state, no second generateSkogis call inside the template (W-3
+// LOCKED — kids reads stats from data.skogisStats populated by the route
+// handler / auto-print bridge at the envelope construction site).
+//
+// Locked by:
+// - .planning/phases/01-single-laptop-training-mvp/01-15-PLAN.md task 1
+// - .planning/phases/01-single-laptop-training-mvp/01-UI-SPEC.md
+//   §"Receipt templates" + §"Receipt-specific typography"
+
+import type { HalfDayClock, NdjsonPunch } from '@fartol/sportident';
+
+import type { ReceiptData, ReceiptTemplate } from './sink.ts';
+
+import classic from './templates/classic.ts';
+import standing from './templates/standing.ts';
+import detailed from './templates/detailed.ts';
+import top4 from './templates/top4.ts';
+import minimal from './templates/minimal.ts';
+import kids from './templates/kids.ts';
+
+/** Structural subset of node-thermal-printer's ThermalPrinter the templates
+ * call. Keeping this typed locally means a) the tests can inject a fake
+ * without `as any` casts, and b) we don't import the heavy real-library
+ * type into every template module (PATTERNS S-3 stays lazy). */
+export interface ThermalPrinterLike {
+  isPrinterConnected(): Promise<boolean>;
+  println(text: string): void;
+  print(text: string): void;
+  newLine(): void;
+  bold(on: boolean): void;
+  alignLeft(): void;
+  alignCenter(): void;
+  alignRight(): void;
+  drawLine(character?: string): void;
+  cut(options?: { feed?: number; verticalTabAmount?: number }): void;
+  printImageBuffer(buffer: Buffer): Promise<Buffer>;
+  setTextNormal(): void;
+  setTextDoubleHeight(): void;
+  setTextDoubleWidth(): void;
+  execute(): Promise<void>;
+  clear(): void;
+  leftRight(left: string, right: string): void;
+}
+
+export type TemplateRenderer = (
+  printer: ThermalPrinterLike,
+  data: ReceiptData
+) => Promise<void> | void;
+
+const RENDERERS: Record<ReceiptTemplate, TemplateRenderer> = {
+  classic,
+  standing,
+  detailed,
+  top4,
+  minimal,
+  kids,
+};
+
+/** Render `data` to the printer using the named template. Pure dispatcher —
+ * no fallbacks; an unknown template name is a programmer bug (the route
+ * handler validates against the ReceiptTemplate union before reaching us). */
+export async function renderTemplate(
+  printer: ThermalPrinterLike,
+  name: ReceiptTemplate,
+  data: ReceiptData
+): Promise<void> {
+  await RENDERERS[name](printer, data);
+}
+
+// Format helpers shared by every text template -------------------------------
+
+/** Format elapsed milliseconds as `M:SS` or `H:MM:SS` (auto). */
+export function formatElapsed(ms: number | null): string {
+  if (ms === null) return '—';
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec - h * 3600) / 60);
+  const s = totalSec - h * 3600 - m * 60;
+  const pad = (n: number): string => n.toString().padStart(2, '0');
+  if (h > 0) return `${h}:${pad(m)}:${pad(s)}`;
+  return `${m}:${pad(s)}`;
+}
+
+/** Format the +M:SS leader-gap suffix used by every template's place line. */
+export function formatGap(behindMs: number | null): string {
+  if (behindMs === null) return '';
+  if (behindMs === 0) return '★ Leder';
+  return `+${formatElapsed(behindMs)} efter ledaren`;
+}
+
+/** Subtract two half-day clocks (modular wrap-around). Returns the gap in
+ * milliseconds, or null if either argument is null. The reducer already
+ * handles half-day rollover for elapsed_time_ms; we use the same modular
+ * formula here for individual splits. */
+export function halfDayClockGapMs(
+  from: { seconds_in_half_day: number; half_day: 0 | 1 } | HalfDayClock | null,
+  to: { seconds_in_half_day: number; half_day: 0 | 1 } | NdjsonPunch | HalfDayClock | null
+): number | null {
+  if (from === null || to === null) return null;
+  const fromSec = from.seconds_in_half_day + from.half_day * 12 * 3600;
+  const toSec = to.seconds_in_half_day + to.half_day * 12 * 3600;
+  let diff = toSec - fromSec;
+  if (diff < 0) diff += 24 * 3600;
+  return diff * 1000;
+}
