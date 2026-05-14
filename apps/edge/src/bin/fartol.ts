@@ -207,6 +207,8 @@ class BridgeLifecycle {
   private attached: AttachedBridge | null = null;
   private shutdownRequested = false;
   private attempt = 0;
+  private reconnectTimer: NodeJS.Timeout | null = null;
+  private openInFlight = false;
   private readonly app: FastifyInstance;
   private readonly handle: DbHandle;
   private readonly nodeId: string;
@@ -226,13 +228,34 @@ class BridgeLifecycle {
 
   private async openAttempt(): Promise<void> {
     if (this.shutdownRequested) return;
+    if (this.openInFlight) return;
+    this.openInFlight = true;
+    this.app.log.info({ path: this.serialPath }, 'SI bridge open attempt');
     try {
+      // Always tear down any prior transport/station before opening a new
+      // one — otherwise the previous SerialPort fd stays open and EAGAIN
+      // ("Cannot lock port") fires on the next open.
+      await this.teardownCurrent();
       const transport = new SerialTransport({ path: this.serialPath, baudRate: 38400 });
       const station = new SiMainStation(transport);
+      const readActiveCompetitionId = (): string | null => {
+        // Cross-plugin scope: `app.activeCompetitionId` mutated by the
+        // sessions plugin doesn't propagate to this outer-scope reader
+        // (Fastify avvio encapsulation). Read the canonical value from
+        // the config table instead — same fix used by the readout route
+        // in plan 01-09. Falls back to app.activeCompetitionId for tests
+        // that decorate it directly without persisting.
+        const row = this.handle.db
+          .select({ value: config.value })
+          .from(config)
+          .where(eq(config.key, 'active_competition_id'))
+          .get();
+        return row?.value ?? this.app.activeCompetitionId ?? null;
+      };
       const attached = attachBridge(station, {
         handle: this.handle,
         nodeId: this.nodeId,
-        getActiveCompetitionId: () => this.app.activeCompetitionId,
+        getActiveCompetitionId: readActiveCompetitionId,
         broadcast: (channel, envelope) => this.app.wsBroadcast(channel, envelope),
         // Plan 08: bridge marks the projection dirty after relevant events so
         // the WS results channel + REST GET /api/competitions/:id/results
@@ -267,16 +290,21 @@ class BridgeLifecycle {
           };
         },
       });
-      // Wire reconnect on spontaneous close.
-      station.on('connectionChanged', (state) => {
-        if (state === 'closed' || state === 'error') {
-          if (!this.shutdownRequested) this.scheduleReconnect();
-        }
-      });
+      // Wire reconnect on spontaneous close — but only AFTER successful open,
+      // so the teardown that runs at the start of the next openAttempt
+      // doesn't re-trigger scheduleReconnect via this listener.
       await transport.open();
+      this.app.log.info({ path: this.serialPath }, 'SI bridge transport opened');
       this.transport = transport;
       this.station = station;
       this.attached = attached;
+      station.on('connectionChanged', (state) => {
+        if (state === 'closed' || state === 'error') {
+          if (!this.shutdownRequested && this.station === station) {
+            this.scheduleReconnect();
+          }
+        }
+      });
       this.attempt = 0;
       // Drive the handshake — this also emits connectionChanged:open via the
       // station's readCards() path.
@@ -284,11 +312,16 @@ class BridgeLifecycle {
     } catch (err) {
       this.app.log.warn({ err: errMsg(err) }, 'SI bridge open failed');
       this.scheduleReconnect();
+    } finally {
+      this.openInFlight = false;
     }
   }
 
   private scheduleReconnect(): void {
     if (this.shutdownRequested) return;
+    // Coalesce: only one timer in flight at a time. station.close() racing
+    // a catch-block scheduleReconnect must not produce parallel chains.
+    if (this.reconnectTimer !== null) return;
     if (this.attempt >= BACKOFF_MS.length) {
       this.app.log.error(
         'SI bridge reconnect exhausted — operator can POST /api/sessions/reconnect-bridge'
@@ -298,20 +331,27 @@ class BridgeLifecycle {
     const delay = BACKOFF_MS[this.attempt]!;
     this.attempt++;
     this.app.log.info({ delay, attempt: this.attempt }, 'scheduling SI bridge reconnect');
-    setTimeout(() => {
-      // Tear down any half-attached state before retrying.
-      void this.teardownCurrent().then(() => this.openAttempt());
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      void this.openAttempt();
     }, delay);
   }
 
   async reconnectNow(): Promise<void> {
+    if (this.reconnectTimer !== null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     this.attempt = 0;
-    await this.teardownCurrent();
     await this.openAttempt();
   }
 
   async stop(): Promise<void> {
     this.shutdownRequested = true;
+    if (this.reconnectTimer !== null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     await this.teardownCurrent();
   }
 
@@ -332,7 +372,15 @@ class BridgeLifecycle {
       }
       this.station = null;
     }
-    this.transport = null;
+    if (this.transport) {
+      try {
+        await this.transport.close();
+      } catch {
+        /* best-effort — releases the SerialPort fd so the next open()
+         * doesn't hit EAGAIN "Cannot lock port" on the same path. */
+      }
+      this.transport = null;
+    }
   }
 }
 
