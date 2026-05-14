@@ -172,7 +172,12 @@ const snakeCaseKeys = (obj: Record<string, unknown>): Record<string, unknown> =>
  * Phase 0 decoders. Phase 1 will plumb it through when wall-clock
  * reconstruction becomes important.
  */
-const toHalfDayClock = (raw: number | null | undefined): HalfDayClock | null => {
+// Exported (Phase 1 plan 06 codex C-H2): the Phase 1 SI bridge's
+// `buildCardReadPayload` helper (apps/edge/src/si/cardReadPayload.ts) re-uses
+// this conversion so the events.payload column shape stays byte-equal to the
+// NDJSON wire shape (T-PAYLOAD-DRIFT mitigation). Additive surface change —
+// pre-existing Phase 0 callers are unaffected.
+export const toHalfDayClock = (raw: number | null | undefined): HalfDayClock | null => {
   if (raw === null || raw === undefined) return null;
   const half_day = raw >= SI_TIME_CUTOFF ? 1 : 0;
   const seconds_in_half_day = half_day === 1 ? raw - SI_TIME_CUTOFF : raw;
