@@ -10,6 +10,14 @@ apps/web/build/
 # Playwright
 playwright-report/
 test-results/
+tests/e2e/.tmp.db
+tests/e2e/.tmp.db-wal
+tests/e2e/.tmp.db-shm
+
+# Edge bridge runtime
+fartol.db
+fartol.db-wal
+fartol.db-shm
 
 # Logs
 *.log
