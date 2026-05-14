@@ -59,3 +59,27 @@ export type { EventDTO, ControlDTO } from './db.ts';
 // --- WebSocket envelopes ---------------------------------------------------
 export type { ChannelName, WsEnvelope, WsHelloMessage, WsSubscribeMessage } from './ws.ts';
 export { readoutChannel, resultsChannel } from './ws.ts';
+
+// --- Skogis (kids template generator) --------------------------------------
+// Moved from apps/web/src/lib/skogis/skogis.ts in plan 15 Task 2a so the
+// apps/edge ESC/POS kids template (kids-svg-to-bitmap.ts) can consume the
+// same deterministic generator the UI mirror uses. The apps/web path now
+// re-exports from here.
+export {
+  skogisFromInput,
+  skogisGeometry,
+  skogisDisplayName,
+  skogisHash,
+  skogisRng,
+  SKOGIS_INK,
+  SKOGIS_PAPER,
+  SKOGIS_PALETTES,
+  SKOGIS_SPECIES,
+} from './skogis.ts';
+export type {
+  SkogisInput,
+  SkogisDescriptor,
+  SkogisPalette,
+  SkogisGeometry,
+  SkogisStats,
+} from './skogis.ts';
