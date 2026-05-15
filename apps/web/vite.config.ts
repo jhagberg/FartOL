@@ -31,5 +31,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.ts'],
+    // 10s ceiling lets the i18n Pitfall-10 sync-bootstrap test ride out a
+    // cold Vite transform without flaking (initial run can hit ~5s).
+    testTimeout: 10000,
   },
 });
