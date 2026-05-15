@@ -38,8 +38,6 @@
     "NOTICE.md"
   ],
   "dependencies": {
-    "@fartol/shared-types": "workspace:*",
-    "@fartol/sportident": "workspace:*",
     "@fastify/cors": "^11.2.0",
     "@fastify/multipart": "^9.0.0",
     "@fastify/sensible": "^6.0.4",
@@ -56,6 +54,8 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@fartol/shared-types": "workspace:*",
+    "@fartol/sportident": "workspace:*",
     "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^22.10.0",
     "@types/ws": "^8.18.1",

@@ -1,0 +1,39 @@
+# Example udev rules for the FartOL edge bridge.
+# Locked by:
+#   .planning/phases/01-single-laptop-training-mvp/01-18-PLAN.md task 2.
+#
+# Installation:
+#   sudo cp $(npm prefix -g)/lib/node_modules/@fartol/edge/udev/99-fartol-sportident.rules \
+#           /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules
+#   sudo usermod -aG dialout,lp $USER   # log out + back in afterwards
+#
+# Each rule grants MODE=0660 to a specific group, NOT 0666 world-write
+# (T-UDEV-OVER-PERMISSION mitigation per the threat model). Operators who
+# do NOT need a particular device class can drop the corresponding rule
+# without affecting the others. After editing, re-run
+# `sudo udevadm control --reload-rules` and replug the device.
+
+# --- SPORTident readers ------------------------------------------------------
+# All BSM-family USB readers (BSM7-USB, BSM8-USB, SI-Master, BSF8-USB) use the
+# Silicon Labs CP2102/CP210x USB-to-UART bridge with vendor id 10c4 and one of
+# the SPORTident product ids 800a (BSM7/BSM8) and 8004 (older BSF).
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="800a", MODE="0660", GROUP="dialout", TAG+="uaccess"
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="8004", MODE="0660", GROUP="dialout", TAG+="uaccess"
+
+# --- Thermal receipt printers ------------------------------------------------
+# Most thermal printers enumerate as `/dev/usb/lp*` (kernel `usblp` driver) and
+# need group `lp` access. Specifying the vendor id pins the rule to the printer
+# class rather than every USB device on the bus.
+#
+# Star Micronics (TSP100 / TSP143 / TSP143IIIU / mPOP):
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0519", MODE="0660", GROUP="lp", TAG+="uaccess"
+# Epson (TM-T20, TM-T70, TM-T88):
+SUBSYSTEM=="usb", ATTRS{idVendor}=="04b8", MODE="0660", GROUP="lp", TAG+="uaccess"
+# Brother (PJ-7, RJ-2150 — used by some Swedish clubs as a portable):
+SUBSYSTEM=="usb", ATTRS{idVendor}=="04f9", MODE="0660", GROUP="lp", TAG+="uaccess"
+
+# --- Operator extensions -----------------------------------------------------
+# If your printer / reader uses a vendor id that isn't covered above, add a
+# matching rule below (run `lsusb` with the device plugged in to read the IDs)
+# and reload udev. Keep MODE=0660 — never use 0666.
