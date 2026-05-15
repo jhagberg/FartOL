@@ -433,6 +433,21 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
   // already restored from the config table during register, so we only
   // overwrite if the operator passed --competition-id.
   if (opts.competitionId !== null) {
+    // Verify the comp exists before persisting — mirrors the REST
+    // POST /api/sessions/active-competition validator. A typo in the CLI
+    // flag would otherwise persist a non-existent id and cause downstream
+    // events to violate the competition_id FK constraint mid-stream.
+    const exists = handle.db
+      .select({ id: competitions.id })
+      .from(competitions)
+      .where(eq(competitions.id, opts.competitionId))
+      .get();
+    if (!exists) {
+      process.stderr.write(
+        `fatal: --competition-id '${opts.competitionId}' not found in database\n`
+      );
+      process.exit(1);
+    }
     app.activeCompetitionId = opts.competitionId;
     // Persist so the next restart honours the override.
     handle.db
