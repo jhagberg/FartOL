@@ -76,6 +76,19 @@ function nextMidnightMs(nowMs: number): number {
   return d.getTime();
 }
 
+/** Format `d` as `YYYY-MM-DD` in the LOCAL TZ. `toISOString()` would shift to
+ * UTC — at Stockholm local midnight (CEST) UTC is still the previous day,
+ * which would produce a cutoff_date off by one. WR-002 fix. */
+export function formatLocalDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** One-hour retry interval after a transient failure. WR-001. */
+const RETRY_MS = 60 * 60 * 1000;
+
 export function scheduleDailyRetention(
   handle: DbHandle,
   opts: RetentionOpts = {}
@@ -87,7 +100,7 @@ export function scheduleDailyRetention(
 
   async function runOnce(): Promise<RetentionResult> {
     const cutoffMs = now() - retentionDays * 86400000;
-    const cutoffDate = new Date(cutoffMs).toISOString().slice(0, 10);
+    const cutoffDate = formatLocalDate(new Date(cutoffMs));
     // UPDATE competitors SET name='Anonymiserad', club=NULL, scrubbed_at_ms=now()
     //   WHERE scrubbed_at_ms IS NULL
     //     AND competition_id IN (SELECT id FROM competitions WHERE date < ?)
@@ -107,6 +120,25 @@ export function scheduleDailyRetention(
     return { scrubbed_count: result.changes, cutoff_date: cutoffDate };
   }
 
+  /** Retry the failed job after 1h. WR-001 — the previous version called
+   * `schedule()` here, which re-computed the delay to the NEXT midnight and
+   * effectively skipped the day. We must call `runOnce()` itself. */
+  function retry(): void {
+    if (stopped) return;
+    timer = setTimeout(() => {
+      void (async () => {
+        try {
+          await runOnce();
+        } catch (e) {
+          process.stderr.write(`[retention] retry failed: ${(e as Error).message}\n`);
+          retry();
+          return;
+        }
+        schedule();
+      })();
+    }, RETRY_MS);
+  }
+
   function schedule(): void {
     if (stopped) return;
     const delay = nextMidnightMs(now()) - now();
@@ -116,7 +148,7 @@ export function scheduleDailyRetention(
           await runOnce();
         } catch (e) {
           process.stderr.write(`[retention] failed: ${(e as Error).message}\n`);
-          timer = setTimeout(schedule, 60 * 60 * 1000);
+          retry();
           return;
         }
         schedule();

@@ -56,6 +56,19 @@ export function nextMidnightMs(nowMs: number): number {
   return d.getTime();
 }
 
+/** Format `d` as `YYYY-MM-DD` in the LOCAL TZ. `toISOString()` would shift to
+ * UTC — at Stockholm local midnight (CEST) UTC is still the previous day,
+ * which would produce off-by-one filenames. WR-002 fix. */
+export function formatLocalDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** One-hour retry interval after a transient failure. WR-001. */
+const RETRY_MS = 60 * 60 * 1000;
+
 /** Delete all-but-the-most-recent `keepLast` snapshots in `dir`. Newest by
  * filesystem mtime. Filename match is anchored to the bak- date pattern so
  * unrelated files in the same directory are NOT touched. */
@@ -81,7 +94,7 @@ export function scheduleDailyBackup(handle: DbHandle, opts: BackupOpts): BackupH
   mkdirSync(opts.backupDir, { recursive: true });
 
   async function runOnce(): Promise<{ dest: string }> {
-    const dateStr = new Date(now()).toISOString().slice(0, 10);
+    const dateStr = formatLocalDate(new Date(now()));
     const dest = path.join(opts.backupDir, `fartol.db.bak-${dateStr}`);
     // better-sqlite3 db.backup(filename) is the WAL-consistent online API.
     // Two calls on the same day overwrite the same destination — node will
@@ -89,6 +102,29 @@ export function scheduleDailyBackup(handle: DbHandle, opts: BackupOpts): BackupH
     await handle.sqlite.backup(dest);
     prune(opts.backupDir, keepLast);
     return { dest };
+  }
+
+  /** Retry the failed job after 1h. WR-001 — the previous version called
+   * `schedule()` here, which re-computed the delay to the NEXT midnight and
+   * effectively skipped the day. We must call `runOnce()` itself. After
+   * runOnce settles (success OR another failure), chain back to the
+   * next-midnight `schedule()` so the daily anchor is restored. */
+  function retry(): void {
+    if (stopped) return;
+    timer = setTimeout(() => {
+      void (async () => {
+        try {
+          await runOnce();
+        } catch (e) {
+          process.stderr.write(`[backup] retry failed: ${(e as Error).message}\n`);
+          // Still failing — keep retrying every hour until midnight rolls
+          // around. schedule() handles the next-midnight anchor on success.
+          retry();
+          return;
+        }
+        schedule();
+      })();
+    }, RETRY_MS);
   }
 
   function schedule(): void {
@@ -102,7 +138,7 @@ export function scheduleDailyBackup(handle: DbHandle, opts: BackupOpts): BackupH
           process.stderr.write(`[backup] failed: ${(e as Error).message}\n`);
           // Transient failure (disk full, permission glitch): retry in 1h
           // instead of waiting another 24h.
-          timer = setTimeout(schedule, 60 * 60 * 1000);
+          retry();
           return;
         }
         schedule();

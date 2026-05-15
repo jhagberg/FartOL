@@ -11,14 +11,14 @@
 // - .planning/phases/01-single-laptop-training-mvp/01-17-PLAN.md task 1
 // - REQ-OPS-003 (daily SQLite backup)
 
-import { describe, test, beforeEach, afterEach } from 'node:test';
+import { describe, test, beforeEach, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, mkdtempSync, rmSync, readdirSync, statSync, utimesSync } from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 
 import { openDatabase, type DbHandle } from '../db/index.ts';
-import { scheduleDailyBackup, nextMidnightMs } from './daily.ts';
+import { scheduleDailyBackup, nextMidnightMs, formatLocalDate } from './daily.ts';
 
 interface Ctx {
   handle: DbHandle;
@@ -161,6 +161,95 @@ describe('scheduleDailyBackup', () => {
       await assert.rejects(() => backup.runNow(), /closed|database/i);
     } finally {
       backup.stop();
+    }
+  });
+
+  test('test 6 (WR-001): transient failure at midnight retries runOnce after 1h, not the next midnight', async () => {
+    // Pin "now" to 2026-05-15 23:30 local so the first midnight tick is 30 min away.
+    const startNow = new Date(2026, 4, 15, 23, 30, 0, 0).getTime();
+    let currentNow = startNow;
+    const fixedClock = { now: (): number => currentNow };
+
+    // Stub handle.sqlite.backup: first call rejects (simulated transient
+    // failure), subsequent calls resolve immediately without touching disk.
+    // We intentionally do NOT forward to the real backup — the WR-001
+    // assertion is about retry TIMING (1h vs 24h), not about producing a
+    // backup artifact. Avoiding native I/O keeps the test fast and prevents
+    // a libuv-worker leak past test teardown.
+    let backupCalls = 0;
+    const originalBackup = ctx.handle.sqlite.backup.bind(ctx.handle.sqlite);
+    ctx.handle.sqlite.backup = ((dest: string) => {
+      backupCalls += 1;
+      void dest;
+      if (backupCalls === 1) {
+        return Promise.reject(new Error('simulated transient disk failure'));
+      }
+      return Promise.resolve(undefined as never);
+    }) as typeof ctx.handle.sqlite.backup;
+
+    mock.timers.enable({ apis: ['setTimeout'] });
+    const backup = scheduleDailyBackup(ctx.handle, {
+      backupDir: ctx.backupDir,
+      testClock: fixedClock,
+    });
+    try {
+      // Advance to local midnight (30 min). The scheduled callback fires
+      // runOnce → backup throws → retry() arms a 1h setTimeout.
+      currentNow += 30 * 60 * 1000;
+      mock.timers.tick(30 * 60 * 1000);
+      // Drain microtasks so the rejected promise's catch runs.
+      await new Promise<void>((r) => setImmediate(r));
+      assert.equal(backupCalls, 1, 'first attempt fired at midnight');
+
+      // Advance by 1h — the retry timer fires runOnce again. The core
+      // WR-001 assertion is that runOnce was invoked a SECOND time after
+      // 1h, not 24h. Poll briefly so the stub records the call before we
+      // tear the scheduler down (the actual native backup may still be in
+      // flight on a libuv worker, which is fine — we don't assert on the
+      // file because the goal is the retry timing, not the backup itself).
+      currentNow += 60 * 60 * 1000;
+      mock.timers.tick(60 * 60 * 1000);
+      const deadline = Date.now() + 2000;
+      while (backupCalls < 2 && Date.now() < deadline) {
+        await new Promise<void>((r) => setImmediate(r));
+      }
+      assert.equal(backupCalls, 2, 'retry ran runOnce after 1h, not after 24h');
+    } finally {
+      // Order: stop the scheduler (clears pending timers) BEFORE reset so
+      // mock.timers.reset doesn't accidentally fire any leftover armed
+      // mocked timer (e.g. the post-success schedule() for next midnight).
+      backup.stop();
+      mock.timers.reset();
+      ctx.handle.sqlite.backup = originalBackup;
+    }
+  });
+
+  test('test 7 (WR-002): formatLocalDate returns the LOCAL calendar date, not the UTC date', () => {
+    // Construct dates via LOCAL components — formatLocalDate must report
+    // those same components, even when toISOString() would shift the day.
+    const localMidnightPlus30 = new Date(2026, 4, 16, 0, 30, 0, 0);
+    assert.equal(formatLocalDate(localMidnightPlus30), '2026-05-16');
+
+    // Zero-padding sanity check: January 5th.
+    const earlyJan = new Date(2026, 0, 5, 0, 0, 0, 0);
+    assert.equal(formatLocalDate(earlyJan), '2026-01-05');
+
+    // Regression assertion: in any TZ east of UTC (Stockholm is +1/+2),
+    // toISOString() of local-midnight would report the PREVIOUS day. The
+    // local formatter must NOT do that. We assert the date components match
+    // the local-constructed source regardless of the test runner's TZ.
+    const localMidnight = new Date(2026, 4, 16, 0, 0, 0, 0);
+    const offsetMin = localMidnight.getTimezoneOffset();
+    if (offsetMin < 0) {
+      // East of UTC — toISOString slice would yield the previous day.
+      // This is the original bug; verify the fix returns local day.
+      const utcDay = localMidnight.toISOString().slice(0, 10);
+      assert.notEqual(utcDay, '2026-05-16', 'precondition: UTC day differs in east-of-UTC TZs');
+      assert.equal(formatLocalDate(localMidnight), '2026-05-16');
+    } else {
+      // In UTC or west-of-UTC test runners we can't reproduce the drift,
+      // but the local-component round-trip still proves correctness.
+      assert.equal(formatLocalDate(localMidnight), '2026-05-16');
     }
   });
 });

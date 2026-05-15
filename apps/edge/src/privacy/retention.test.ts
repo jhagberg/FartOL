@@ -16,7 +16,7 @@
 // - .planning/phases/01-single-laptop-training-mvp/01-17-PLAN.md task 2
 // - REQ-PRIV-002
 
-import { describe, test, beforeEach, afterEach } from 'node:test';
+import { describe, test, beforeEach, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { eq, count } from 'drizzle-orm';
 
@@ -24,7 +24,7 @@ import { openDatabase, type DbHandle } from '../db/index.ts';
 import { ensureNodeId } from '../db/node-id.ts';
 import { competitions, classes, competitors, events } from '../db/schema.ts';
 import { insertEvent } from '../si/eventInserter.ts';
-import { scheduleDailyRetention } from './retention.ts';
+import { scheduleDailyRetention, formatLocalDate } from './retention.ts';
 
 interface Ctx {
   handle: DbHandle;
@@ -278,5 +278,95 @@ describe('scheduleDailyRetention', () => {
     const payload = eventRow.payload as { event_type: string; competitor_id: string };
     assert.equal(payload.event_type, 'card_bound');
     assert.equal(payload.competitor_id, competitorId);
+  });
+
+  test('test 6 (WR-001): transient failure at midnight retries runOnce after 1h, not the next midnight', async () => {
+    // Seed an old competition so a successful runOnce produces a scrub.
+    seedCompetition(ctx, {
+      id: 'comp-retry',
+      date: '2026-03-01',
+      competitorName: 'Retry Person',
+      club: 'Retry IK',
+      cardNumber: 999,
+    });
+
+    // Pin local clock at 2026-05-15 23:30 — 30 min to local midnight.
+    const startNow = new Date(2026, 4, 15, 23, 30, 0, 0).getTime();
+    let currentNow = startNow;
+    const fixedClock = { now: (): number => currentNow };
+
+    // Stub handle.db.update to throw on the first call only. Subsequent
+    // calls forward to the real drizzle update chain.
+    let updateCalls = 0;
+    const originalUpdate = ctx.handle.db.update.bind(ctx.handle.db);
+    ctx.handle.db.update = ((table: Parameters<typeof originalUpdate>[0]) => {
+      updateCalls += 1;
+      if (updateCalls === 1) {
+        // Return a chain whose terminal .run() throws synchronously.
+        const thrower = (): never => {
+          throw new Error('simulated transient SQLite lock');
+        };
+        return {
+          set: () => ({ where: () => ({ run: thrower }) }),
+        } as unknown as ReturnType<typeof originalUpdate>;
+      }
+      return originalUpdate(table);
+    }) as typeof ctx.handle.db.update;
+
+    mock.timers.enable({ apis: ['setTimeout'] });
+    const retention = scheduleDailyRetention(ctx.handle, {
+      retentionDays: 30,
+      testClock: fixedClock,
+    });
+    try {
+      // Advance 30 min → local midnight. runOnce throws; retry arms 1h timer.
+      currentNow += 30 * 60 * 1000;
+      mock.timers.tick(30 * 60 * 1000);
+      // Drain microtasks so the catch handler installs the retry timer.
+      for (let i = 0; i < 5; i++) await new Promise<void>((r) => setImmediate(r));
+      assert.equal(updateCalls, 1, 'first attempt fired at midnight');
+
+      // Advance 1h. The retry must invoke runOnce again (not skip a day).
+      currentNow += 60 * 60 * 1000;
+      mock.timers.tick(60 * 60 * 1000);
+      for (let i = 0; i < 5; i++) await new Promise<void>((r) => setImmediate(r));
+      assert.equal(updateCalls, 2, 'retry ran runOnce after 1h, not after 24h');
+
+      // The second attempt actually scrubbed the seeded row.
+      const row = ctx.handle.db
+        .select()
+        .from(competitors)
+        .where(eq(competitors.id, 'competitor-comp-retry'))
+        .get();
+      assert.equal(row?.name, 'Anonymiserad', 'retry actually scrubbed the row');
+    } finally {
+      // Order: stop scheduler (clears pending timers) BEFORE mock.reset to
+      // avoid leaking the post-success next-midnight setTimeout.
+      retention.stop();
+      mock.timers.reset();
+      ctx.handle.db.update = originalUpdate;
+    }
+  });
+
+  test('test 7 (WR-002): formatLocalDate returns the LOCAL calendar date, not the UTC date', () => {
+    // Dates constructed via LOCAL components — formatter must return the
+    // same components even when toISOString() would shift the day.
+    const localMidnightPlus30 = new Date(2026, 4, 16, 0, 30, 0, 0);
+    assert.equal(formatLocalDate(localMidnightPlus30), '2026-05-16');
+
+    // Zero-padding sanity check.
+    const earlyJan = new Date(2026, 0, 5, 0, 0, 0, 0);
+    assert.equal(formatLocalDate(earlyJan), '2026-01-05');
+
+    // In any east-of-UTC TZ (Stockholm is +1/+2), local-midnight's UTC day
+    // is the PREVIOUS calendar day. Original bug used that UTC day for the
+    // retention cutoff; verify the fix returns the local day.
+    const localMidnight = new Date(2026, 4, 16, 0, 0, 0, 0);
+    const offsetMin = localMidnight.getTimezoneOffset();
+    if (offsetMin < 0) {
+      const utcDay = localMidnight.toISOString().slice(0, 10);
+      assert.notEqual(utcDay, '2026-05-16', 'precondition: UTC day differs in east-of-UTC TZs');
+    }
+    assert.equal(formatLocalDate(localMidnight), '2026-05-16');
   });
 });
