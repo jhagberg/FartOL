@@ -25,6 +25,14 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Build cross-workspace type deps before typecheck.
+      # @fartol/shared-types imports from @fartol/sportident which
+      # publishes types via package.json `exports → ./dist/index.d.ts`.
+      # A fresh CI checkout has no dist/, so typecheck must run after
+      # at least sportident has been built. Apps consume the same
+      # surface via the workspace dep — building sportident here also
+      # stabilises their typecheck.
+      - run: pnpm --filter @fartol/sportident build
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
