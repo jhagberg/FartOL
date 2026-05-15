@@ -65,17 +65,17 @@ This is the hardest single technical milestone. Everything else is
   - [x] 01-05-PLAN.md — Wave 1: XML importer (Purple Pen + IOF 3.0 EntryList + CourseData), XSD validation, T-FILE-IMPORT mitigation
   - [x] 01-06-PLAN.md — Wave 2: SI bridge wiring (SiMainStation → events table + WS broadcast); bench-replay tests
   - [x] 01-07-PLAN.md — Wave 2: Pure reducer (CompetitionState) + DNF/MP detection + idempotency tests
-  - [ ] 01-08-PLAN.md — Wave 3: ProjectionStore + WS results: channel + GET /api/competitions/:id/results
-  - [ ] 01-09-PLAN.md — Wave 3: Card-to-competitor matching index + retroactive auto-bind + readout endpoint
-  - [ ] 01-10-PLAN.md — Wave 3: Manual-DNF / un-DNF REST + walk-up replace-card path
-  - [ ] 01-11-PLAN.md — Wave 4: SvelteKit app shell + design tokens (oklch) + i18n (sv/en port) + TweaksPanel + UI primitives
-  - [ ] 01-12-PLAN.md — Wave 4: HomeView + three-click wizard + DropZone + wizard e2e
-  - [ ] 01-13-PLAN.md — Wave 4: ReadoutView (live WS) + 6 receipt templates + Skogis procedural SVG + readout e2e
-  - [ ] 01-14-PLAN.md — Wave 4: Walk-up modal + live results view + fullscreen + walkup/results e2e
-  - [ ] 01-15-PLAN.md — Wave 4: ESC/POS thermal driver (node-thermal-printer) + 6 template renderers + auto-print wiring
-  - [ ] 01-16-PLAN.md — Wave 5: IOF XML 3.0 ResultList export + XSD validation + export page + export e2e
-  - [ ] 01-17-PLAN.md — Wave 5: Daily SQLite backup (cron-in-process) + 30-day REQ-PRIV-002 retention scrub + admin endpoints
-  - [ ] 01-18-PLAN.md — Wave 5: Single-binary packaging (npm install -g fartol) + systemd + udev + install-smoke + manual bench checkpoint
+  - [x] 01-08-PLAN.md — Wave 3: ProjectionStore + WS results: channel + GET /api/competitions/:id/results
+  - [x] 01-09-PLAN.md — Wave 3: Card-to-competitor matching index + retroactive auto-bind + readout endpoint
+  - [x] 01-10-PLAN.md — Wave 3: Manual-DNF / un-DNF REST + walk-up replace-card path
+  - [x] 01-11-PLAN.md — Wave 4: SvelteKit app shell + design tokens (oklch) + i18n (sv/en port) + TweaksPanel + UI primitives
+  - [x] 01-12-PLAN.md — Wave 4: HomeView + three-click wizard + DropZone + wizard e2e
+  - [x] 01-13-PLAN.md — Wave 4: ReadoutView (live WS) + 6 receipt templates + Skogis procedural SVG + readout e2e
+  - [x] 01-14-PLAN.md — Wave 4: Walk-up modal + live results view + fullscreen + walkup/results e2e
+  - [x] 01-15-PLAN.md — Wave 4: ESC/POS thermal driver (node-thermal-printer) + 6 template renderers + auto-print wiring
+  - [x] 01-16-PLAN.md — Wave 5: IOF XML 3.0 ResultList export + XSD validation + export page + export e2e
+  - [x] 01-17-PLAN.md — Wave 5: Daily SQLite backup (cron-in-process) + 30-day REQ-PRIV-002 retention scrub + admin endpoints
+  - [x] 01-18-PLAN.md — Wave 5: Single-binary packaging (npm install -g fartol) + systemd + udev + install-smoke + manual bench checkpoint
 
 Phase 1 deferrals (explicit per CONTEXT.md):
 - REQ-STD-003 (IOF XML 2.0.3 read) → Phase 2 — Purple Pen + IOF 3.0 EntryList cover Phase 1 needs
