@@ -246,6 +246,30 @@ describe('apps/edge ws plugin', () => {
     assert.equal(rejected, true, 'foreign-origin upgrade must surface unexpected-response/error');
   });
 
+  test('test 4b (CR-001): Origin: http://127.0.0.1:3000 (packaged prod SPA) is accepted at upgrade', async () => {
+    const ws = new WebSocket(ctx.url, { headers: { Origin: 'http://127.0.0.1:3000' } });
+    let opened = false;
+    let rejected = false;
+    await new Promise<void>((resolve) => {
+      ws.once('open', () => {
+        opened = true;
+        resolve();
+      });
+      ws.once('unexpected-response', () => {
+        rejected = true;
+        resolve();
+      });
+      ws.once('error', () => {
+        rejected = true;
+        resolve();
+      });
+      setTimeout(resolve, 500);
+    });
+    assert.equal(rejected, false, 'packaged-prod loopback origin must not be 403d');
+    assert.equal(opened, true, 'packaged-prod loopback origin must complete WS handshake');
+    ws.close();
+  });
+
   test('test 5 (C-M1 regression gate): results: hello emits ZERO replay + exactly ONE results_full', async () => {
     // Seed competition + class + course + competitor so the projection has
     // content (plan 08 amends the plan-03 stub which emitted zero frames).

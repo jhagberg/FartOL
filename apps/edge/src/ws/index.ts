@@ -78,6 +78,11 @@ const ORIGIN_ALLOW_LIST = new Set([
   // SvelteKit preview, useful for ad-hoc local prod-build verification:
   'http://localhost:4173',
   'http://127.0.0.1:4173',
+  // Packaged production SPA — served same-origin as the API + WS on :3000
+  // (CR-001). Loopback only; T-WS-FAN-OUT still blocks non-loopback hosts.
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://[::1]:3000',
 ]);
 
 function isOriginAllowed(origin: string | undefined): boolean {
