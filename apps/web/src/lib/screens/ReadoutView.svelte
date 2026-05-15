@@ -51,7 +51,7 @@
   import { tweaks } from '$lib/stores/tweaks.svelte.ts';
   import { bridgeStatus } from '$lib/stores/bridgeStatus.svelte.ts';
   import { WsClient } from '$lib/ws/client.ts';
-  import { readoutChannel, type WsEnvelope } from '@fartol/shared-types';
+  import { readoutChannel, resultsChannel, type WsEnvelope } from '@fartol/shared-types';
   import type {
     CompetitionDTO,
     ClassDTO,
@@ -281,6 +281,7 @@
         : `ws://${window.location.host}/ws`;
     wsClient = new WsClient(wsUrl, handleWs);
     wsClient.preSubscribe(readoutChannel(competitionId));
+    wsClient.preSubscribe(resultsChannel(competitionId));
     wsClient.connect();
   }
 
