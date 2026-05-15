@@ -315,8 +315,16 @@ const main = async (): Promise<void> => {
 import { fileURLToPath } from 'node:url';
 import { realpathSync } from 'node:fs';
 
+// Entrypoint detection that works in both bundle formats. In the ESM bundle,
+// `import.meta.url` is the resolved file URL. In the CJS bundle, tsup polyfills
+// `import.meta` to `{}` (so `.url` is undefined and `fileURLToPath` throws);
+// the CJS-native check `require.main === module` is the canonical signal there.
 const isEntrypoint = ((): boolean => {
   if (!process.argv[1]) return false;
+  // CJS bundle: tsup injects `require`/`module` per node's module wrapper.
+  if (typeof require !== 'undefined' && typeof module !== 'undefined' && require.main === module) {
+    return true;
+  }
   try {
     return realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1]);
   } catch {
