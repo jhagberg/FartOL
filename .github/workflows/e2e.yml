@@ -1,0 +1,43 @@
+name: e2e
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  playwright:
+    name: Playwright (Chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enable Corepack (pins pnpm from package.json `packageManager`)
+        run: corepack enable && corepack prepare --activate
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Build cross-workspace type deps — see ci.yml for the rationale.
+      - run: pnpm --filter @fartol/sportident build
+      - name: Install Playwright browsers (Chromium only)
+        run: pnpm exec playwright install --with-deps chromium
+      # webServer entries in playwright.config.ts spawn edge + web dev
+      # servers automatically; CI=1 forces fresh boots (no
+      # reuseExistingServer). --workers=1 mirrors the local CI invocation
+      # we documented in WR-005.
+      - name: Run Playwright suite
+        env:
+          CI: '1'
+        run: pnpm exec playwright test --workers=1
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14

@@ -25,6 +25,14 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # ShellCheck the install/dev/build scripts. The package + smoke
+      # path ships these to operators; a regression here lands on
+      # someone's laptop. Strict mode rejects warnings as errors.
+      - name: ShellCheck install/dev/build scripts
+        run: |
+          shellcheck --severity=warning \
+            scripts/*.sh \
+            apps/edge/scripts/*.sh
       # Build cross-workspace type deps before typecheck.
       # @fartol/shared-types imports from @fartol/sportident which
       # publishes types via package.json `exports → ./dist/index.d.ts`.

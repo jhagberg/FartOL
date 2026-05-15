@@ -1,0 +1,39 @@
+name: security
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # Weekly sweep on the default branch so newly-disclosed CVEs
+    # surface even when the codebase is idle.
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  trivy:
+    name: Trivy (filesystem + deps)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      # SHA pin per advisory GHSA-69fq-xp46-6x23 — supply-chain hardening.
+      # 0.36.0 release; bump explicitly when upgrading.
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          severity: CRITICAL,HIGH
+          # Fail the build on CRITICAL/HIGH. False positives can be
+          # silenced via .trivyignore at repo root.
+          exit-code: '1'
+          # Skip generated build artefacts + design sketches.
+          skip-dirs: |
+            node_modules
+            **/dist
+            **/build
+            **/.svelte-kit
+            .planning/phases/*/01-SKETCHES
