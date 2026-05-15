@@ -1,0 +1,15 @@
+node_modules/
+dist/
+coverage/
+pnpm-lock.yaml
+
+# GSD planning files use specific list/indent structure that the GSD CLI
+# parser depends on; prettier reformats break `roadmap.analyze` and
+# adjacent parsers. Skip them.
+.planning/ROADMAP.md
+
+# NDJSON fixture outputs — one JSON object per line, NOT valid JSON-the-file-
+# format. Prettier treats them as JSON and rejects multi-object content. They
+# are bench truth (committed as captured); never reformat.
+packages/sportident/tests/fixtures/jonas/*.expected.json
+

@@ -1,0 +1,29 @@
+import { defineConfig } from 'tsup';
+
+export default defineConfig({
+  entry: ['src/index.ts', 'src/bin/fartol-readout.ts', 'src/bin/fartol-trainer.ts'],
+  format: ['esm', 'cjs'],
+  dts: true,
+  sourcemap: true,
+  clean: true,
+  target: 'node22',
+  splitting: false,
+  outDir: 'dist',
+  // outExtension (codex review #12): explicit .mjs/.cjs so package.json bin and
+  // exports paths resolve to actual files on disk. Plan 05 may extend this with
+  // shebang handling for the bin entry, but the extension contract is locked here.
+  outExtension({ format }) {
+    return { js: format === 'esm' ? '.mjs' : '.cjs' };
+  },
+  // IN-001 (codex review 2026-05-13): the CJS bundle parses `import.meta.url`
+  // (from the createRequire shim in SerialTransport.ts) but doesn't reach it at
+  // runtime — the CR-001 fix guards via `typeof import.meta`. esbuild warns
+  // anyway. Silence only this specific warning so genuine future warnings stay
+  // visible.
+  esbuildOptions(options) {
+    options.logOverride = {
+      ...options.logOverride,
+      'empty-import-meta': 'silent',
+    };
+  },
+});

@@ -1,0 +1,46 @@
+{
+  "name": "@fartol/sportident",
+  "version": "0.0.0",
+  "description": "Node.js library for reading SPORTident orienteering cards via BSM7/8-USB",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jonashagberg/FartOL.git",
+    "directory": "packages/sportident"
+  },
+  "files": [
+    "dist/",
+    "LICENSE",
+    "NOTICE.md",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "bin": {
+    "fartol-readout": "./dist/bin/fartol-readout.cjs",
+    "fartol-trainer": "./dist/bin/fartol-trainer.cjs"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev:readout": "node src/bin/fartol-readout.ts",
+    "dev:record": "node --enable-source-maps src/bin/fartol-readout.ts --record",
+    "dev:replay": "node --enable-source-maps src/bin/fartol-readout.ts --replay",
+    "dev:trainer": "node --enable-source-maps src/bin/fartol-trainer.ts",
+    "test": "node --test --test-reporter=spec 'src/**/*.test.ts'",
+    "test:watch": "node --test --watch --test-reporter=spec 'src/**/*.test.ts'",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "serialport": "^13.0.0"
+  }
+}

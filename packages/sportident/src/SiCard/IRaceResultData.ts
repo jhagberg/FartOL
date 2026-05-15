@@ -1,0 +1,22 @@
+// Ported from allestuetsmerweh/sportident.js — packages/sportident/src/SiCard/IRaceResultData.ts
+// Upstream: https://github.com/allestuetsmerweh/sportident.js (MIT License)
+// Local modifications: import path `siProtocol` -> `siProtocol.ts` (Node 22 strip-types
+// requires the suffix; root tsconfig has `allowImportingTsExtensions: true`).
+// See packages/sportident/NOTICE.md for cumulative attribution.
+
+import type { SiTimestamp } from '../siProtocol.ts';
+
+export interface IRaceResultData {
+  cardNumber?: number;
+  cardHolder?: { [property: string]: unknown };
+  clearTime?: SiTimestamp;
+  checkTime?: SiTimestamp;
+  startTime?: SiTimestamp;
+  finishTime?: SiTimestamp;
+  punches?: IPunch[];
+}
+
+export interface IPunch {
+  code: number;
+  time: SiTimestamp;
+}
