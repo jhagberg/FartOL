@@ -120,12 +120,13 @@ export default async function registerPrintRoute(
         for (const r of rows) controlCodes.push(r.code);
       }
 
-      // Projection: pull cached state; recompute on cache miss. We need
-      // the per-class result rows to build placeContext + the
-      // CompetitorView. recomputeNow returns null only if the competition
-      // row vanished mid-request — treat as 404.
-      let state = app.projectionStore.get(competitionId);
-      if (state === null) state = app.projectionStore.recomputeNow(competitionId);
+      // Projection: always recompute synchronously before reading state
+      // (C-M2 discipline, matches auto-print path in bridge.ts). A
+      // card_read landing during the markDirty debounce window would
+      // otherwise render the receipt from stale projection state.
+      // recomputeNow returns null only if the competition row vanished
+      // mid-request — treat as 404.
+      const state = app.projectionStore.recomputeNow(competitionId);
       if (state === null) return reply.code(404).send({ error: 'competition_not_found' });
       const view = state.competitors.get(competitor_id);
       if (!view) return reply.code(404).send({ error: 'competitor_not_found' });
