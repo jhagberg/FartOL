@@ -35,10 +35,47 @@
     toStationStatus,
     toWsStatus,
   } from '../lib/stores/bridgeStatus.svelte.ts';
+  import { page } from '$app/state';
+  import { goto } from '$app/navigation';
 
   let { children } = $props();
 
   let tweaksOpen = $state(false);
+
+  // Extract active competition id from the URL when we're inside
+  // /competition/[id]/... The sidebar nav uses this to deep-link to the
+  // readout / results / export views without an extra fetch. When the
+  // user is on /, the active id is null and nav items for views that
+  // require an id fall back to /.
+  const activeCompId = $derived.by(() => {
+    const m = page.url.pathname.match(/^\/competition\/([^/]+)/);
+    return m?.[1] ?? null;
+  });
+
+  // Map URL → sidebar route prop so the active item highlights correctly.
+  const navRoute = $derived.by(() => {
+    const p = page.url.pathname;
+    if (p === '/' || p === '') return 'home';
+    if (p.endsWith('/readout')) return 'readout';
+    if (p.endsWith('/results')) return 'results';
+    if (p.endsWith('/export')) return 'export';
+    return 'home';
+  });
+
+  function handleNavigate(route: string): void {
+    if (route === 'home') {
+      void goto('/');
+      return;
+    }
+    if (activeCompId === null) {
+      // No competition selected — fall back to the home picker.
+      void goto('/');
+      return;
+    }
+    if (route === 'readout') void goto(`/competition/${activeCompId}/readout`);
+    else if (route === 'results') void goto(`/competition/${activeCompId}/results`);
+    else if (route === 'export') void goto(`/competition/${activeCompId}/export`);
+  }
 
   // Mirror the tweaks store onto <html> attributes whenever any preference
   // changes. The accessor patterns (`tweaks.accent` etc.) make Svelte 5's
@@ -56,6 +93,8 @@
 
 <AppShell
   onOpenSettings={() => (tweaksOpen = true)}
+  onNavigate={handleNavigate}
+  route={navRoute}
   stationStatus={toStationStatus(bridgeStatus.value)}
   wsStatus={toWsStatus(bridgeStatus.value)}
 >
