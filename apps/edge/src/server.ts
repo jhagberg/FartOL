@@ -120,6 +120,9 @@ export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyIn
     app.decorate('fartolNodeId', opts.nodeId);
     app.decorate('printerSink', opts.printerSink ?? createStdoutPrinterSink());
     app.decorate('fartolNextLocalSeq', opts.nextLocalSeqFn ?? defaultNextLocalSeq);
+    // Surface the SI bridge connection state to routes (GET /api/bridge/status).
+    // The bin's BridgeLifecycle mutates this; --no-bridge boots stay 'closed'.
+    app.decorate('bridgeState', 'closed');
 
     await app.register(wsPlugin);
 
@@ -195,5 +198,10 @@ declare module 'fastify' {
      * Bridge + dev simulate-read + walk-up POST all call markDirty after
      * mutations; hello handler reads `get/recomputeNow` for results_full. */
     projectionStore: ProjectionStore;
+    /** Current SI bridge transport state. Mutated by the bin's
+     * BridgeLifecycle as the SerialTransport opens/closes/errors. Read by
+     * GET /api/bridge/status so a fresh page-load can prime its
+     * StationCard before any connection_changed envelope arrives. */
+    bridgeState: 'opening' | 'open' | 'closed' | 'error';
   }
 }

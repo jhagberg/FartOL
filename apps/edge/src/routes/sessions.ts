@@ -98,6 +98,10 @@ export default async function registerSessionsRoutes(app: FastifyInstance): Prom
     return reply.code(200).send({ competition_id: null });
   });
 
+  app.get('/api/bridge/status', async () => {
+    return { state: app.bridgeState };
+  });
+
   app.post('/api/sessions/reconnect-bridge', async (_req, reply) => {
     const fn = app.reconnectBridge;
     if (!fn) {

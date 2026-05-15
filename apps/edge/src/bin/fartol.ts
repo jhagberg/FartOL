@@ -230,6 +230,7 @@ class BridgeLifecycle {
     if (this.shutdownRequested) return;
     if (this.openInFlight) return;
     this.openInFlight = true;
+    this.app.bridgeState = 'opening';
     this.app.log.info({ path: this.serialPath }, 'SI bridge open attempt');
     try {
       // Always tear down any prior transport/station before opening a new
@@ -300,12 +301,14 @@ class BridgeLifecycle {
       // the next attempt; we only log here.
       transport.on('error', (err) => {
         this.app.log.warn({ err: errMsg(err) }, 'SI transport error');
+        this.app.bridgeState = 'error';
         if (!this.shutdownRequested && this.transport === transport) {
           this.scheduleReconnect();
         }
       });
       station.on('error', (err: unknown) => {
         this.app.log.warn({ err: errMsg(err) }, 'SI station error');
+        this.app.bridgeState = 'error';
         if (!this.shutdownRequested && this.station === station) {
           this.scheduleReconnect();
         }
@@ -318,7 +321,9 @@ class BridgeLifecycle {
       this.transport = transport;
       this.station = station;
       this.attached = attached;
+      this.app.bridgeState = 'open';
       station.on('connectionChanged', (state) => {
+        this.app.bridgeState = state;
         if (state === 'closed' || state === 'error') {
           if (!this.shutdownRequested && this.station === station) {
             this.scheduleReconnect();
@@ -331,6 +336,7 @@ class BridgeLifecycle {
       await station.readCards();
     } catch (err) {
       this.app.log.warn({ err: errMsg(err) }, 'SI bridge open failed');
+      this.app.bridgeState = 'error';
       this.scheduleReconnect();
     } finally {
       this.openInFlight = false;
@@ -400,6 +406,11 @@ class BridgeLifecycle {
          * doesn't hit EAGAIN "Cannot lock port" on the same path. */
       }
       this.transport = null;
+    }
+    // Reflect teardown if we're not mid-reconnect (scheduleReconnect leaves
+    // 'opening' set for the next attempt).
+    if (this.app.bridgeState !== 'opening') {
+      this.app.bridgeState = 'closed';
     }
   }
 }

@@ -67,6 +67,8 @@
     patchCompetition,
     devSimulateRead,
     printReceipt as apiPrintReceipt,
+    setActiveCompetition,
+    getBridgeStatus,
   } from '$lib/api/client.ts';
   import LatestReadCard from '$lib/components/LatestReadCard.svelte';
   import PunchGrid from '$lib/components/PunchGrid.svelte';
@@ -263,6 +265,27 @@
       pendingUnknownCards = readoutRes.pending_unknown_cards;
       selectedTemplate = compRes.competition.receipt_template;
       autoPrint = compRes.competition.auto_print;
+      // Claim this competition as the bridge's active feed. Without this
+      // the bridge keeps broadcasting card_reads on whichever channel the
+      // last active comp held (e.g. left over from an e2e run), and this
+      // page sits silent.
+      if (!readoutRes.active) {
+        try {
+          await setActiveCompetition(competitionId);
+        } catch {
+          // Soft fail — operator can still toggle from settings.
+        }
+      }
+      // Prime bridgeStatus from the server's current view. Without this the
+      // StationCard sits at 'closed' until the next connection_changed
+      // envelope (which never comes if the bridge opened pre-page-load
+      // for a different active comp).
+      try {
+        const bs = await getBridgeStatus();
+        bridgeStatus.set(bs.state);
+      } catch {
+        // Soft fail.
+      }
     } catch (err) {
       // Surface a transient toast — readout still mounts so the WS
       // can paint the next card_read. Note: in dev this can fire when

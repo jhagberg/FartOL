@@ -436,6 +436,10 @@ export function reconnectBridge(): Promise<{ status: string }> {
   return apiFetch('/api/sessions/reconnect-bridge', { method: 'POST' });
 }
 
+export function getBridgeStatus(): Promise<{ state: 'opening' | 'open' | 'closed' | 'error' }> {
+  return apiFetch('/api/bridge/status');
+}
+
 // ---------------------------------------------------------------------------
 // Dev — Simulate read (gated by FARTOL_DEV=1 server-side)
 // ---------------------------------------------------------------------------
