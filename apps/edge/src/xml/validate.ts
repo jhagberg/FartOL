@@ -57,10 +57,26 @@ export interface XsdValidationResult {
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 // PATTERNS S-5: HERE-based path resolution. Under `tsx` the source lives at
-// apps/edge/src/xml/validate.ts so IOF.xsd is in the same directory; under
-// the published tarball the file ships at dist/xml/IOF.xsd (the build
-// script copies it post-tsup). Both layouts resolve correctly.
-const SCHEMA_PATH = path.join(HERE, 'IOF.xsd');
+// apps/edge/src/xml/validate.ts so IOF.xsd is in the same directory. Under
+// the published tarball produced by scripts/build-tarball.sh, validate.ts
+// is bundled into dist/bin/fartol.cjs and dist/server.{cjs,mjs}, while the
+// XSD lives at dist/xml/IOF.xsd. Plan 18 — probe both layouts so a single
+// bundled binary works whether HERE is the source tree, dist/, or dist/bin/.
+import { existsSync } from 'node:fs';
+function resolveSchemaPath(): string {
+  const candidates = [
+    path.join(HERE, 'IOF.xsd'), // source tree (apps/edge/src/xml/)
+    path.join(HERE, 'xml', 'IOF.xsd'), // dist/  (bundled server)
+    path.join(HERE, '..', 'xml', 'IOF.xsd'), // dist/bin/  (bundled bin)
+  ];
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
+  }
+  // Fall back to the first candidate so the existing readFileSync produces a
+  // clear ENOENT pointing at the source-tree path operators recognise.
+  return candidates[0] as string;
+}
+const SCHEMA_PATH = resolveSchemaPath();
 const SCHEMA_BYTES = readFileSync(SCHEMA_PATH, 'utf8');
 
 const SCHEMA_FILE: XMLFileInfo = {

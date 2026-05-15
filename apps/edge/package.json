@@ -1,17 +1,19 @@
 {
   "name": "@fartol/edge",
-  "version": "0.0.0",
-  "description": "FartOL edge bridge — Fastify HTTP/WS server + SQLite event log + SportIdent bridge",
+  "version": "0.1.0",
+  "description": "FartOL — single-laptop orienteering training MVP (edge bridge + SQLite event log + SPA + SportIdent bridge). Installs the `fartol` binary via `npm install -g`.",
   "license": "AGPL-3.0-or-later",
   "private": true,
   "type": "module",
   "engines": {
     "node": ">=24.0.0"
   },
+  "main": "./dist/server.cjs",
   "exports": {
     ".": {
       "types": "./dist/server.d.ts",
-      "import": "./dist/server.mjs"
+      "import": "./dist/server.mjs",
+      "require": "./dist/server.cjs"
     }
   },
   "bin": {
@@ -24,12 +26,16 @@
     "test:watch": "node --test --watch --test-reporter=spec --import tsx 'src/**/*.test.ts'",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "pack:tarball": "bash scripts/build-tarball.sh"
   },
   "files": [
     "dist",
     "drizzle",
-    "dist/xml/IOF.xsd"
+    "systemd",
+    "udev",
+    "README.md",
+    "NOTICE.md"
   ],
   "dependencies": {
     "@fartol/shared-types": "workspace:*",

@@ -21,6 +21,7 @@
     "test": "pnpm -r --if-present run test",
     "test:quick": "pnpm --filter @fartol/edge test && pnpm --filter @fartol/shared-types test && pnpm --filter @fartol/web test",
     "e2e": "playwright test",
+    "build:fartol": "bash scripts/build-fartol.sh",
     "prepare": "lefthook install"
   },
   "devDependencies": {

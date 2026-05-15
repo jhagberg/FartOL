@@ -5,8 +5,16 @@
 // health route, and the dev routes (when both a dbHandle AND FARTOL_DEV=1
 // are set — registration itself is a no-op in production builds).
 // Installs a setNotFoundHandler that returns { error: 'Not found' } for
-// any unrecognised path. Full SPA fallback (@fastify/static + 200.html)
-// lands in plan 11 once apps/web/build/ exists at install time.
+// API/WS paths and falls through to 200.html for any other path so the
+// SvelteKit SPA router can take over (plan 18 — RESEARCH Pattern 3).
+//
+// Plan 18 — production static-serve wiring: when `opts.staticRoot` resolves
+// to an existing directory (the packaged tarball populates
+// dist/web/ via scripts/build-tarball.sh; in dev the SvelteKit dev server
+// at :5173 serves the SPA so this directory doesn't exist and the static
+// block is skipped), @fastify/static is registered and the not-found
+// handler sends `200.html`. The API/WS prefix check keeps JSON 404s
+// returning for /api/* and /ws.
 //
 // Plan 03 extension: accepts opts.dbHandle + opts.nodeId so the factory
 // can decorate the FastifyInstance for the WS plugin + dev routes.
@@ -28,6 +36,10 @@ import fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import sensible from '@fastify/sensible';
+import fastifyStatic from '@fastify/static';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { registerHealthRoute } from './routes/health.ts';
 import registerDevRoutes from './routes/dev.ts';
@@ -95,6 +107,43 @@ export interface BuildServerOpts {
   /** Plan 08 — projection-store debounce window. Tests inject 0 for
    * synchronous markDirty → recompute → broadcast assertions. */
   projectionDebounceMs?: number;
+  /** Plan 18 — production static-serve root. When set and the directory
+   * exists, @fastify/static serves files from this directory and the
+   * setNotFoundHandler falls back to `200.html` for non-API/non-WS paths
+   * (RESEARCH Pattern 3). In dev the SvelteKit dev server owns the SPA;
+   * this option is undefined so the static block is skipped. The packaged
+   * tarball populates dist/web/ via scripts/build-tarball.sh so the
+   * installed binary auto-detects and serves the SPA. */
+  staticRoot?: string;
+}
+
+/** Default static root resolution for the packaged binary. Mirrors the
+ * dist/ layout produced by scripts/build-tarball.sh — but probes both
+ * `<here>/web` AND `<here>/../web` so the SPA resolves whether server.ts
+ * is bundled into `dist/server.{cjs,mjs}` (sibling `dist/web/`) or
+ * bundled into `dist/bin/fartol.cjs` (parent `dist/web/`). Plan 18 ships
+ * the bin path as the operator entry point; the standalone server entry
+ * is kept for Phase 2 programmatic embedding. Returns undefined in dev
+ * (the source-tree `apps/edge/src/web/` doesn't exist) so SvelteKit's
+ * Vite dev server on :5173 owns the SPA. */
+function defaultStaticRoot(): string | undefined {
+  try {
+    // import.meta.url is the source-file URL under tsx and the bundled
+    // CJS/ESM file URL in production. The CJS bundle path is determined
+    // by tsup's shims:true which polyfills `import.meta.url` via
+    // `__filename`.
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    const candidates = [
+      path.resolve(here, 'web'), // dist/server.cjs sibling
+      path.resolve(here, '..', 'web'), // dist/bin/fartol.cjs parent
+    ];
+    for (const candidate of candidates) {
+      if (existsSync(candidate)) return candidate;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyInstance> {
@@ -182,9 +231,34 @@ export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyIn
 
   await registerHealthRoute(app);
 
-  app.setNotFoundHandler((_request, reply) => {
-    void reply.code(404).send({ error: 'Not found' });
-  });
+  // Plan 18 — production static-serve. The factory accepts an explicit
+  // staticRoot; otherwise defaultStaticRoot() probes `__dirname/web`
+  // (`dist/web/` after the tarball build). When the directory exists the
+  // SPA is served and 404s for non-API/non-WS paths fall back to 200.html
+  // so SvelteKit's client-side router takes over (RESEARCH Pattern 3).
+  // When it doesn't exist (dev, unit tests), we keep the original JSON-404
+  // behaviour so dev tools see a clean 404 instead of an HTML wall.
+  const staticRoot = opts.staticRoot ?? defaultStaticRoot();
+  if (staticRoot !== undefined && existsSync(staticRoot)) {
+    await app.register(fastifyStatic, {
+      root: staticRoot,
+      wildcard: false,
+    });
+    app.setNotFoundHandler((request, reply) => {
+      const url = request.url;
+      if (url.startsWith('/api/') || url === '/ws' || url.startsWith('/ws?')) {
+        void reply.code(404).send({ error: 'Not found' });
+        return;
+      }
+      // Drop the querystring before sendFile; @fastify/static treats the
+      // filename as a path-relative request.
+      void reply.sendFile('200.html');
+    });
+  } else {
+    app.setNotFoundHandler((_request, reply) => {
+      void reply.code(404).send({ error: 'Not found' });
+    });
+  }
 
   return app;
 }
