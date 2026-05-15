@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ResultList xmlns="http://www.orienteering.org/datastandard/3.0" iofVersion="3.0" createTime="2026-05-19T18:30:00.000Z" creator="FartOL test v0.0" status="Complete">
+  <Event>
+    <Name>StorTuna Tisdag</Name>
+    <StartTime>
+      <Date>2026-05-19</Date>
+    </StartTime>
+  </Event>
+  <ClassResult>
+    <Class>
+      <Name>H21</Name>
+    </Class>
+    <PersonResult>
+      <Person>
+        <Name>
+          <Family>Andersson</Family>
+          <Given>Anna</Given>
+        </Name>
+      </Person>
+      <Organisation type="Club">
+        <Name>StorTuna OK</Name>
+      </Organisation>
+      <Result>
+        <Time>720</Time>
+        <Position>1</Position>
+        <Status>OK</Status>
+      </Result>
+    </PersonResult>
+    <PersonResult>
+      <Person>
+        <Name>
+          <Family>Berg</Family>
+          <Given>Bo</Given>
+        </Name>
+      </Person>
+      <Organisation type="Club">
+        <Name>StorTuna OK</Name>
+      </Organisation>
+      <Result>
+        <Time>800</Time>
+        <Status>MissingPunch</Status>
+      </Result>
+    </PersonResult>
+  </ClassResult>
+  <ClassResult>
+    <Class>
+      <Name>D21</Name>
+    </Class>
+    <PersonResult>
+      <Person>
+        <Name>
+          <Family>Carlsson</Family>
+          <Given>Cia</Given>
+        </Name>
+      </Person>
+      <Result>
+        <Status>DidNotFinish</Status>
+      </Result>
+    </PersonResult>
+  </ClassResult>
+</ResultList>
