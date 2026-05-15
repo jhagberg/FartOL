@@ -252,6 +252,26 @@ export function createCompetitor(body: CompetitorCreateInput): Promise<Competito
   return apiFetch<CompetitorDTO>('/api/competitors', { method: 'POST', body });
 }
 
+/** Edit name / club / class / card on an existing competitor row. Distinct
+ * from `confirmConsent` (different PATCH path); operator-driven correction
+ * surface. All fields optional; an empty body is a no-op 200. */
+export interface CompetitorProfilePatch {
+  name?: string;
+  club?: string | null;
+  class_id?: string;
+  card_number?: number | null;
+}
+
+export function editCompetitorProfile(
+  competitorId: string,
+  body: CompetitorProfilePatch
+): Promise<{ ok: true; competitor: CompetitorDTO }> {
+  return apiFetch<{ ok: true; competitor: CompetitorDTO }>(
+    `/api/competitors/${encodeURIComponent(competitorId)}/profile`,
+    { method: 'PATCH', body }
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Consent confirmation (C-M4) — PATCH /api/competitors/:id
 // ---------------------------------------------------------------------------

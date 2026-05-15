@@ -74,6 +74,7 @@
   import HistoryList from '$lib/components/HistoryList.svelte';
   import ReceiptMirror from '$lib/components/ReceiptMirror.svelte';
   import WalkupModal from '$lib/screens/WalkupModal.svelte';
+  import EditCompetitorModal from '$lib/components/EditCompetitorModal.svelte';
   import ConsentConfirmationToast from '$lib/components/ConsentConfirmationToast.svelte';
   import type { ReceiptTemplate } from '$lib/components/receipt-templates/types.ts';
   import {
@@ -132,6 +133,11 @@
    * "Avfärda") so the toast doesn't re-pop on subsequent reads for the
    * same runner. consent_status stays 'pending_first_read' server-side. */
   const dismissedConsentForCompetitorIds: Set<string> = new Set();
+
+  // Edit-competitor modal — non-null = open with that competitor id loaded
+  // from the competitors map. Save flows through editCompetitorProfile
+  // (PATCH /api/competitors/:id/profile) and refetchCompetitors.
+  let editingCompetitorId: string | null = $state(null);
 
   // --- derived UI shapes ----------------------------------------------------
 
@@ -546,6 +552,7 @@
       onWalkup={onWalkupCta}
       onManualDnf={(id, reason) => void onManualDnfHandler(id, reason)}
       onUnDnf={(id) => void onUnDnfHandler(id)}
+      onEdit={(id) => { editingCompetitorId = id; }}
     >
       {#snippet controls()}
         {#if latestReadProp && !latestReadProp.unknown && receiptRead && receiptRead.punches.length > 0}
@@ -643,6 +650,20 @@
       onResolved={onConsentToastResolved}
     />
   {/if}
+
+  <EditCompetitorModal
+    open={editingCompetitorId !== null}
+    competitor={editingCompetitorId ? competitorsById.get(editingCompetitorId) ?? null : null}
+    {classes}
+    onClose={() => { editingCompetitorId = null; }}
+    onSaved={(updated) => {
+      // Refetch so derived shapes (competitorsById, history rows) pick
+      // up the new name/club/class. Single source of truth = server.
+      editingCompetitorId = null;
+      void refetchCompetitors();
+      void refetchReadout();
+    }}
+  />
 </div>
 
 <style>

@@ -56,6 +56,7 @@
     onWalkup?: (cardNumber: number) => void;
     onManualDnf?: (competitorId: string, reason: string) => void;
     onUnDnf?: (competitorId: string) => void;
+    onEdit?: (competitorId: string) => void;
     /** Snippet that renders either PunchGrid or SplitsTable (parent
      * owns the density toggle). */
     controls?: Snippet;
@@ -70,6 +71,7 @@
     onWalkup,
     onManualDnf,
     onUnDnf,
+    onEdit,
     controls,
   }: Props = $props();
 
@@ -189,6 +191,14 @@
         🖨 {t('ro.print')}
       </button>
       {#if read.competitorId}
+        <button
+          type="button"
+          class="btn ghost"
+          data-testid="edit-competitor-btn"
+          onclick={() => read.competitorId && onEdit?.(read.competitorId)}
+        >
+          ✎ {t('ro.edit')}
+        </button>
         <div class="dnf-wrap">
           <button
             type="button"

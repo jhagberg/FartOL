@@ -72,6 +72,8 @@
   "ro.simulate": "Simulera avläsning",
   "ro.dnf": "Bryt",
   "ro.undnf": "Återkalla brytning",
+  "ro.edit": "Redigera",
+  "ro.editTitle": "Redigera deltagare",
 
   "res.title": "Liveresultat",
   "res.all": "Alla",

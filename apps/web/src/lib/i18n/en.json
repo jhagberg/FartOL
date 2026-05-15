@@ -72,6 +72,8 @@
   "ro.simulate": "Simulate read",
   "ro.dnf": "DNF",
   "ro.undnf": "Un-DNF",
+  "ro.edit": "Edit",
+  "ro.editTitle": "Edit competitor",
 
   "res.title": "Live results",
   "res.all": "All",

@@ -84,6 +84,20 @@ const PatchConsentSchema = z.object({
   consent_at_ms: z.number().int().positive(),
 });
 
+// PATCH /api/competitors/:id/profile body schema (this session, not a plan).
+// Operator-driven edits to an existing competitor row — name, club, class
+// assignment, or card number. Each field is optional; an empty body is a
+// 200 no-op. Card-number changes emit a card_bound event so the projection
+// can re-match pending reads to the corrected card.
+const PatchProfileSchema = z
+  .object({
+    name: z.string().trim().min(2).max(200).optional(),
+    club: z.string().trim().max(120).nullable().optional(),
+    class_id: z.string().uuid().optional(),
+    card_number: z.number().int().positive().nullable().optional(),
+  })
+  .strict();
+
 function competitorRowToDTO(row: Competitor): CompetitorDTO {
   return {
     id: row.id,
@@ -442,6 +456,99 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
     app.projectionStore.markDirty(row.competitionId);
 
     return reply.code(200).send({ ok: true, competitor_id: id });
+  });
+
+  // PATCH /api/competitors/:id/profile — operator-driven edits to an existing
+  // competitor (name, club, class_id, card_number). Distinct path from the
+  // consent PATCH above so the C-M4 422 gate stays unambiguous. Validates
+  // (a) competitor exists, (b) any class_id belongs to the same competition,
+  // (c) any new card_number isn't already taken by a different competitor in
+  // the same competition. Card-number changes emit a card_bound event for
+  // projection consistency.
+  app.patch<{ Params: { id: string } }>('/api/competitors/:id/profile', async (req, reply) => {
+    const { id } = req.params;
+    const parsed = PatchProfileSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return reply.code(400).send(issuesToErrors(parsed.error.issues));
+    }
+
+    const row = app.fartolDb.db.select().from(competitors).where(eq(competitors.id, id)).get();
+    if (!row) return reply.code(404).send({ error: 'competitor_not_found' });
+
+    const update: Partial<Competitor> = {};
+    if (parsed.data.name !== undefined) update.name = parsed.data.name;
+    if (parsed.data.club !== undefined) update.club = parsed.data.club;
+    if (parsed.data.class_id !== undefined) {
+      const classRow = app.fartolDb.db
+        .select({ id: classes.id })
+        .from(classes)
+        .where(
+          and(eq(classes.id, parsed.data.class_id), eq(classes.competitionId, row.competitionId))
+        )
+        .get();
+      if (!classRow) {
+        return reply.code(422).send({ error: 'class_not_in_competition' });
+      }
+      update.classId = parsed.data.class_id;
+    }
+    const cardChanged =
+      parsed.data.card_number !== undefined && parsed.data.card_number !== row.cardNumber;
+    if (cardChanged) {
+      const candidate = parsed.data.card_number ?? null;
+      if (candidate !== null) {
+        const clash = app.fartolDb.db
+          .select({ id: competitors.id })
+          .from(competitors)
+          .where(
+            and(
+              eq(competitors.competitionId, row.competitionId),
+              eq(competitors.cardNumber, candidate)
+            )
+          )
+          .get();
+        if (clash && clash.id !== id) {
+          return reply.code(409).send({ error: 'card_already_bound' });
+        }
+      }
+      update.cardNumber = candidate;
+    }
+
+    if (Object.keys(update).length === 0) {
+      return reply.code(200).send({ ok: true, competitor: competitorRowToDTO(row) });
+    }
+
+    const now = Date.now();
+    const newCard = parsed.data.card_number;
+    app.fartolDb.sqlite.transaction(() => {
+      app.fartolDb.db.update(competitors).set(update).where(eq(competitors.id, id)).run();
+      if (cardChanged && typeof newCard === 'number') {
+        const seq = app.fartolNextLocalSeq(app.fartolDb, app.fartolNodeId);
+        app.fartolDb.db
+          .insert(events)
+          .values({
+            nodeId: app.fartolNodeId,
+            localSeq: seq,
+            competitionId: row.competitionId,
+            eventType: 'card_bound',
+            eventTimeMs: now,
+            recordedAtMs: now,
+            payload: {
+              event_type: 'card_bound',
+              competitor_id: id,
+              card_number: newCard,
+              walkup: false,
+              consent_at_ms: row.consentAtMs ?? now,
+            },
+          })
+          .run();
+      }
+    })();
+
+    app.projectionStore.markDirty(row.competitionId);
+
+    const updated = app.fartolDb.db.select().from(competitors).where(eq(competitors.id, id)).get();
+    if (!updated) return reply.code(404).send({ error: 'competitor_not_found' });
+    return reply.code(200).send({ ok: true, competitor: competitorRowToDTO(updated) });
   });
 
   // GET /api/competitions/:id/competitors — list competitors.
