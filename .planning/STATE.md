@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v0.0.1
 milestone_name: milestone
 status: phase-complete
-stopped_at: Phase 1 plans approved (post codex review, 18 plans, 6 waves)
-last_updated: "2026-05-14T10:57:07.901Z"
+stopped_at: Phase 1 shipped — PR #3 https://github.com/jhagberg/FartOL/pull/3 (Codex review CR-001 + WR-001..005 closed; 5 UAT items deferred to bench + Tuesday rehearsal)
+last_updated: '2026-05-15T19:14:00.000Z'
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 24
-  completed_plans: 7
-  percent: 29
+  completed_plans: 25
+  percent: 100
 ---
 
 # STATE
