@@ -19,6 +19,9 @@ fartol.db
 fartol.db-wal
 fartol.db-shm
 
+# Daily SQLite backup snapshots (plan 17 — default dir is ./backups/)
+backups/
+
 # Logs
 *.log
 

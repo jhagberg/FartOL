@@ -45,6 +45,8 @@ import type { PrinterSink } from '../print/sink.ts';
 import { createStdoutPrinterSink } from '../print/stdout-sink.ts';
 import { createNodeThermalPrinterSink, type PrinterTypeId } from '../print/escposDriver.ts';
 import { createCupsPrinterSink } from '../print/cups-sink.ts';
+import { scheduleDailyBackup } from '../backup/daily.ts';
+import { scheduleDailyRetention } from '../privacy/retention.ts';
 
 export interface CliOpts {
   port: number;
@@ -54,6 +56,10 @@ export interface CliOpts {
   noBridge: boolean;
   serialPath: string;
   competitionId: string | null;
+  /** Plan 17 — daily backup directory. Default './backups'. */
+  backupDir: string;
+  /** Plan 17 — retention scrub days (REQ-PRIV-002). Default 30. */
+  retentionDays: number;
 }
 
 export type PrinterConfig =
@@ -109,6 +115,13 @@ Options:
                            after listen. Overrides whatever the config table
                            had persisted from a prior run.
   --allow-lan              Permit non-loopback --bind-host values.
+  --backup-dir <path>      Daily SQLite backup directory (default ./backups).
+                           Snapshots written at local midnight via
+                           db.backup(); last 7 retained, older pruned.
+                           REQ-OPS-003.
+  --retention-days <int>   PII retention window in days (default 30).
+                           Competitor name + club anonymised when the
+                           parent competition's date is older. REQ-PRIV-002.
   --help, -h               Show this help.
 `;
 
@@ -129,6 +142,8 @@ export function parseArgs(argv: string[]): CliOpts {
     noBridge: false,
     serialPath: '/dev/ttyUSB0',
     competitionId: null,
+    backupDir: './backups',
+    retentionDays: 30,
   };
 
   const valueFor = (
@@ -173,6 +188,18 @@ export function parseArgs(argv: string[]): CliOpts {
     } else if (a === '--competition-id' || a.startsWith('--competition-id=')) {
       const { value, consumed } = valueFor('--competition-id', a, i);
       opts.competitionId = value;
+      i += consumed;
+    } else if (a === '--backup-dir' || a.startsWith('--backup-dir=')) {
+      const { value, consumed } = valueFor('--backup-dir', a, i);
+      opts.backupDir = value;
+      i += consumed;
+    } else if (a === '--retention-days' || a.startsWith('--retention-days=')) {
+      const { value, consumed } = valueFor('--retention-days', a, i);
+      const parsed = Number.parseInt(value, 10);
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        throw new Error(`--retention-days must be a positive integer (got: ${value})`);
+      }
+      opts.retentionDays = parsed;
       i += consumed;
     } else if (a === '--allow-lan') {
       opts.allowLan = true;
@@ -480,9 +507,29 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
     void lifecycle.start();
   }
 
+  // Plan 17 — start the daily backup + retention schedulers. Both are cron-
+  // in-process setTimeout chains anchored on next local midnight; they
+  // run independently of the bridge lifecycle. Decorate the app so the
+  // /api/__admin/run-backup-now + /run-retention-now endpoints (FARTOL_DEV
+  // gated) can trigger one-off runs for operators.
+  const backup = scheduleDailyBackup(handle, { backupDir: opts.backupDir });
+  const retention = scheduleDailyRetention(handle, { retentionDays: opts.retentionDays });
+  app.fartolBackup = backup;
+  app.fartolRetention = retention;
+
   const shutdown = async (code: number): Promise<void> => {
     try {
       if (lifecycle) await lifecycle.stop();
+    } catch {
+      /* best-effort */
+    }
+    try {
+      backup.stop();
+    } catch {
+      /* best-effort */
+    }
+    try {
+      retention.stop();
     } catch {
       /* best-effort */
     }
