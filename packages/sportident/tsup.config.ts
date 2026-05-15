@@ -6,7 +6,7 @@ export default defineConfig({
   dts: true,
   sourcemap: true,
   clean: true,
-  target: 'node22',
+  target: 'node24',
   splitting: false,
   outDir: 'dist',
   // outExtension (codex review #12): explicit .mjs/.cjs so package.json bin and

@@ -17,7 +17,7 @@ export default defineConfig({
   dts: true,
   sourcemap: true,
   clean: true,
-  target: 'node22',
+  target: 'node24',
   splitting: false,
   outDir: 'dist',
   outExtension({ format }) {
