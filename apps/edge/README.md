@@ -12,7 +12,7 @@ the long-term vision.
 
 ## Install
 
-**Prerequisites:** Node.js 22 LTS, Linux (Debian/Ubuntu/Fedora/Arch all work).
+**Prerequisites:** Node.js 24 LTS, Linux (Debian/Ubuntu/Fedora/Arch all work).
 The binary uses `better-sqlite3` (prebuilt native binding) and `serialport`
 (also prebuilt) so there's no toolchain requirement.
 
