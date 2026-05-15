@@ -160,6 +160,44 @@ describe('courses REST CRUD', () => {
     assert.equal(res.statusCode, 400);
   });
 
+  test('test 6 (WR-003): POST course with class_id from a DIFFERENT competition → 422', async () => {
+    const compA = await newCompetition(ctx.app, 'A');
+    const compB = await newCompetition(ctx.app, 'B');
+    // Create a class under competition B.
+    const classBRes = await ctx.app.inject({
+      method: 'POST',
+      url: `/api/competitions/${compB}/classes`,
+      payload: { name: 'H21' },
+    });
+    assert.equal(classBRes.statusCode, 201);
+    const classB = (classBRes.json() as { id: string }).id;
+
+    // Attempt to create a course under competition A referencing B's class.
+    const res = await ctx.app.inject({
+      method: 'POST',
+      url: `/api/competitions/${compA}/courses`,
+      payload: {
+        name: 'Cross',
+        class_id: classB,
+        controls: [{ control_code: 31, order_idx: 0 }],
+      },
+    });
+    assert.equal(res.statusCode, 422);
+    const body = res.json() as { errors: { path: string; code: string; message: string }[] };
+    assert.ok(Array.isArray(body.errors));
+    assert.equal(body.errors[0]?.path, 'class_id');
+    assert.equal(body.errors[0]?.code, 'cross_competition');
+
+    // GET competition A's courses should be empty — the cross-comp insert
+    // must not have happened.
+    const listRes = await ctx.app.inject({
+      method: 'GET',
+      url: `/api/competitions/${compA}/courses`,
+    });
+    const list = (listRes.json() as { courses: unknown[] }).courses;
+    assert.equal(list.length, 0);
+  });
+
   test('test 5: classes nested route — POST then GET roundtrip', async () => {
     const compId = await newCompetition(ctx.app);
     const postRes = await ctx.app.inject({

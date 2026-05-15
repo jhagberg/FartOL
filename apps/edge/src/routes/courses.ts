@@ -25,7 +25,7 @@ import crypto from 'node:crypto';
 import { asc, eq, and, inArray } from 'drizzle-orm';
 
 import { CourseCreateInput, type CourseDTO, type CourseControlDTO } from '@fartol/shared-types';
-import { competitions, courses, courseControls, controls } from '../db/schema.ts';
+import { competitions, courses, courseControls, controls, classes } from '../db/schema.ts';
 import { issuesToErrors } from './_zod-errors.ts';
 
 export default async function registerCourses(app: FastifyInstance): Promise<void> {
@@ -91,6 +91,29 @@ export default async function registerCourses(app: FastifyInstance): Promise<voi
       .where(eq(competitions.id, competitionId))
       .get();
     if (!existing) return reply.code(404).send({ error: 'competition not found' });
+
+    // WR-003: If a class_id is supplied, it must belong to THIS competition.
+    // Without this guard, a course under competition A could reference a
+    // class from competition B, which the projection layer indexes by classId
+    // and would misattach/hide course controls in multi-competition databases.
+    if (parsed.data.class_id != null) {
+      const classRow = app.fartolDb.db
+        .select({ id: classes.id })
+        .from(classes)
+        .where(and(eq(classes.id, parsed.data.class_id), eq(classes.competitionId, competitionId)))
+        .get();
+      if (!classRow) {
+        return reply.code(422).send({
+          errors: [
+            {
+              path: 'class_id',
+              code: 'cross_competition',
+              message: 'class_id does not belong to this competition',
+            },
+          ],
+        });
+      }
+    }
 
     const courseId = crypto.randomUUID();
     const ccRowsToInsert: { id: string; courseId: string; controlId: string; orderIdx: number }[] =
