@@ -290,6 +290,26 @@ class BridgeLifecycle {
           };
         },
       });
+      // Codex CR-001: SiMainStation and SerialTransport both extend
+      // EventEmitter and emit 'error' on the wire-level surface. Node
+      // throws (and crashes the edge process) if an EventEmitter emits
+      // 'error' with no listener attached. Wire the listeners BEFORE
+      // transport.open() so a synchronous open-time error is caught
+      // here, not by the unhandledException path. Both listeners route
+      // through scheduleReconnect — the existing backoff chain handles
+      // the next attempt; we only log here.
+      transport.on('error', (err) => {
+        this.app.log.warn({ err: errMsg(err) }, 'SI transport error');
+        if (!this.shutdownRequested && this.transport === transport) {
+          this.scheduleReconnect();
+        }
+      });
+      station.on('error', (err: unknown) => {
+        this.app.log.warn({ err: errMsg(err) }, 'SI station error');
+        if (!this.shutdownRequested && this.station === station) {
+          this.scheduleReconnect();
+        }
+      });
       // Wire reconnect on spontaneous close — but only AFTER successful open,
       // so the teardown that runs at the start of the next openAttempt
       // doesn't re-trigger scheduleReconnect via this listener.
