@@ -402,6 +402,53 @@ export function printReceipt(
 }
 
 // ---------------------------------------------------------------------------
+// Export (plan 16) — IOF XML 3.0 ResultList preview + download URL.
+// ---------------------------------------------------------------------------
+//
+// The preview endpoint returns a JSON summary of the validation pass; the
+// UI uses it to populate the green check / red error box on the export
+// page. The download URL is the GET that the browser navigates to so the
+// `Content-Disposition: attachment` header triggers a native file save.
+
+export type ExportStatus = 'Final' | 'Provisional';
+
+export interface ExportPreviewSummary {
+  class_count: number;
+  person_result_count: number;
+  status: ExportStatus;
+}
+
+export interface ExportPreviewError {
+  line?: number | null;
+  column?: number | null;
+  message: string;
+}
+
+export type ExportPreviewResult =
+  | { valid: true; summary: ExportPreviewSummary }
+  | { valid: false; errors: ExportPreviewError[] };
+
+/** Preview the IOF XML 3.0 export for a competition. Returns valid=true
+ * with summary counts on XSD pass, or valid=false with line-numbered
+ * errors. The download CTA is gated on valid=true. */
+export function exportPreview(
+  competitionId: string,
+  status: ExportStatus
+): Promise<ExportPreviewResult> {
+  return apiFetch<ExportPreviewResult>(
+    `/api/competitions/${encodeURIComponent(competitionId)}/export/preview`,
+    { query: { status } }
+  );
+}
+
+/** Build the download URL for the IOF XML 3.0 export. The browser handles
+ * the actual download via Content-Disposition: attachment; the UI just
+ * navigates to this URL on the CTA click. */
+export function exportDownloadUrl(competitionId: string, status: ExportStatus): string {
+  return `/api/competitions/${encodeURIComponent(competitionId)}/export?format=iof30&status=${status}`;
+}
+
+// ---------------------------------------------------------------------------
 // Clubs (walk-up autocomplete cache)
 // ---------------------------------------------------------------------------
 

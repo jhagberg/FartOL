@@ -43,6 +43,12 @@ export default defineConfig({
         FARTOL_DEV: '1',
         FARTOL_NODE_ID: 'test-node-1',
         FARTOL_DB_PATH: TMP_DB,
+        // Plan 16 e2e: pin the printer sink to stdout so dev simulate-read
+        // doesn't try to render a thermal receipt via CUPS (the default
+        // production sink). The stdout sink writes a JSON envelope to
+        // stdout instead, which matches the walking-skeleton plan-03
+        // contract the rest of the e2e suite was authored against.
+        FARTOL_PRINTER: 'stdout',
       },
     },
     {
