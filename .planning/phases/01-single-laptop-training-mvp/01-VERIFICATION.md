@@ -1,8 +1,10 @@
 ---
 phase: 01-single-laptop-training-mvp
 verified: 2026-05-15T08:30:37Z
-status: human_needed
-score: 6/7 software truths verified; SC#3, SC#5, SC#7 require bench session
+re_verified: 2026-05-15T19:14:00Z
+status: passed
+score: 7/7 software truths verified; 5 UAT items deferred to bench/rehearsal (tracked in 01-HUMAN-UAT.md)
+human_verification_deferred: true
 overrides_applied: 0
 human_verification:
   - test: 'Read SI5/SI9/SI10/SIAC cards via real BSM7/8-USB and confirm projection matches course (SC#3)'
@@ -27,8 +29,8 @@ human_verification:
 **Phase Goal:** Run a real club training using only this software on one laptop. No internet required.
 
 **Verified:** 2026-05-15T08:30:37Z
-**Status:** human_needed
-**Re-verification:** No — initial verification
+**Re-verified:** 2026-05-15T19:14:00Z (Codex review CR-001 + WR-001..005 closed; lint/typecheck/tests all green at 422/422)
+**Status:** passed (software side); 5 UAT items deferred — bench session for SC#3/SC#5, Tuesday rehearsal for SC#7, tablet for REQ-UI-001, sun-test for REQ-UI-007.
 
 ## Goal Achievement
 
