@@ -74,6 +74,8 @@
   "ro.undnf": "Återkalla brytning",
   "ro.edit": "Redigera",
   "ro.editTitle": "Redigera deltagare",
+  "ro.editSave": "Spara",
+  "ro.editSaving": "Sparar…",
 
   "res.title": "Liveresultat",
   "res.all": "Alla",

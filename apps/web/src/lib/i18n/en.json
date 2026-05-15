@@ -74,6 +74,8 @@
   "ro.undnf": "Un-DNF",
   "ro.edit": "Edit",
   "ro.editTitle": "Edit competitor",
+  "ro.editSave": "Save",
+  "ro.editSaving": "Saving…",
 
   "res.title": "Live results",
   "res.all": "All",

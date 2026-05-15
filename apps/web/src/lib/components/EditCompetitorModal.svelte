@@ -99,7 +99,8 @@
       onClose();
     } catch (e) {
       const msg = (e as Error).message ?? '';
-      if (msg.includes('card_already_bound')) error = t('walkup.cardCollision');
+      if (msg.includes('card_already_bound'))
+        error = t('walk.err.cardTaken', { card: parsedCard ?? '' });
       else if (msg.includes('class_not_in_competition')) error = t('err.required');
       else error = t('err.network');
     } finally {
@@ -115,7 +116,7 @@
   {#snippet body()}
     <form class="edit-form" onsubmit={(e) => { e.preventDefault(); void save(); }}>
       <label class="field">
-        <span>{t('walkup.name')}</span>
+        <span>{t('walk.name')}</span>
         <input
           type="text"
           bind:value={name}
@@ -126,7 +127,7 @@
         />
       </label>
       <label class="field">
-        <span>{t('walkup.club')}</span>
+        <span>{t('walk.club')}</span>
         <input
           type="text"
           bind:value={club}
@@ -136,7 +137,7 @@
         />
       </label>
       <label class="field">
-        <span>{t('walkup.class')}</span>
+        <span>{t('walk.class')}</span>
         <select bind:value={classId} data-testid="edit-class">
           {#each classes as cls (cls.id)}
             <option value={cls.id}>{cls.name}</option>
@@ -144,7 +145,7 @@
         </select>
       </label>
       <label class="field">
-        <span>{t('walkup.card')}</span>
+        <span>{t('walk.card')}</span>
         <input
           type="text"
           inputmode="numeric"
@@ -161,7 +162,7 @@
   {/snippet}
   {#snippet foot()}
     <button type="button" class="btn ghost" onclick={close} disabled={saving}>
-      {t('walkup.cancel')}
+      {t('walk.cancel')}
     </button>
     <button
       type="button"
@@ -170,7 +171,7 @@
       disabled={saving}
       onclick={() => void save()}
     >
-      {saving ? t('walkup.saving') : t('walkup.save')}
+      {saving ? t('ro.editSaving') : t('ro.editSave')}
     </button>
   {/snippet}
 </Modal>
