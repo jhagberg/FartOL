@@ -99,9 +99,15 @@ test('live results update via WS results_update on simulate-read', async ({ page
   await expect(page.getByTestId('results-view')).toBeVisible();
   await expect(page.getByTestId('results-table')).toBeVisible();
 
-  // Capture the "Updated" header timestamp before the read so we can
-  // assert it changes on the live update.
-  const updatedBefore = (await page.getByTestId('results-updated').textContent()) ?? '';
+  // Capture the millisecond updatedAtMs hook before the read so we can
+  // assert it changes on the live update. WR-005: the visible header
+  // label is HH:MM:SS only — an update arriving in the same wall-clock
+  // second produces identical visible text and flakes. The
+  // `data-updated-ms` attribute on `[data-testid=results-view]` carries
+  // the underlying millisecond timestamp from `onResultsFull` /
+  // `onResultsUpdate`, which always advances.
+  const view = page.getByTestId('results-view');
+  const updatedBefore = (await view.getAttribute('data-updated-ms')) ?? '';
 
   // Simulate-read Anna's card. The projection recomputes (50ms debounce)
   // and broadcasts results_update on results:<id>.
@@ -111,9 +117,9 @@ test('live results update via WS results_update on simulate-read', async ({ page
   const row = page.getByTestId('results-row-name').filter({ hasText: 'Anna' });
   await expect(row.first()).toBeVisible({ timeout: 5_000 });
 
-  // The "Updated" timestamp refreshed (UI-SPEC §"Live results auto-update").
+  // The millisecond timestamp advanced (UI-SPEC §"Live results auto-update").
   await expect
-    .poll(async () => (await page.getByTestId('results-updated').textContent()) ?? '', {
+    .poll(async () => (await view.getAttribute('data-updated-ms')) ?? '', {
       timeout: 5_000,
     })
     .not.toBe(updatedBefore);

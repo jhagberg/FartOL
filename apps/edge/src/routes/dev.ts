@@ -12,11 +12,16 @@
 //     `insertEvent` helper (apps/edge/src/si/eventInserter.ts) — same path
 //     the real SI bridge uses, so seq + recorded_at_ms semantics are
 //     identical between dev and prod inputs.
-//   - emits a payload in the FULL CardReadEvent shape — start/finish/check/
-//     clear all null (no real card here), card_holder null, punch_count
-//     equal to punches.length. Plan 06 codex C-H2: the wire shape is
-//     consistent with what the real bridge writes; plan 07's reducer needs
-//     no special-case branch for dev payloads.
+//   - emits a payload in the FULL CardReadEvent shape — check/clear always
+//     null (no real card here), card_holder null, punch_count equal to
+//     punches.length. start + finish default to null (→ DNF in the reducer)
+//     but tests that need a non-DNF projected status (e.g. the manual-DNF
+//     flow which has to start from OK/MP to surface the reason input) can
+//     pass them explicitly as HalfDayClock objects in the body. Plan 06
+//     codex C-H2: the wire shape is consistent with what the real bridge
+//     writes; plan 07's reducer needs no special-case branch for dev
+//     payloads. WR-005 (Wave 5 review): the optional start/finish fields
+//     are the seam that lets e2e specs avoid the synthetic-DNF foot-gun.
 //   - broadcasts via WS readout:<competition_id> with seq populated.
 //   - calls printerSink.print() so the stdout sink emits one JSON line.
 //
@@ -39,13 +44,15 @@ import { insertEvent } from '../si/eventInserter.ts';
 import { readoutChannel } from '@fartol/shared-types';
 import { eq } from 'drizzle-orm';
 import type { EventPayload } from '../db/schema.ts';
-import type { NdjsonPunch } from '@fartol/sportident';
+import type { NdjsonPunch, HalfDayClock } from '@fartol/sportident';
 
 interface SimulateReadBody {
   competition_id?: unknown;
   card_number?: unknown;
   card_type?: unknown;
   punches?: unknown;
+  start?: unknown;
+  finish?: unknown;
 }
 
 interface SimulatePunch {
@@ -53,11 +60,33 @@ interface SimulatePunch {
   time_ms: number | null;
 }
 
+function validateHalfDayClock(v: unknown): HalfDayClock | null | undefined {
+  // undefined → field absent (back-compat); null → explicit null; otherwise validate shape.
+  if (v === undefined) return undefined;
+  if (v === null) return null;
+  if (typeof v !== 'object') return undefined;
+  const obj = v as { seconds_in_half_day?: unknown; half_day?: unknown; weekday?: unknown };
+  if (typeof obj.seconds_in_half_day !== 'number' || !Number.isInteger(obj.seconds_in_half_day)) {
+    return undefined;
+  }
+  if (obj.half_day !== 0 && obj.half_day !== 1) return undefined;
+  if (obj.weekday !== null && (typeof obj.weekday !== 'number' || !Number.isInteger(obj.weekday))) {
+    return undefined;
+  }
+  return {
+    seconds_in_half_day: obj.seconds_in_half_day,
+    half_day: obj.half_day,
+    weekday: obj.weekday as number | null,
+  };
+}
+
 function validateBody(body: SimulateReadBody): {
   competition_id: string;
   card_number: number;
   card_type: string;
   punches: SimulatePunch[];
+  start: HalfDayClock | null;
+  finish: HalfDayClock | null;
 } | null {
   if (typeof body.competition_id !== 'string' || body.competition_id.length === 0) return null;
   if (
@@ -79,11 +108,19 @@ function validateBody(body: SimulateReadBody): {
     }
     punches.push({ control_code: pp.control_code, time_ms: pp.time_ms as number | null });
   }
+  // Optional HalfDayClock fields — absent or invalid → null (back-compat with
+  // existing callers that don't send start/finish). Tests that need a
+  // non-DNF projected status (e.g. the manual-DNF reason-input flow) send
+  // both start and finish explicitly.
+  const startRaw = validateHalfDayClock(body.start);
+  const finishRaw = validateHalfDayClock(body.finish);
   return {
     competition_id: body.competition_id,
     card_number: body.card_number,
     card_type: body.card_type,
     punches,
+    start: startRaw === undefined ? null : startRaw,
+    finish: finishRaw === undefined ? null : finishRaw,
   };
 }
 
@@ -137,8 +174,8 @@ export default async function registerDevRoutes(app: FastifyInstance): Promise<v
       event_type: 'card_read',
       card_number: validated.card_number,
       card_type: validated.card_type,
-      start: null,
-      finish: null,
+      start: validated.start,
+      finish: validated.finish,
       check: null,
       clear: null,
       punch_count: punches.length,

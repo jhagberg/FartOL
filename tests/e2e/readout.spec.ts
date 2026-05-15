@@ -112,22 +112,40 @@ async function setup(request: import('@playwright/test').APIRequestContext): Pro
   return { competitionId, annaId: anna?.id ?? null, h21Id: h21?.id ?? null };
 }
 
+interface SimulateReadOpts {
+  /** When true, the synthetic read carries start + finish HalfDayClock
+   * fields so the projection lands in OK/MP (not DNF). The manual-DNF
+   * spec needs this — its assertion is that clicking "Bryt" on a
+   * non-DNF row opens the reason-input popover (WR-005). */
+  withFinish?: boolean;
+}
+
 async function simulateRead(
   request: import('@playwright/test').APIRequestContext,
   competitionId: string,
-  cardNumber: number
+  cardNumber: number,
+  opts: SimulateReadOpts = {}
 ): Promise<void> {
+  const body: Record<string, unknown> = {
+    competition_id: competitionId,
+    card_number: cardNumber,
+    card_type: 'SI10',
+    punches: [
+      { control_code: 31, time_ms: 35_000 },
+      { control_code: 32, time_ms: 78_000 },
+      { control_code: 33, time_ms: 140_000 },
+    ],
+  };
+  if (opts.withFinish === true) {
+    // 10:00:00 start, 10:02:30 finish → 150s elapsed, MP-or-OK projection
+    // (the IOF30 sample course's exact control set is what decides OK vs
+    // MP — either way the projected status is NOT DNF, which is all the
+    // manual-DNF UI flow needs).
+    body['start'] = { seconds_in_half_day: 10 * 3600, half_day: 0, weekday: null };
+    body['finish'] = { seconds_in_half_day: 10 * 3600 + 150, half_day: 0, weekday: null };
+  }
   const res = await request.post(`${BASE}/api/__dev/simulate-read`, {
-    data: {
-      competition_id: competitionId,
-      card_number: cardNumber,
-      card_type: 'SI10',
-      punches: [
-        { control_code: 31, time_ms: 35_000 },
-        { control_code: 32, time_ms: 78_000 },
-        { control_code: 33, time_ms: 140_000 },
-      ],
-    },
+    data: body,
   });
   expect(res.status(), `simulate-read body: ${await res.text()}`).toBe(201);
 }
@@ -175,7 +193,11 @@ test('manual DNF flow flips StatusPill in-place', async ({ page, request }) => {
   await page.goto(`/competition/${competitionId}/readout`);
   await expect(page.getByTestId('readout-view')).toBeVisible();
 
-  await simulateRead(request, competitionId, 7_501_853);
+  // WR-005: the synthetic read must carry start + finish so the reducer's
+  // projected status is NOT already DNF (finish=null → DNF). Without
+  // withFinish=true the LatestReadCard renders the "Återkalla brytning"
+  // un-DNF action instead of the reason-input popover this test asserts.
+  await simulateRead(request, competitionId, 7_501_853, { withFinish: true });
   await expect(page.getByTestId('runner-name').first()).toContainText('Anna Andersson', {
     timeout: 5_000,
   });

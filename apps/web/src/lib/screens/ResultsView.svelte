@@ -253,6 +253,7 @@
   class:res-fs={fullscreen}
   data-testid="results-view"
   data-fullscreen={fullscreen}
+  data-updated-ms={updatedAtMs ?? ''}
 >
   <header class="res-head">
     <h1 class="h0">{t('res.title')}</h1>
