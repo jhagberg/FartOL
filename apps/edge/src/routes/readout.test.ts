@@ -27,7 +27,15 @@ import assert from 'node:assert/strict';
 import { buildServer } from '../server.ts';
 import { openDatabase } from '../db/index.ts';
 import { ensureNodeId } from '../db/node-id.ts';
-import { classes, controls, courses, courseControls, competitors, events } from '../db/schema.ts';
+import {
+  classes,
+  controls,
+  courses,
+  courseControls,
+  competitors,
+  events,
+  hiredCards,
+} from '../db/schema.ts';
 import type { DbHandle } from '../db/index.ts';
 import type { FastifyInstance } from 'fastify';
 
@@ -270,5 +278,108 @@ describe('GET /api/competitions/:id/readout', () => {
     assert.deepEqual(body.history, []);
     assert.equal(body.current_read, null);
     assert.deepEqual(body.pending_unknown_cards, []);
+  });
+
+  // ===========================================================================
+  // Phase 2.0 Plan 02-05 — hired_card_open field on every history row.
+  // Single source of truth for the Hyrbricka finish-readout toast.
+  // ===========================================================================
+
+  test('test 7 (Plan 02-05): card with open hired_cards row gains hired_card_open payload', async () => {
+    seedCompetition(ctx.handle, 'comp-7');
+    // Open rental for card 7501853 (the same card the test competitor holds).
+    ctx.handle.db
+      .insert(hiredCards)
+      .values({
+        competitionId: 'comp-7',
+        cardNumber: 7501853,
+        markedAtMs: 50,
+        returnedAtMs: null,
+        contactName: 'Renter Person',
+        contactPhone: '0701234567',
+        contactEmail: 'renter@example.com',
+        note: 'borrowed @ check-in',
+      })
+      .run();
+    insertCardRead(ctx.handle, ctx.nodeId, 'comp-7', 7501853, 100, 1);
+
+    const res = await ctx.app.inject({
+      method: 'GET',
+      url: '/api/competitions/comp-7/readout',
+    });
+    assert.equal(res.statusCode, 200);
+    const body = res.json() as {
+      history: Array<{
+        card_number: number;
+        hired_card_open: {
+          contact_name: string | null;
+          contact_phone: string | null;
+          contact_email: string | null;
+          note: string | null;
+        } | null;
+      }>;
+    };
+    assert.equal(body.history.length, 1);
+    const row = body.history[0];
+    assert.ok(row);
+    assert.equal(row.card_number, 7501853);
+    assert.ok(row.hired_card_open);
+    assert.equal(row.hired_card_open.contact_name, 'Renter Person');
+    assert.equal(row.hired_card_open.contact_phone, '0701234567');
+    assert.equal(row.hired_card_open.contact_email, 'renter@example.com');
+    assert.equal(row.hired_card_open.note, 'borrowed @ check-in');
+  });
+
+  test('test 7b (Plan 02-05): card with NO open rental has hired_card_open === null (explicit)', async () => {
+    seedCompetition(ctx.handle, 'comp-7b');
+    insertCardRead(ctx.handle, ctx.nodeId, 'comp-7b', 7501853, 100, 1);
+
+    const res = await ctx.app.inject({
+      method: 'GET',
+      url: '/api/competitions/comp-7b/readout',
+    });
+    assert.equal(res.statusCode, 200);
+    const body = res.json() as {
+      history: Array<{
+        card_number: number;
+        hired_card_open: unknown;
+      }>;
+    };
+    assert.equal(body.history.length, 1);
+    const row = body.history[0];
+    assert.ok(row);
+    // Explicit null (not absent) so the web client can branch on
+    // `hired_card_open !== null` without `in` checks.
+    assert.equal('hired_card_open' in row, true);
+    assert.equal(row.hired_card_open, null);
+  });
+
+  test('test 7c (Plan 02-05): RETURNED rental does NOT populate hired_card_open', async () => {
+    seedCompetition(ctx.handle, 'comp-7c');
+    // Card has a hired_cards row but it's been returned — toast should not fire.
+    ctx.handle.db
+      .insert(hiredCards)
+      .values({
+        competitionId: 'comp-7c',
+        cardNumber: 7501853,
+        markedAtMs: 50,
+        returnedAtMs: 75, // returned BEFORE the read
+        contactName: 'Renter Person',
+        contactPhone: '0701234567',
+        contactEmail: null,
+        note: null,
+      })
+      .run();
+    insertCardRead(ctx.handle, ctx.nodeId, 'comp-7c', 7501853, 100, 1);
+
+    const res = await ctx.app.inject({
+      method: 'GET',
+      url: '/api/competitions/comp-7c/readout',
+    });
+    assert.equal(res.statusCode, 200);
+    const body = res.json() as {
+      history: Array<{ hired_card_open: unknown }>;
+    };
+    assert.equal(body.history[0]?.hired_card_open, null);
   });
 });
