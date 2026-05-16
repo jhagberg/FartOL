@@ -10,9 +10,10 @@ orienteer at a real event (training counts).
 ## Phases
 
 - [x] **Phase 0: Hardware proof** — Node.js script reads SI cards via BSM7/BSM8 on Linux, logs structured JSON. (Completed 2026-05-13, tagged `v0.0.1-handshake`.)
-- [ ] **Phase 1: Single-laptop training MVP** — Run a real club training using only this software on one laptop.
-- [ ] **Phase 1.5: Public demo + landing page** — GitHub Pages site with a clickable mock so anyone can test the UI and leave feedback before Phase 2.
-- [ ] **Phase 2: Small sanctioned competition** — Sanctioned competition with 100–200 starters and concurrent operators.
+- [x] **Phase 1: Single-laptop training MVP** — Run a real club training using only this software on one laptop. (Merged to main 2026-05-16 via PR #3.)
+- [x] **Phase 1.5: Public demo + landing page** — GitHub Pages site with a clickable mock so anyone can test the UI and leave feedback. (Merged to main 2026-05-15.)
+- [ ] **Phase 2.0: 4-klubbs MVP (parallel with MeOS)** — Run FartOL as primary registration + readout at a 4-klubbs training on 2026-05-20, with MeOS as parallel safety backup via MIP+MOP sync.
+- [ ] **Phase 2.1: Sanctioned-competition foundations** — Yjs collaborative editing, Eventor entries pull, Eventor results push, spectator live results page, bridge crash recovery hardening, MIP/MOP polish.
 - [ ] **Phase 3: Children's finish, public engagement** — Kids' finish screen, parent notifications, embeddable live widget.
 - [ ] **Phase 4: Multi-arena, radio controls** — Radio controls feeding live punches, multiple WiFi cells, peer-to-peer sync.
 - [ ] **Phase 5: O-ringen scale** — Demonstrable capacity for a five-stage event with 25 000+ starters.
@@ -105,13 +106,27 @@ Phase 1.5 is explicitly non-blocking for Phase 2 — if the StorTuna club is rea
 
 **Future option (out of scope here)**: a Phase 1.6 / Phase 2 follow-up could ship a *real* SvelteKit-mock build to keep the demo pixel-aligned with shipped code. Decide after Phase 1.5 v1 collects feedback.
 
-### Phase 2: Small sanctioned competition
+### Phase 2.0: 4-klubbs MVP (parallel with MeOS)
 
-**Goal**: A sanctioned competition with 100–200 starters and multiple secretariat operators editing concurrently.
+**Goal**: Run a real 4-klubbs training at Stora Tuna OK on Wednesday 2026-05-20 with FartOL as the primary registration + readout system, MeOS running in parallel as a safety backup. Each registration in FartOL pushes to MeOS via MIP so MeOS has the runner if it ever does its own card readback; FartOL receives MeOS's MOP feed so we can recover from a FartOL crash.
 **Depends on**: Phase 1
-**Requirements**: Phase 1 + REQ-UI-008, REQ-STD-004, REQ-OPS-004
+**Requirements**: Phase 1 + REQ-STD-004 (partial — runner DB only, no entries pull/push), REQ-EXT-MEOS-001 (new — MIP/MOP coexistence)
 **Success Criteria** (what must be TRUE):
-  1. Eventor pull (entries) and push (results) works end-to-end.
+  1. 4-klubbs 2026-05-20 runs end-to-end on FartOL; MeOS is alive but never needed.
+  2. Eventor löpardatabasen import works: typing or reading a known SI bricka auto-fills name + klubb in walk-up.
+  3. Every walk-up registration in FartOL shows up in MeOS within ~5 seconds via MIP `<entry>`.
+  4. Hyrbricka flag survives the round-trip: FartOL toast at finish-readout AND MeOS reminder both fire for hired cards.
+  5. Course-only model (no Klasser) works for 4-klubbs's 5-course bundle (Vit / Grön / Gul / Orange / Violett).
+  6. If FartOL is killed mid-event, MeOS-side registrations done during the outage are picked up via MOP on FartOL restart.
+**Plans**: TBD — see `.planning/phases/02-4-klubbs-mvp/02-CONTEXT.md` for the suggested 5–6 plan breakdown; run `/gsd-plan-phase 2` to flesh out.
+
+### Phase 2.1: Sanctioned-competition foundations
+
+**Goal**: A sanctioned competition with 100–200 starters and multiple secretariat operators editing concurrently. Builds on the MIP/MOP substrate from Phase 2.0.
+**Depends on**: Phase 2.0
+**Requirements**: REQ-UI-008, REQ-STD-004 (full pull + push), REQ-OPS-004
+**Success Criteria** (what must be TRUE):
+  1. Eventor entries pull (REQ-STD-004 read) and results push (REQ-STD-004 write) work end-to-end.
   2. Three+ browser clients connected to one edge-bridge.
   3. Yjs collaborative editing of registrations: live cursors, no conflicts.
   4. Spectator-facing live results page on arena WiFi.
@@ -172,13 +187,15 @@ These must be respected throughout, not deferred to a phase:
 
 ## Progress
 
-**Execution Order:** Phases execute in numeric order: 0 → 1 → 2 → 3 → 4 → 5
+**Execution Order:** Phases execute in numeric order: 0 → 1 → 1.5 → 2.0 → 2.1 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 0. Hardware proof | 6/6 | Complete   | 2026-05-13 |
-| 1. Single-laptop training MVP | 0/18 | Not started | - |
-| 2. Small sanctioned competition | 0/TBD | Not started | - |
+| 0. Hardware proof | 6/6 | Complete | 2026-05-13 |
+| 1. Single-laptop training MVP | 18/18 | Complete | 2026-05-16 |
+| 1.5. Public demo + landing page | 3/3 | Complete | 2026-05-15 |
+| 2.0. 4-klubbs MVP (parallel with MeOS) | 0/TBD | Planning | hard deadline 2026-05-20 |
+| 2.1. Sanctioned-competition foundations | 0/TBD | Not started | - |
 | 3. Children's finish, public engagement | 0/TBD | Not started | - |
 | 4. Multi-arena, radio controls | 0/TBD | Not started | - |
 | 5. O-ringen scale | 0/TBD | Not started | - |

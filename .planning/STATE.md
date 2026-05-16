@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v0.0.1
 milestone_name: milestone
-status: phase-complete
-stopped_at: Phase 1 shipped — PR #3 https://github.com/jhagberg/FartOL/pull/3 (Codex review CR-001 + WR-001..005 closed; 5 UAT items deferred to bench + Tuesday rehearsal)
-last_updated: '2026-05-15T19:14:00.000Z'
+status: phase-ready-for-discussion
+stopped_at: Phase 1 + 1.5 merged to main 2026-05-16. Phase 2.0 (4-klubbs MVP) CONTEXT.md written; deadline Wed 2026-05-20.
+last_updated: '2026-05-16T18:30:00.000Z'
 progress:
-  total_phases: 6
-  completed_phases: 2
-  total_plans: 24
-  completed_plans: 25
+  total_phases: 7
+  completed_phases: 3
+  total_plans: 27
+  completed_plans: 27
   percent: 100
 ---
 
@@ -24,12 +24,20 @@ not duplicated here.
 
 ## Current position
 
-Phase: 1 (Single-laptop training MVP) — READY FOR DISCUSSION
-Plan: 0 of TBD
-**Phase:** Phase 1 — Single-laptop training MVP (not yet started)
-**Next concrete action:** Run `/gsd-discuss-phase 1` to gather context for the
-training MVP. Phase 0 is complete and tagged `v0.0.1-handshake` (annotated tag
-created locally; Jonas does the `git push origin v0.0.1-handshake`).
+Phase: 2.0 (4-klubbs MVP — parallel with MeOS) — READY FOR DISCUSSION
+Plan: 0 of TBD (suggested 5–6, see CONTEXT.md)
+**Phase:** Phase 2.0 — 4-klubbs MVP (parallel with MeOS)
+**Hard deadline:** Wednesday **2026-05-20** (4-klubbs training at Stora Tuna OK)
+**Next concrete action:** Run `/gsd-discuss-phase 2` in worktree
+`/home/jonas/src/FartOL-phase-2/` (branch `gsd/phase-2-sanctioned-competition`)
+to refine the CONTEXT.md decisions and resolve the four open questions listed
+there. Then `/gsd-plan-phase 2`. The MeOS protocol research is already done
+(`.planning/research/meos-protocols.md`), the courseData fixture is in
+`docs/2026-05-20 4-klubbs_coursedata.xml`, and Phase 1 (PR #3) merged
+2026-05-16T16:21Z.
+
+**Blocker:** Eventor API key + Stora Tuna OK organisation ID — Jonas has both;
+interactive setup ("paste-into-chat") deferred to execution start.
 
 **Last completed:** Plan 0.1 — Phase 0 gap-closure cycle for codex's post-tag
 deep review. Six of seven review findings addressed across 6 sequential commits
@@ -258,6 +266,23 @@ Resume File: .planning/phases/01-single-laptop-training-mvp/01-01-PLAN.md
 ---
 
 ## Recent changes to plan
+
+- 2026-05-16 — Phase 2 split. Original "Phase 2: Small sanctioned competition"
+  decomposed into **Phase 2.0: 4-klubbs MVP (parallel with MeOS)** (hard deadline
+  Wed 2026-05-20) and **Phase 2.1: Sanctioned-competition foundations** (Yjs +
+  full Eventor + spectator + crash recovery). Drove this from a Wed parallel-run
+  ambition; the 4-klubbs courseData is course-only (Vit/Grön/Gul/Orange/Violett)
+  so we lean on Phase 1's auto-create-class-per-course path with a Bana relabel.
+  MeOS coexistence strategy: MIP `<entry>` push for direktanmälningar (FartOL →
+  MeOS), MOP `<cmp>` receiver for state reconciliation (MeOS → FartOL on FartOL
+  crash). The 2014-era SendPunch TCP and UDP-broadcast protocols are skipped
+  entirely — MIP XSD v3.0 (uploaded 2026-05-14) and MOP v2.0 (March 2025) are
+  the only actively-versioned protocols and cover every documented use case.
+  Hyrbricka handled in both systems independently (FartOL toast at finish-readout
+  + MIP `hired="true"` triggers MeOS reminder). Yjs and QR self-signup deferred
+  to Phase 2.1. CONTEXT.md at `.planning/phases/02-4-klubbs-mvp/02-CONTEXT.md`.
+  ROADMAP.md updated with the split. MeOS protocol research at
+  `.planning/research/meos-protocols.md`.
 
 - 2026-05-13 — Phase 0.1 (gap-closure) COMPLETE. Codex deep review of Phase 0
   HEAD (immediately after v0.0.1-handshake) flagged 3 critical + 3 warning + 1
