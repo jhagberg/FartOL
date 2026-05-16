@@ -29,6 +29,9 @@ backups/
 .env
 .env.*
 !.env.example
+.eventor-env
+.eventor-env.*
+*.secret
 
 # Editor — keep shared extension recommendations, ignore personal settings
 .vscode/settings.json
