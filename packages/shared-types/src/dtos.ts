@@ -239,6 +239,23 @@ export const CompetitorCreateInput = z
      * competitor's card_number (operator-corrected misread) instead of
      * creating a new row. consent_at_ms is preserved. */
     replace_card_for_competitor_id: UUID.optional(),
+    /** Phase 2.0 D-HB-1 / Plan 02-02 — when true, the route ALSO writes
+     * a `hired_cards` row inside the same transaction as the competitor
+     * INSERT. Default false preserves the Phase 1 wire shape exactly. */
+    hired_card: z.boolean().optional().default(false),
+    /** Phase 2.0 D-HB-3 — contact info for the rental. Required when
+     * `hired_card === true` AND at least one of phone OR email must be
+     * non-null non-empty (server-side; the UI also blocks save but the
+     * server is authoritative). */
+    hired_contact: z
+      .object({
+        name: z.string().nullable(),
+        phone: z.string().nullable(),
+        email: z.string().nullable(),
+        note: z.string().nullable(),
+      })
+      .nullable()
+      .optional(),
   })
   .superRefine((val, ctx) => {
     if (val.replace_card_for_competitor_id !== undefined) {
