@@ -34,7 +34,7 @@ jobs:
         run: bash apps/edge/scripts/install-smoke.sh dist/fartol-*.tgz
       - name: Run C-H4 layout regression test
         run: pnpm test:install
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: fartol-tarball
           path: dist/fartol-*.tgz
