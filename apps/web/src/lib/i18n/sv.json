@@ -178,6 +178,15 @@
   "tw.sim.fire": "Avläs nästa kort",
   "tw.font": "Typsnitt",
 
+  "tweaks.eventor.title": "Eventor",
+  "tweaks.eventor.ready": "Eventor: cache OK ({{days}} dagar gammal)",
+  "tweaks.eventor.stale": "Eventor: cachen är gammal — uppdatera när du har internet",
+  "tweaks.eventor.offline": "Eventor: ingen internetkontakt",
+  "tweaks.eventor.no_key": "Eventor: nyckel saknas (EVENTOR_API_KEY)",
+  "tweaks.eventor.refreshing": "Eventor: hämtar...",
+  "tweaks.eventor.unknown": "Eventor: kontrollerar...",
+  "tweaks.eventor.refreshButton": "Uppdatera",
+
   "err.network": "Nätverksfel — försök igen",
   "err.import.invalid": "Filformat stöds inte",
   "err.print.offline": "Skrivaren är offline",

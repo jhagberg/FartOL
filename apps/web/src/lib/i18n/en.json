@@ -178,6 +178,15 @@
   "tw.sim.fire": "Fire next read",
   "tw.font": "Type pair",
 
+  "tweaks.eventor.title": "Eventor",
+  "tweaks.eventor.ready": "Eventor: cache OK ({{days}} days old)",
+  "tweaks.eventor.stale": "Eventor: cache is stale — refresh when online",
+  "tweaks.eventor.offline": "Eventor: no internet connection",
+  "tweaks.eventor.no_key": "Eventor: API key missing (EVENTOR_API_KEY)",
+  "tweaks.eventor.refreshing": "Eventor: refreshing...",
+  "tweaks.eventor.unknown": "Eventor: checking...",
+  "tweaks.eventor.refreshButton": "Refresh",
+
   "err.network": "Network error — please retry",
   "err.import.invalid": "File format not supported",
   "err.print.offline": "Printer is offline",
