@@ -254,6 +254,14 @@ export const competitors = sqliteTable(
     /** REQ-PRIV-002 — set when PII columns nulled by plan 17 daily scrub;
      * non-null indicates an anonymized row. */
     scrubbedAtMs: integer('scrubbed_at_ms'),
+    /** Phase 2.0 D-MOP-3 — origin of this competitor row:
+     * 'walkup'    — created by the operator at the registration desk
+     * 'entrylist' — imported from an IOF XML 3.0 EntryList (Phase 1 plan 05)
+     * 'meos'      — auto-merged from MeOS via MOP receiver (Phase 2 plan 04)
+     * Defaults to 'walkup' so pre-2.0 rows backfill cleanly. */
+    source: text('source', { enum: ['walkup', 'entrylist', 'meos'] })
+      .notNull()
+      .default('walkup'),
   },
   (t) => [
     // D-11 partial unique index: same physical card cannot be bound to two
@@ -315,4 +323,168 @@ export const events = sqliteTable(
     index('idx_events_comp').on(t.competitionId),
     index('idx_events_comp_type').on(t.competitionId, t.eventType),
   ]
+);
+
+// ===========================================================================
+// Phase 2.0 — 4-klubbs MVP extensions (Plan 02-01).
+// ===========================================================================
+//
+// Six new tables landed in migration 0002_phase2.sql so subsequent plans
+// (02 walkup, 03 MIP, 04 MOP, 05 hyrbricka toast) can land without further
+// schema migrations. Locked by:
+//
+// - .planning/phases/02-4-klubbs-mvp/02-CONTEXT.md D-EV-1/2/3 (Eventor
+//   on-boot fetch + 7-day staleness)
+// - .planning/phases/02-4-klubbs-mvp/02-CONTEXT.md D-MOP-1 (shadow
+//   meos_* tables; auto-merge into competitors with source='meos')
+// - .planning/phases/02-4-klubbs-mvp/02-CONTEXT.md D-HB-1 (junction table
+//   hired_cards with compound PK + contact info MeOS lacks)
+// - .planning/adr/0009-eventor-runner-cache.md (PII trade-off for the
+//   national runner DB cache)
+
+// ---------------------------------------------------------------------------
+// eventor_clubs — mutable autocomplete cache of Swedish orienteering clubs.
+// PK = Eventor numeric club id. Populated from /api/export/clubs?version=3.0.
+// FK target for eventor_competitors.club_id.
+// ---------------------------------------------------------------------------
+
+export const eventorClubs = sqliteTable('eventor_clubs', {
+  clubId: integer('club_id').primaryKey(),
+  name: text('name').notNull(),
+  shortName: text('short_name'),
+  /** Display name Eventor recommends for media/results (may be NULL). */
+  mediaName: text('media_name'),
+  /** Parent district / region id (NULL for top-level clubs). */
+  parentId: integer('parent_id'),
+  /** Eventor `modifyTime` parsed to epoch ms; lets cache refresh diff. */
+  modifyDateMs: integer('modify_date_ms').notNull(),
+});
+
+// ---------------------------------------------------------------------------
+// eventor_competitors — national runner cache (~252 919 rows after a full
+// refresh; ~96 918 with SI cards). PK = Eventor numeric person id.
+//
+// PII per REQ-PRIV-002 BUT NOT scrub-eligible — re-fetchable from Eventor
+// any time; ADR-0009 records the trade-off (local-only cache, no
+// phone/email, weekly refresh respects Eventor ToS).
+// ---------------------------------------------------------------------------
+
+export const eventorCompetitors = sqliteTable(
+  'eventor_competitors',
+  {
+    personId: integer('person_id').primaryKey(),
+    /** PII per REQ-PRIV-002 — re-fetchable; NOT scrubbed (ADR-0009). */
+    familyName: text('family_name').notNull(),
+    /** PII per REQ-PRIV-002 — re-fetchable; NOT scrubbed (ADR-0009). */
+    givenName: text('given_name').notNull(),
+    /** Year only (Eventor returns YYYY-01-01); may be NULL when undisclosed. */
+    birthYear: integer('birth_year'),
+    /** 'M' / 'F' / NULL — enum enforced at TS layer; SQL stays text. */
+    sex: text('sex'),
+    /** FK to eventor_clubs.club_id. NULL = orphan (no club affiliation). */
+    clubId: integer('club_id').references(() => eventorClubs.clubId),
+    /** SportIdent card number. NULL for runners without an SI card. */
+    siCard: integer('si_card'),
+    /** Emit card number (parallel Norwegian/legacy system). NULL is common. */
+    emitCard: integer('emit_card'),
+    /** Eventor `modifyTime` parsed to epoch ms. */
+    modifyDateMs: integer('modify_date_ms').notNull(),
+  },
+  (t) => [
+    // Partial UNIQUE index on si_card — the walk-up lookup path. Sub-ms by
+    // card. NULL si_card is allowed multiply (most runners lack one).
+    uniqueIndex('idx_eventor_si_card')
+      .on(t.siCard)
+      .where(sql`${t.siCard} IS NOT NULL`),
+    // Plain index for the name-prefix autocomplete path (operator types
+    // family name, picker resolves Eventor row → pre-fill).
+    index('idx_eventor_name').on(t.familyName, t.givenName),
+  ]
+);
+
+// ---------------------------------------------------------------------------
+// meos_competitors — shadow table mirroring MeOS's <cmp> records (D-MOP-1).
+// Populated by the MOP receiver. NO competition_id FK because MeOS state is
+// scoped to a single bridge session, not per-competition (MeOS doesn't know
+// our UUIDs anyway).
+// ---------------------------------------------------------------------------
+
+export const meosCompetitors = sqliteTable('meos_competitors', {
+  /** MeOS internal id (32-bit integer). */
+  id: integer('id').primaryKey(),
+  name: text('name').notNull(),
+  /** MeOS class id; resolves against meos_classes.id. NULL = unclassed. */
+  classId: integer('class_id'),
+  /** MeOS organisation id; resolves against meos_clubs.id. NULL = unclubbed. */
+  orgId: integer('org_id'),
+  /** MeOS status code (0=Unknown, 1=OK, ...). */
+  statusCode: integer('status_code').notNull().default(0),
+  /** Start time in tenths of a second; NULL if not yet started. */
+  startTimeTenths: integer('start_time_tenths'),
+  /** Running time in tenths of a second; NULL if not yet finished. */
+  runningTimeTenths: integer('running_time_tenths'),
+  /** Bib number (text — MeOS allows alphanumeric). */
+  bib: text('bib'),
+  cardNumber: integer('card_number'),
+  /** Epoch ms of the most recent MOP payload that touched this row. */
+  lastMopUpdateMs: integer('last_mop_update_ms').notNull(),
+});
+
+// ---------------------------------------------------------------------------
+// meos_classes — shadow of MeOS class definitions. Name is the JOIN key for
+// the D-MOP-3 auto-merge (we match MeOS classes against our `classes.name`).
+// ---------------------------------------------------------------------------
+
+export const meosClasses = sqliteTable('meos_classes', {
+  id: integer('id').primaryKey(),
+  name: text('name').notNull(),
+  /** Sort-order hint MeOS provides; NULL when unset. */
+  ord: integer('ord'),
+  lastMopUpdateMs: integer('last_mop_update_ms').notNull(),
+});
+
+// ---------------------------------------------------------------------------
+// meos_clubs — shadow of MeOS organisation definitions.
+// ---------------------------------------------------------------------------
+
+export const meosClubs = sqliteTable('meos_clubs', {
+  id: integer('id').primaryKey(),
+  name: text('name').notNull(),
+  /** ISO 3166-1 alpha-3 country code; NULL = unknown. */
+  nat: text('nat'),
+  lastMopUpdateMs: integer('last_mop_update_ms').notNull(),
+});
+
+// ---------------------------------------------------------------------------
+// hired_cards — D-HB-1 junction table for rental SI cards per competition.
+// Compound PK on (competition_id, card_number) so the same physical card can
+// be loaned at multiple competitions (different events, same hardware) but
+// only ONE open rental per competition.
+//
+// PII per REQ-PRIV-002 — contact_name/phone/email/note are scrubbed by
+// privacy/retention.ts (Plan 06 extension). marked_at_ms / returned_at_ms /
+// card_number are PRESERVED audit trail (hardware ID + timestamps; not PII).
+// ---------------------------------------------------------------------------
+
+export const hiredCards = sqliteTable(
+  'hired_cards',
+  {
+    competitionId: text('competition_id')
+      .notNull()
+      .references(() => competitions.id, { onDelete: 'cascade' }),
+    cardNumber: integer('card_number').notNull(),
+    /** Epoch ms when the operator marked the card as rented. */
+    markedAtMs: integer('marked_at_ms').notNull(),
+    /** Epoch ms when the operator marked the card as returned. NULL = open. */
+    returnedAtMs: integer('returned_at_ms'),
+    /** PII (REQ-PRIV-002 scrub list — Plan 06). */
+    contactName: text('contact_name'),
+    /** PII (REQ-PRIV-002 scrub list — Plan 06). */
+    contactPhone: text('contact_phone'),
+    /** PII (REQ-PRIV-002 scrub list — Plan 06). */
+    contactEmail: text('contact_email'),
+    /** Free-form operator note; may contain PII (REQ-PRIV-002 scrub list). */
+    note: text('note'),
+  },
+  (t) => [primaryKey({ columns: [t.competitionId, t.cardNumber] })]
 );
