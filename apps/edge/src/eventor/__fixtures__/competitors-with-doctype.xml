@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE root [
+  <!ENTITY x "y">
+  <!ENTITY lol "lol">
+  <!ENTITY lol2 "&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;">
+]>
+<CompetitorList iofVersion="3.0" createTime="2026-05-16T20:00:00Z" creator="fartol-test"
+                xmlns="http://www.orienteering.org/datastandard/3.0">
+  <Competitor modifyTime="2024-12-12T09:46:45Z">
+    <Person sex="M">
+      <Id type="Sweden">9999</Id>
+      <Name><Family>Attacker</Family><Given>X</Given></Name>
+    </Person>
+  </Competitor>
+</CompetitorList>
