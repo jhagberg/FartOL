@@ -55,7 +55,7 @@ function WizardPrint() {
             <p className="muted" style={{margin: '0 0 16px'}}>Purple Pen .xml eller IOF XML 3.0 CourseData. Klasser skapas automatiskt.</p>
             <div className="drop-zone has-file">
               <div className="icon">✓</div>
-              <div style={{fontSize: 15, fontWeight: 600}}>Importerad: tisdag-bana-v20.xml</div>
+              <div style={{fontSize: 15, fontWeight: 600}}>Importerad: onsdag-bana-v20.xml</div>
               <div className="mono" style={{fontSize: 12, marginTop: 6, color: 'var(--ok)'}}>Purple Pen · 6 klasser · 47 kontroller</div>
             </div>
             <div style={{marginTop: 16}}>
@@ -125,7 +125,7 @@ function WalkupPrint() {
               </div>
               <div className="field">
                 <label>Klubb</label>
-                <input className="input" defaultValue="StorTuna OK" readOnly />
+                <input className="input" defaultValue="Stora Tuna OK" readOnly />
               </div>
               <div className="field">
                 <label>Klass *</label>

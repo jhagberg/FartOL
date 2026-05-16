@@ -1,7 +1,7 @@
 // Mock data for FartOL prototype
 
 window.MOCK_COMPETITIONS = [
-  { id: 'c1', name: 'Tisdagsträning v.20', date: '2026-05-13', status: 'live', starters: 28, finished: 11 },
+  { id: 'c1', name: 'Onsdagsträning v.20', date: '2026-05-13', status: 'live', starters: 28, finished: 11 },
   { id: 'c2', name: 'Klubbmästerskap 2026', date: '2026-04-22', status: 'done', starters: 64, finished: 64 },
   { id: 'c3', name: 'Vårserie etapp 3', date: '2026-04-08', status: 'done', starters: 41, finished: 39 },
 ];
@@ -38,7 +38,7 @@ window.MOCK_READS = [
   {
     cardNumber: 2078451,
     name: 'Erik Lindqvist',
-    club: 'StorTuna OK',
+    club: 'Stora Tuna OK',
     cls: 'H21',
     readTime: '14:32:11',
     startTime: '13:54:00',
@@ -91,7 +91,7 @@ window.MOCK_READS = [
   {
     cardNumber: 2104883,
     name: 'Mikael Sjöberg',
-    club: 'StorTuna OK',
+    club: 'Stora Tuna OK',
     cls: 'H45',
     readTime: '14:25:17',
     startTime: '13:51:00',
@@ -140,7 +140,7 @@ window.MOCK_READS = [
   {
     cardNumber: 2078122,
     name: 'Johan Berg',
-    club: 'StorTuna OK',
+    club: 'Stora Tuna OK',
     cls: 'H21',
     readTime: '14:18:44',
     startTime: '13:51:00',
@@ -192,41 +192,41 @@ window.MOCK_READS = [
 
 window.MOCK_RESULTS = {
   H21: [
-    { place: 1, name: 'Erik Lindqvist', club: 'StorTuna OK', time: '38:11', status: 'OK' },
-    { place: 2, name: 'Johan Berg', club: 'StorTuna OK', time: '27:44', status: 'OK', note: '(provis.)' },
+    { place: 1, name: 'Erik Lindqvist', club: 'Stora Tuna OK', time: '38:11', status: 'OK' },
+    { place: 2, name: 'Johan Berg', club: 'Stora Tuna OK', time: '27:44', status: 'OK', note: '(provis.)' },
     { place: null, name: 'Anders Norén', club: 'OK Tisaren', time: '—', status: 'PEND' },
-    { place: null, name: 'Lars Hedman', club: 'StorTuna OK', time: '—', status: 'PEND' },
+    { place: null, name: 'Lars Hedman', club: 'Stora Tuna OK', time: '—', status: 'PEND' },
     { place: null, name: 'Patrik Ek', club: 'IK Stern', time: '—', status: 'PEND' },
-    { place: null, name: 'Fredrik Olsson', club: 'StorTuna OK', time: '—', status: 'PEND' },
+    { place: null, name: 'Fredrik Olsson', club: 'Stora Tuna OK', time: '—', status: 'PEND' },
   ],
   D21: [
     { place: 1, name: 'Anna Persson', club: 'IK Stern', time: '31:54', status: 'OK' },
-    { place: null, name: 'Sara Lindgren', club: 'StorTuna OK', time: '—', status: 'PEND' },
+    { place: null, name: 'Sara Lindgren', club: 'Stora Tuna OK', time: '—', status: 'PEND' },
     { place: null, name: 'Maja Sjögren', club: 'OK Tisaren', time: '—', status: 'PEND' },
-    { place: null, name: 'Ida Wahlberg', club: 'StorTuna OK', time: '—', status: 'PEND' },
+    { place: null, name: 'Ida Wahlberg', club: 'Stora Tuna OK', time: '—', status: 'PEND' },
     { place: null, name: 'Hanna Östlund', club: 'IK Stern', time: '—', status: 'PEND' },
   ],
   H45: [
-    { place: null, name: 'Mikael Sjöberg', club: 'StorTuna OK', time: '34:17', status: 'MP' },
-    { place: null, name: 'Per Karlsson', club: 'StorTuna OK', time: '—', status: 'PEND' },
+    { place: null, name: 'Mikael Sjöberg', club: 'Stora Tuna OK', time: '34:17', status: 'MP' },
+    { place: null, name: 'Per Karlsson', club: 'Stora Tuna OK', time: '—', status: 'PEND' },
     { place: null, name: 'Tomas Vik', club: 'OK Tisaren', time: '—', status: 'PEND' },
     { place: null, name: 'Henrik Forss', club: 'IK Stern', time: '—', status: 'PEND' },
   ],
   D45: [
     { place: 1, name: 'Karin Lund', club: 'OK Tisaren', time: '27:03', status: 'OK' },
     { place: 2, name: 'Lena Holm', club: 'IK Stern', time: '26:22', status: 'OK', note: '(provis.)' },
-    { place: null, name: 'Eva Sundberg', club: 'StorTuna OK', time: '—', status: 'PEND' },
+    { place: null, name: 'Eva Sundberg', club: 'Stora Tuna OK', time: '—', status: 'PEND' },
   ],
   HD12: [
     { place: null, name: 'Oskar Lund', club: 'OK Tisaren', time: '—', status: 'PEND' },
-    { place: null, name: 'Stina Berg', club: 'StorTuna OK', time: '—', status: 'PEND' },
+    { place: null, name: 'Stina Berg', club: 'Stora Tuna OK', time: '—', status: 'PEND' },
     { place: null, name: 'Linus Ek', club: 'IK Stern', time: '—', status: 'PEND' },
     { place: null, name: 'Wilma Norén', club: 'OK Tisaren', time: '—', status: 'PEND' },
-    { place: null, name: 'Hugo Sjögren', club: 'StorTuna OK', time: '—', status: 'PEND' },
+    { place: null, name: 'Hugo Sjögren', club: 'Stora Tuna OK', time: '—', status: 'PEND' },
     { place: null, name: 'Alva Holm', club: 'IK Stern', time: '—', status: 'PEND' },
   ],
   'Öppen': [
-    { place: null, name: 'Bengt Andersson', club: 'StorTuna OK', time: '—', status: 'PEND' },
+    { place: null, name: 'Bengt Andersson', club: 'Stora Tuna OK', time: '—', status: 'PEND' },
     { place: null, name: 'Marie Lund', club: '—', time: '—', status: 'PEND' },
     { place: null, name: 'Stefan Hellgren', club: 'OK Tisaren', time: '—', status: 'PEND' },
     { place: null, name: 'Karin Forss', club: '—', time: '—', status: 'PEND' },
@@ -251,6 +251,6 @@ window.CONSENT_BY_CARD = {
 window.MOCK_PENDING_UNKNOWN = [9128344, 9482011];
 
 window.CLUBS = [
-  'StorTuna OK', 'IK Stern', 'OK Tisaren', 'Falu OK', 'Hagaby GoIF',
+  'Stora Tuna OK', 'IK Stern', 'OK Tisaren', 'Falu OK', 'Hagaby GoIF',
   'OK Linné', 'Stora Tuna IK', 'Smedjebackens OK', 'Gagnefs OK', 'Säters SK',
 ];

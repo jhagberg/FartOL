@@ -50,7 +50,7 @@ function HomeView({ t, competitions, onOpenWizard, onOpenCompetition }) {
       <div className="hero">
         <div>
           <h1>{t('home.title')}</h1>
-          <p>StorTuna OK · 2026-05-13</p>
+          <p>Stora Tuna OK · 2026-05-13</p>
         </div>
         <button className="btn primary lg" onClick={onOpenWizard}>+ {t('home.new')}</button>
       </div>
@@ -80,7 +80,7 @@ function HomeView({ t, competitions, onOpenWizard, onOpenCompetition }) {
 
 function NewCompetitionWizard({ t, onCancel, onComplete }) {
   const [step, setStep] = useStateH(1);
-  const [name, setName] = useStateH('Tisdagsträning v.20');
+  const [name, setName] = useStateH('Onsdagsträning v.20');
   const [date, setDate] = useStateH('2026-05-13');
   const [imported, setImported] = useStateH(null);
   const [detecting, setDetecting] = useStateH(false);
@@ -96,7 +96,7 @@ function NewCompetitionWizard({ t, onCancel, onComplete }) {
 
   const importFakeFile = () => {
     setImported({
-      filename: 'tisdag-bana-v20.xml',
+      filename: 'onsdag-bana-v20.xml',
       format: 'Purple Pen',
       classes: 6,
       controls: 47,

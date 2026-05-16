@@ -373,6 +373,28 @@
       display: flex; gap: 14px;
       font-size: 14.5px; line-height: 1.5;
     }
+
+    /* ---------- about / vem bygger ---------- */
+    .about {
+      display: grid;
+      grid-template-columns: 132px 1fr;
+      gap: 28px;
+      align-items: start;
+    }
+    @media (max-width: 720px) {
+      .about { grid-template-columns: 1fr; gap: 16px; justify-items: start; }
+    }
+    .about-avatar {
+      width: 132px; height: 132px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-md);
+      display: block;
+    }
+    .about h2 { margin: 6px 0 12px; font-size: clamp(26px, 3.2vw, 32px); letter-spacing: -0.015em; font-weight: 600; line-height: 1.15; }
+    .about p { margin: 0 0 12px; color: var(--fg); font-size: 16.5px; line-height: 1.6; }
+    .about p:last-child { margin-bottom: 0; }
+    .about .muted { color: var(--fg-muted); font-size: 15px; }
     .callout b { font-weight: 600; }
     .callout-icon {
       font-family: var(--font-mono); font-size: 18px; font-weight: 700;
@@ -435,7 +457,7 @@
           <span style="color: var(--fg-muted);">14:32:11</span>
         </div>
         <div class="row"><span class="label">Bricka</span><span><b style="color: var(--accent-strong); font-size: 18px;">2 078 451</b></span></div>
-        <div class="row"><span><b>Erik Lindqvist</b></span><span>H21 · StorTuna OK</span></div>
+        <div class="row"><span><b>Erik Lindqvist</b></span><span>H21 · Stora Tuna OK</span></div>
         <div class="big">38:11 <span style="font-size: 12px; color: var(--ok); margin-left: 6px; font-weight: 500;">● OK · 1:a</span></div>
         <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 6px;">
           <span style="text-align:center; padding: 6px 0; background: var(--accent-soft); border-radius: 3px; color: var(--accent-strong); font-size: 10px;">31<br><b>0:46</b></span>
@@ -470,7 +492,7 @@
         <span class="callout-icon">!</span>
         <div>
           <b>Var det står:</b> Phase 0 (hårdvarubevis) klar, taggad <code>v0.0.1-handshake</code>.
-          Phase 1 (single-laptop training MVP) — alla 18 planer i mål. Redo för en riktig tisdagsträning hos StorTuna OK. Den här sidan är Phase 1.5.
+          Phase 1 (single-laptop training MVP) — alla 18 planer i mål. Redo för en riktig onsdagsträning hos Stora Tuna OK. Den här sidan är Phase 1.5.
         </div>
       </div>
     </div>
@@ -759,16 +781,24 @@
   <!-- ---------- WHO BUILDS IT ---------- -->
   <section id="om">
     <div class="wrap-narrow">
-      <div class="sec-head">
-        <div class="sec-eyebrow">Vem bygger</div>
-        <h2>Det här är ett fritidsprojekt.</h2>
-        <p>
-          Jonas Hagberg, StorTuna OK. FartOL byggs på lediga kvällar och helger, dels för att jag tror att vi behöver en ny generation tävlingssystem klar innan den nuvarande pensioneras, dels för att SI-protokollet är roligare att läsa specifikationer för än man kan tro.
-        </p>
+      <div class="sec-eyebrow">Vem bygger</div>
+      <div class="about">
+        <a href="https://github.com/jhagberg" target="_blank" rel="noopener" aria-label="Jonas Hagberg på GitHub">
+          <img class="about-avatar" src="https://github.com/jhagberg.png?size=264" width="132" height="132" alt="Jonas Hagberg" loading="lazy" />
+        </a>
+        <div>
+          <h2>Det här är ett fritidsprojekt.</h2>
+          <p>
+            <b>Jonas Hagberg</b> — senior systemutvecklare och certifierad IT-arkitekt på <a href="https://github.com/NBISweden" target="_blank" rel="noopener">@NBISweden</a> till vardags. Springer för <b>Stora Tuna OK</b> och började faktiskt orientera först på <b>Ösa-träffen 2023</b>, så jag är nybörjare i skogen — och rätt mycket av motivationen bakom FartOL är att jag tycker att sekretariatet ofta är där flaskhalsen sitter, inte i banläggningen eller löpningen.
+          </p>
+          <p>
+            FartOL byggs på lediga kvällar och helger, dels för att jag tror att vi behöver en ny generation tävlingssystem klar innan den nuvarande pensioneras, dels för att SI-protokollet är roligare att läsa specifikationer för än man kan tro.
+          </p>
+          <p class="muted">
+            Projektet är pengafritt, AGPL-3.0-licensierat och utan exit-mål. Säg hej via <a href="https://github.com/jhagberg" target="_blank" rel="noopener">GitHub</a> eller öppna en <a href="https://github.com/jhagberg/FartOL/issues" target="_blank" rel="noopener">issue</a> — feedback från riktiga sekretariat och löpare är det enda som styr roadmapen.
+          </p>
+        </div>
       </div>
-      <p style="color: var(--fg-muted); font-size: 15.5px; margin-top: 4px;">
-        Projektet är pengafritt, AGPL-3.0-licensierat och utan exit-mål. Säg hej via <a href="https://github.com/jhagberg" target="_blank" rel="noopener">GitHub</a> eller öppna en <a href="https://github.com/jhagberg/FartOL/issues" target="_blank" rel="noopener">issue</a> — feedback från riktiga sekretariat och löpare är det enda som styr roadmapen.
-      </p>
     </div>
   </section>
 

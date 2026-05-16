@@ -146,7 +146,7 @@ function ExportView({ t }) {
             {showXml ? '▾ ' : '▸ '}{t('exp.preview')}
           </button>
           <span className="faint mono" style={{fontSize: 12, marginLeft: 'auto'}}>
-            tisdagsträning-v20-resultlist.xml · ~{preview ? Math.round(preview.xml.length / 102.4) / 10 : '—'} kB
+            onsdagsträning-v20-resultlist.xml · ~{preview ? Math.round(preview.xml.length / 102.4) / 10 : '—'} kB
           </span>
         </div>
 
@@ -181,12 +181,12 @@ function buildXmlSample(status, classCount, personCount) {
             creator="FartOL v0.1.0-phase1"
             status="${status}">
   <Event>
-    <Id>tisdag-v20</Id>
-    <Name>Tisdagsträning v.20</Name>
+    <Id>onsdag-v20</Id>
+    <Name>Onsdagsträning v.20</Name>
     <StartTime><Date>${today}</Date><Time>17:00:00+02:00</Time></StartTime>
     <Organiser>
       <Id>storTuna-ok</Id>
-      <Name>StorTuna OK</Name>
+      <Name>Stora Tuna OK</Name>
     </Organiser>
     <Form>Individual</Form>
   </Event>
@@ -206,7 +206,7 @@ function buildXmlSample(status, classCount, personCount) {
       </Person>
       <Organisation>
         <Id>storTuna-ok</Id>
-        <Name>StorTuna OK</Name>
+        <Name>Stora Tuna OK</Name>
       </Organisation>
       <Result>
         <StartTime>${today}T13:54:00+02:00</StartTime>

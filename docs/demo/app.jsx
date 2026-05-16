@@ -210,9 +210,9 @@ function App() {
         <div className="topbar">
           <div className="crumb">
             {route === 'home' && <>FartOL / <strong>{t('nav.competitions')}</strong></>}
-            {route === 'readout' && <>FartOL / Tisdagsträning v.20 / <strong>{t('nav.readout')}</strong></>}
-            {route === 'results' && <>FartOL / Tisdagsträning v.20 / <strong>{t('nav.results')}</strong></>}
-            {route === 'export' && <>FartOL / Tisdagsträning v.20 / <strong>{t('nav.export')}</strong></>}
+            {route === 'readout' && <>FartOL / Onsdagsträning v.20 / <strong>{t('nav.readout')}</strong></>}
+            {route === 'results' && <>FartOL / Onsdagsträning v.20 / <strong>{t('nav.results')}</strong></>}
+            {route === 'export' && <>FartOL / Onsdagsträning v.20 / <strong>{t('nav.export')}</strong></>}
           </div>
           <div className="spacer"></div>
           {route === 'readout' && (

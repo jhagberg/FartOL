@@ -808,7 +808,7 @@ function ReceiptMockup({ read, t, tpl = 'classic' }) {
     return (
       <div className="receipt">
         <div className="rcpt-title">{t('rcpt.title')}</div>
-        <div className="rcpt-row"><span>Tisdagsträning</span><span>2026-05-13</span></div>
+        <div className="rcpt-row"><span>Onsdagsträning</span><span>2026-05-13</span></div>
         <div className="rcpt-row"><b>{read.name}</b><span>{read.cardNumber}</span></div>
         <div className="rcpt-row"><span>{read.cls} · {read.club}</span><span>{read.startTime}</span></div>
         <div className="rcpt-sep"></div>
@@ -838,7 +838,7 @@ function ReceiptMockup({ read, t, tpl = 'classic' }) {
     return (
       <div className="receipt">
         <div className="rcpt-title">{t('rcpt.title')}</div>
-        <div className="rcpt-row"><span>Tisdagsträning</span><span>2026-05-13</span></div>
+        <div className="rcpt-row"><span>Onsdagsträning</span><span>2026-05-13</span></div>
         <div className="rcpt-row"><b>{read.name}</b><span>{read.cardNumber}</span></div>
         <div className="rcpt-row"><span>{read.cls} · {read.club}</span><span>{read.startTime}</span></div>
         <div className="rcpt-sep"></div>
@@ -895,7 +895,7 @@ function ReceiptMockup({ read, t, tpl = 'classic' }) {
     return (
       <div className="receipt">
         <div className="rcpt-title">{t('rcpt.title')}</div>
-        <div className="rcpt-row"><span>Tisdagsträning</span><span>2026-05-13</span></div>
+        <div className="rcpt-row"><span>Onsdagsträning</span><span>2026-05-13</span></div>
         <div className="rcpt-row"><b>{read.name}</b><span>{read.cardNumber}</span></div>
         <div className="rcpt-row"><span>{read.cls} · {read.club}</span><span>{read.startTime}</span></div>
         <div className="rcpt-sep"></div>
@@ -937,7 +937,7 @@ function ReceiptMockup({ read, t, tpl = 'classic' }) {
     return (
       <div className="receipt">
         <div className="rcpt-title">{t('rcpt.title')}</div>
-        <div className="rcpt-row"><span>Tisdagsträning</span><span>2026-05-13</span></div>
+        <div className="rcpt-row"><span>Onsdagsträning</span><span>2026-05-13</span></div>
         <div className="rcpt-row"><b>{read.name}</b><span>{read.cardNumber}</span></div>
         <div className="rcpt-row"><span>{read.cls} · {read.club}</span><span>{read.startTime}</span></div>
         <div className="rcpt-sep"></div>
