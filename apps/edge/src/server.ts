@@ -57,6 +57,7 @@ import registerManualRoutes from './routes/manual.ts';
 import registerPrintRoute from './routes/print.ts';
 import registerExportRoutes from './routes/export.ts';
 import registerAdminRoutes from './routes/admin.ts';
+import registerEventorRoutes from './routes/eventor.ts';
 import wsPlugin from './ws/index.ts';
 import type { DbHandle } from './db/index.ts';
 import type { PrinterSink } from './print/sink.ts';
@@ -214,6 +215,9 @@ export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyIn
     await app.register(registerCourses);
     await app.register(registerCompetitors);
     await app.register(registerClubs);
+    // Phase 2.0 Plan 02-02 — Eventor lookup + status (walk-up autocomplete).
+    // Mounted after registerClubs since the lookup parallels clubs autocomplete.
+    await app.register(registerEventorRoutes);
     await app.register(registerImportRoutes);
     await app.register(registerCompetitionsFromWizard);
     // Sessions registers BEFORE dev routes so dev.ts can read
