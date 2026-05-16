@@ -187,7 +187,7 @@ Routing decision: VERIFIED for the ROADMAP-binding portion (ResultList per SC#6)
 
 #### Orphan check
 
-No requirement IDs in `REQUIREMENTS.md` Phase 1 list are unclaimed by any plan AND missing from CONTEXT-documented deferrals. REQ-UI-005 + REQ-STD-003 are CONTEXT-deferred (D-01, D-03). REQ-OPS-004 is ADR-0009-deferred to Phase 2 (not in the in-scope list).
+No requirement IDs in `REQUIREMENTS.md` Phase 1 list are unclaimed by any plan AND missing from CONTEXT-documented deferrals. REQ-UI-005 + REQ-STD-003 are CONTEXT-deferred (D-01, D-03). REQ-OPS-004 is ROADMAP-deferred to Phase 2 (not in the in-scope list).
 
 ### Anti-Patterns Found
 

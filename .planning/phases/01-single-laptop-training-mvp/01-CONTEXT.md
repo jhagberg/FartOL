@@ -14,6 +14,7 @@ Purple Pen course import → SI card read → live results in a browser →
 DNF / MP detection → thermal receipt → IOF XML 3.0 ResultList export.
 
 **In scope (Phase 1):**
+
 - `apps/edge/` Node.js Fastify bridge: serialport (Phase 0 sportident),
   better-sqlite3 event log + Drizzle, REST + WebSocket API, serves the
   built web UI as static assets.
@@ -43,9 +44,10 @@ DNF / MP detection → thermal receipt → IOF XML 3.0 ResultList export.
   WebSocket `/ws`, static SvelteKit build at `/`.
 
 **Out of scope (deferred to later phases):**
+
 - Eventor REST integration (REQ-STD-004) — Phase 2 sanctioned
-  competition. ADR-0009 placed it there; `no-internet-required` ruled
-  it out of Phase 1.
+  competition (per ROADMAP); `no-internet-required` rules it out of
+  Phase 1.
 - IOF XML 2.0.3 read (REQ-STD-003) — deferred; Purple Pen + IOF 3.0
   EntryList cover Phase 1 needs.
 - Multi-operator concurrent editing / Yjs CRDT (REQ-UI-008) — Phase 2.
@@ -182,6 +184,7 @@ Areas where the planner / executor has flexibility:
 </decisions>
 
 <canonical_refs>
+
 ## Canonical References
 
 **Downstream agents MUST read these before planning or implementing.**
@@ -204,9 +207,9 @@ Areas where the planner / executor has flexibility:
 - `.planning/adr/0007-standards-first-interop.md` — IOF XML 3.0
   is foundational; Phase 1 must export valid 3.0 ResultList
   (SC#6, XSD-validated).
-- `.planning/adr/0009-v1-scope-clarification.md` — REQ-STD-004
-  (Eventor), REQ-UI-008 (Yjs multi-op), REQ-OPS-004 (health
-  dashboard) are v1 but land in **Phase 2**, not Phase 1.
+- `.planning/ROADMAP.md` Phase 2 entry — REQ-STD-004 (Eventor),
+  REQ-UI-008 (Yjs multi-op), REQ-OPS-004 (health dashboard) are v1
+  but land in **Phase 2**, not Phase 1.
 
 ### Phase 0 outputs (deps)
 
@@ -235,7 +238,7 @@ Areas where the planner / executor has flexibility:
 
 - `.planning/research/architecture.md` §"Event log schema" —
   SQLite `events` table shape `(node_id, local_seq, event_type,
-  event_time_ms, recorded_at_ms, payload)`. Phase 1 instantiates
+event_time_ms, recorded_at_ms, payload)`. Phase 1 instantiates
   this schema for the first time.
 - `.planning/research/architecture.md` §"Tech stack — chosen" —
   Fastify, better-sqlite3, SvelteKit, node-escpos.
@@ -267,6 +270,7 @@ Areas where the planner / executor has flexibility:
 </canonical_refs>
 
 <code_context>
+
 ## Existing Code Insights
 
 ### Reusable Assets
@@ -346,7 +350,7 @@ Areas where the planner / executor has flexibility:
 
 - **Eventor REST API pull + result push** (REQ-STD-004) — Phase 2
   sanctioned competition. Pull-only-in-prep is tempting for
-  Phase 1 but ADR-0009 deliberately placed it in Phase 2 and
+  Phase 1 but ROADMAP deliberately places it in Phase 2 and
   "no internet required" rules it out.
 - **QR-receipt path** (REQ-UI-005) — Phase 2. Lightweight; not
   blocked by Phase 1 work.
@@ -377,5 +381,5 @@ discussion time.
 
 ---
 
-*Phase: 1-Single-laptop-training-mvp*
-*Context gathered: 2026-05-13*
+_Phase: 1-Single-laptop-training-mvp_
+_Context gathered: 2026-05-13_
