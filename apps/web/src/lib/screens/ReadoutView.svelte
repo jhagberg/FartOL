@@ -70,6 +70,7 @@
     setActiveCompetition,
     getBridgeStatus,
     lookupEventorBySiCard,
+    returnHiredCard,
   } from '$lib/api/client.ts';
   import type { EventorLookupHit } from '@fartol/shared-types';
   import LatestReadCard from '$lib/components/LatestReadCard.svelte';
@@ -80,6 +81,7 @@
   import WalkupModal from '$lib/screens/WalkupModal.svelte';
   import EditCompetitorModal from '$lib/components/EditCompetitorModal.svelte';
   import ConsentConfirmationToast from '$lib/components/ConsentConfirmationToast.svelte';
+  import HyrbrickaToast from '$lib/components/HyrbrickaToast.svelte';
   import type { ReceiptTemplate } from '$lib/components/receipt-templates/types.ts';
   import {
     type ReadoutResponse,
@@ -183,6 +185,23 @@
    * "Avfärda") so the toast doesn't re-pop on subsequent reads for the
    * same runner. consent_status stays 'pending_first_read' server-side. */
   const dismissedConsentForCompetitorIds: Set<string> = new Set();
+
+  // Phase 2.0 Plan 02-05 — Hyrbricka finish-readout toast state. Set when
+  // a card_read resolves to a row whose hired_card_open is non-null AND
+  // the operator hasn't already returned/dismissed for this card this
+  // session.
+  let pendingHyrbrickaToast: {
+    cardNumber: number;
+    contactName: string | null;
+    contactPhone: string | null;
+    contactEmail: string | null;
+    note: string | null;
+  } | null = $state(null);
+  /** Per-session set of card_numbers the operator has acknowledged (via
+   * Returnerad OR Ignorera). RESEARCH §Assumption A8: Svelte 5's
+   * reactivity on Set mutation is unreliable — use the replacement form
+   * `new Set([...prev, x])` everywhere this is updated. */
+  let returnedHiredCardNumbers: Set<number> = $state(new Set());
 
   // Edit-competitor modal — non-null = open with that competitor id loaded
   // from the competitors map. Save flows through editCompetitorProfile
@@ -424,6 +443,23 @@
         }
         break;
       }
+      case 'hired_card_returned': {
+        // Phase 2.0 plan 02-05: another operator marked this card returned
+        // (typically via the admin "Aktiva hyrbrickor" view). Add it to
+        // our dismissal Set so future card_reads for this card don't
+        // re-pop the toast. Same Set replacement pattern as
+        // onHyrbrickaReturn — Assumption A8.
+        const cn = (payload as { card_number?: number } | null)?.card_number;
+        if (typeof cn === 'number' && Number.isInteger(cn) && cn > 0) {
+          returnedHiredCardNumbers = new Set([...returnedHiredCardNumbers, cn]);
+          // If the toast is currently open for this same card, dismiss it
+          // — the cross-operator return obviates our own pending action.
+          if (pendingHyrbrickaToast && pendingHyrbrickaToast.cardNumber === cn) {
+            pendingHyrbrickaToast = null;
+          }
+        }
+        break;
+      }
       default:
         break;
     }
@@ -483,6 +519,49 @@
         };
       }
     }
+
+    // Phase 2.0 Plan 02-05: surface the Hyrbricka finish-readout toast on
+    // every card_read whose history row has a non-null hired_card_open
+    // payload AND the operator has not already returned/dismissed this
+    // card_number in the session (RESEARCH §"Pattern 6"). The readout
+    // refetch above guarantees `history[0].hired_card_open` is the
+    // authoritative server view.
+    if (
+      top &&
+      top.card_number === cardNumber &&
+      top.hired_card_open !== null &&
+      !returnedHiredCardNumbers.has(cardNumber) &&
+      pendingHyrbrickaToast === null
+    ) {
+      const hco = top.hired_card_open;
+      pendingHyrbrickaToast = {
+        cardNumber,
+        contactName: hco.contact_name,
+        contactPhone: hco.contact_phone,
+        contactEmail: hco.contact_email,
+        note: hco.note,
+      };
+    }
+  }
+
+  async function onHyrbrickaReturn(cardNumber: number): Promise<void> {
+    try {
+      await returnHiredCard(competitionId, cardNumber);
+    } catch (e) {
+      toast(`${t('err.network')} (${(e as Error).message})`);
+      return;
+    }
+    // Set replacement form — Assumption A8 (Svelte 5 mutation reactivity).
+    returnedHiredCardNumbers = new Set([...returnedHiredCardNumbers, cardNumber]);
+    pendingHyrbrickaToast = null;
+    toast(t('readout.hyrbricka.returnedConfirmed'));
+  }
+
+  function onHyrbrickaDismiss(cardNumber: number): void {
+    // Local dismissal — no server PATCH. The card stays open server-side;
+    // the Set-based suppression keeps the toast from re-popping this session.
+    returnedHiredCardNumbers = new Set([...returnedHiredCardNumbers, cardNumber]);
+    pendingHyrbrickaToast = null;
   }
 
   function onConsentToastResolved(action: 'confirmed' | 'dismissed'): void {
@@ -734,6 +813,18 @@
       competitorName={pendingConsentToast.competitorName}
       className={pendingConsentToast.className}
       onResolved={onConsentToastResolved}
+    />
+  {/if}
+
+  {#if pendingHyrbrickaToast}
+    <HyrbrickaToast
+      cardNumber={pendingHyrbrickaToast.cardNumber}
+      contactName={pendingHyrbrickaToast.contactName}
+      contactPhone={pendingHyrbrickaToast.contactPhone}
+      contactEmail={pendingHyrbrickaToast.contactEmail}
+      note={pendingHyrbrickaToast.note}
+      onReturn={onHyrbrickaReturn}
+      onDismiss={onHyrbrickaDismiss}
     />
   {/if}
 

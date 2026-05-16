@@ -40,6 +40,16 @@ export interface ReadoutHistoryRow {
    * Config+). Non-null only on unmatched rows; pre-fills the walk-up
    * name field. Most rental cards have card_holder=null. */
   card_holder_hint: string | null;
+  /** Phase 2.0 Plan 02-05 — non-null when the card_number has an open
+   * hired_cards row in this competition. Drives the Hyrbricka
+   * finish-readout toast. Explicit null when no open rental — the SPA
+   * branches on `hired_card_open !== null` without `in` checks. */
+  hired_card_open: {
+    contact_name: string | null;
+    contact_phone: string | null;
+    contact_email: string | null;
+    note: string | null;
+  } | null;
 }
 
 export interface ReadoutResponse {

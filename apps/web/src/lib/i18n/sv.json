@@ -78,6 +78,15 @@
   "ro.editSaving": "Sparar…",
   "ro.meosMerge": "{{count}} löpare hämtade från MeOS",
 
+  "readout.hyrbricka.title": "⚠️ Hyrbricka — be om att få tillbaka brickan!",
+  "readout.hyrbricka.contact.name": "Kontakt:",
+  "readout.hyrbricka.contact.phone": "Telefon:",
+  "readout.hyrbricka.contact.email": "E-post:",
+  "readout.hyrbricka.contact.note": "Anteckning:",
+  "readout.hyrbricka.returned": "Returnerad",
+  "readout.hyrbricka.dismiss": "Ignorera",
+  "readout.hyrbricka.returnedConfirmed": "Brickan markerad som återlämnad",
+
   "res.title": "Liveresultat",
   "res.all": "Alla",
   "res.place": "Plats",

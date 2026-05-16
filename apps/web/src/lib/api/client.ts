@@ -32,6 +32,8 @@ import type {
   EventorLookupResult,
   EventorNameSuggestion,
   EventorStatusDTO,
+  HiredCardsListResponse,
+  HiredCardReturnResponse,
   HealthDTO,
 } from '@fartol/shared-types';
 
@@ -494,6 +496,35 @@ export function lookupEventorByPrefix(
  * builds (import.meta.env.DEV would be bundler-time and always false). */
 export function getEventorStatus(): Promise<EventorStatusDTO> {
   return apiFetch<EventorStatusDTO>('/api/eventor/status');
+}
+
+// ---------------------------------------------------------------------------
+// Hired cards (Hyrbricka — Phase 2.0 Plan 02-05)
+// ---------------------------------------------------------------------------
+
+/** GET /api/competitions/:id/hired-cards — list open + returned rentals.
+ * Backs the admin "Aktiva hyrbrickor" view; the Hyrbricka finish-readout
+ * toast in ReadoutView reads hired_card_open from the /readout response
+ * instead (single source of truth). */
+export function listHiredCards(competitionId: string): Promise<HiredCardsListResponse> {
+  return apiFetch<HiredCardsListResponse>(
+    `/api/competitions/${encodeURIComponent(competitionId)}/hired-cards`
+  );
+}
+
+/** PATCH /api/competitions/:id/hired-cards/:cardNumber/return — mark the
+ * rental returned. Idempotent: the second call returns
+ * `already_returned: true` with the original timestamp. */
+export function returnHiredCard(
+  competitionId: string,
+  cardNumber: number
+): Promise<HiredCardReturnResponse> {
+  return apiFetch<HiredCardReturnResponse>(
+    `/api/competitions/${encodeURIComponent(competitionId)}/hired-cards/${encodeURIComponent(
+      String(cardNumber)
+    )}/return`,
+    { method: 'PATCH' }
+  );
 }
 
 // ---------------------------------------------------------------------------
