@@ -3,15 +3,19 @@
 
   Wizard step 1 — name + date.
 
-  ISO date input is `<input type="text" pattern="\d{4}-\d{2}-\d{2}">`
-  per UI-SPEC §"Date inputs" (Visual Anchor). The native `<input
-  type="date">` is intentionally NOT used — its UA chrome flickers on
-  mount and the receipt/receipt-mirror render path expects raw
-  YYYY-MM-DD strings, so a single text input avoids the
-  string-vs-Date normalization round-trip.
+  Date uses native `<input type="date">` so mobile / tablet operators
+  get the OS date picker (PR #3 round-4 Gemini feedback — REQ-UI-001
+  cares about Chrome Android tablet ergonomics). The native input
+  serializes its value as `YYYY-MM-DD` already, so the wire shape the
+  receipt-mirror + competitionsFromWizard server-side Zod
+  `/^\d{4}-\d{2}-\d{2}$/` rule expects is preserved without
+  normalization.
 
-  Pattern is hint-only — server-side Zod (`/^\d{4}-\d{2}-\d{2}$/` on
-  competitionsFromWizard.ts) is authoritative.
+  Earlier the plan locked a text+pattern input to avoid Chrome's
+  calendar-icon styling "flicker" — that trade-off is overruled here
+  because the mobile-tablet picker UX is the larger win.
+
+  Server-side Zod stays authoritative on the format.
 
   Locked by:
   - 01-UI-SPEC.md §"Click 1, Click 2, Click 3" + §"Date inputs"
@@ -48,11 +52,8 @@
     <label for="wiz-date">{t('wiz.date')}</label>
     <input
       id="wiz-date"
-      class="input mono"
-      type="text"
-      inputmode="numeric"
-      pattern="\d{4}-\d{2}-\d{2}"
-      placeholder="YYYY-MM-DD"
+      class="input"
+      type="date"
       value={date}
       oninput={(e) => ondatechange((e.currentTarget as HTMLInputElement).value)}
       data-testid="wiz-date"
@@ -93,8 +94,5 @@
     outline: 2px solid var(--accent);
     outline-offset: -1px;
     border-color: var(--accent);
-  }
-  .mono {
-    font-family: var(--font-mono);
   }
 </style>
