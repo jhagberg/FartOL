@@ -46,7 +46,16 @@ export interface KidsBitmapOutput {
  * Exported for unit testing (Task 2b test 3 asserts the SVG contains
  * `stroke="#000"`). The SVG matches the Kids.svelte renderer's visual
  * surface in spirit — body + ears + eyes + accessory — but is a single
- * flat string rather than a Svelte template. */
+ * flat string rather than a Svelte template.
+ *
+ * SAFETY CONTRACT (PR #3 Gemini round-5): every attribute value in the
+ * produced SVG is either a hardcoded literal (`"#fff"`, `"#000"`, `"none"`,
+ * etc.) or a numeric expression derived from `SkogisDescriptor` enum-like
+ * fields (`bodyShape`, `mouth`, `ears`, etc.). NO USER-CONTROLLED STRING
+ * is interpolated into any attribute, so there is no XML-injection
+ * surface. Future refactors that wire user-supplied data (competitor
+ * name, club, etc.) into SVG attributes MUST add escaping (`&` → `&amp;`,
+ * `"` → `&quot;`, `<` → `&lt;`) at the interpolation point. */
 export function descriptorToSvgString(d: SkogisDescriptor): string {
   const W = 200;
   const H = 210;
@@ -147,10 +156,21 @@ export async function generateKidsBitmap(input: KidsBitmapInput): Promise<KidsBi
   const svg = descriptorToSvgString(descriptor);
 
   // Lazy native require — keep sharp out of the module graph for tests
-  // that don't actually rasterise.
+  // that don't actually rasterise. Wrap in try/catch (PR #3 Gemini round-5)
+  // so a missing/broken libvips binding surfaces a readable error instead
+  // of the native-loader stack trace; the operator can then fall back to a
+  // non-kids receipt template.
   const require = createRequire(import.meta.url);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sharp = require('sharp') as (input: Buffer | string) => any;
+  let sharp: (input: Buffer | string) => any;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    sharp = require('sharp') as (input: Buffer | string) => any;
+  } catch (err) {
+    throw new Error(
+      `sharp (libvips) is not available for kids-template rasterisation: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
   const png: Buffer = await sharp(Buffer.from(svg))
     .resize({ width: 384, fit: 'inside' })
     .png({ palette: true })
