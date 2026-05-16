@@ -59,7 +59,9 @@ function makeMockFetch(competitorsBytes: Buffer, clubsBytes: Buffer) {
     calls.push({ url, init });
     // Route by URL suffix.
     const bytes = url.includes('cachedcompetitors') ? competitorsBytes : clubsBytes;
-    return new Response(bytes, {
+    // Wrap in Uint8Array — Buffer extends Uint8Array but Response's BodyInit
+    // type doesn't include Buffer directly.
+    return new Response(new Uint8Array(bytes), {
       status: 200,
       headers: { 'content-type': 'application/zip' },
     });
@@ -142,12 +144,12 @@ describe('ingestEventorCache — bulk-upsert + config marker + rollback', () => 
 
       const rows = handle.db.select().from(eventorCompetitors).all();
       assert.equal(rows.length, 3);
-      const ids = rows.map((r) => r.personId).sort();
+      const ids = rows.map((r) => r.personId).sort((a, b) => a - b);
       assert.deepEqual(ids, [1001, 1002, 1003]);
 
       const clubs = handle.db.select().from(eventorClubs).all();
       assert.equal(clubs.length, 3);
-      const clubIds = clubs.map((c) => c.clubId).sort();
+      const clubIds = clubs.map((c) => c.clubId).sort((a, b) => a - b);
       assert.deepEqual(clubIds, [8, 320, 637]);
 
       const marker = handle.db
@@ -187,7 +189,7 @@ describe('ingestEventorCache — bulk-upsert + config marker + rollback', () => 
         const rows = handle.db.select().from(eventorCompetitors).all();
         // Exactly 2, NOT 5 (TRUNCATE+INSERT semantics).
         assert.equal(rows.length, 2);
-        const ids = rows.map((r) => r.personId).sort();
+        const ids = rows.map((r) => r.personId).sort((a, b) => a - b);
         assert.deepEqual(ids, [2001, 2002]);
       } finally {
         rmSync(tmp, { recursive: true, force: true });
