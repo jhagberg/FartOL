@@ -110,7 +110,7 @@ Phase 1.5 is explicitly non-blocking for Phase 2 — if the StorTuna club is rea
 
 **Goal**: Run a real 4-klubbs training at Stora Tuna OK on Wednesday 2026-05-20 with FartOL as the primary registration + readout system, MeOS running in parallel as a safety backup. Each registration in FartOL pushes to MeOS via MIP so MeOS has the runner if it ever does its own card readback; FartOL receives MeOS's MOP feed so we can recover from a FartOL crash.
 **Depends on**: Phase 1
-**Requirements**: Phase 1 + REQ-STD-004 (partial — runner DB only, no entries pull/push), REQ-EXT-MEOS-001 (new — MIP/MOP coexistence)
+**Requirements**: Phase 1 + REQ-STD-004 (partial — runner DB only, no entries pull/push), REQ-EXT-MEOS-001 (new — MIP/MOP coexistence; entry added to REQUIREMENTS.md by Plan 02-01)
 **Success Criteria** (what must be TRUE):
   1. 4-klubbs 2026-05-20 runs end-to-end on FartOL; MeOS is alive but never needed.
   2. Eventor löpardatabasen import works: typing or reading a known SI bricka auto-fills name + klubb in walk-up.
@@ -118,7 +118,14 @@ Phase 1.5 is explicitly non-blocking for Phase 2 — if the StorTuna club is rea
   4. Hyrbricka flag survives the round-trip: FartOL toast at finish-readout AND MeOS reminder both fire for hired cards.
   5. Course-only model (no Klasser) works for 4-klubbs's 5-course bundle (Vit / Grön / Gul / Orange / Violett).
   6. If FartOL is killed mid-event, MeOS-side registrations done during the outage are picked up via MOP on FartOL restart.
-**Plans**: TBD — see `.planning/phases/02-4-klubbs-mvp/02-CONTEXT.md` for the suggested 5–6 plan breakdown; run `/gsd-plan-phase 2` to flesh out.
+**Plans**: 7 plans
+  - [ ] 02-01-PLAN.md — Wave 0 [BLOCKING]: Drizzle migration 0002 (6 new tables + competitors.source) + Eventor saxes streaming parser + ingest cache + scheduleEventorBoot + admin refresh route + ADR-0009 + REQ-EXT-MEOS-001 entry
+  - [ ] 02-02-PLAN.md — Wave 1: WalkupModal Bana label + Hyrbricka checkbox + Eventor autocomplete (si_card pre-fill + name prefix) + competitors transactional hired_cards write + TweaksPanel Eventor status + walkup-eventor e2e
+  - [ ] 02-02b-PLAN.md — Wave 2: Registration-desk screen (/competition/:id/registration) + cardQueue Svelte rune store (FIFO + dedupe) + cardSubscription shared WS service (refactors ReadoutView WS code) + WalkupModal onClose callback + auto-advance + dedupe toast + registration-queue e2e (added late 2026-05-16 — addresses ReadoutView.svelte:406-414 silent-drop site)
+  - [ ] 02-03-PLAN.md — Wave 1: MIP GET /mip Fastify route + shared.ts (MIP_NS / MOP_NS / normalizers) + mip.xsd v3.0 pinned + XSD round-trip tests + card-replace re-emit verification (D-MIP-1/2/3/4)
+  - [ ] 02-04-PLAN.md — Wave 2: MOP POST /mop Fastify route + mop.xsd v2.0 pinned + transactional shadow-table writes + D-MOP-3 auto-merge + meos_merge WS broadcast + ReadoutView toast
+  - [ ] 02-05-PLAN.md — Wave 2: hiredCards REST (GET list + PATCH return) + readout.ts hired_card_open extension + HyrbrickaToast + ReadoutView Set-based dismissal + ActiveHyrbrickorView admin page + hyrbricka e2e
+  - [ ] 02-06-PLAN.md — Wave 3: retention.ts hired_cards.contact_* scrub + docs/ops/parallel-meos-runbook.md + bench-smoke-phase2.sh + Wednesday-morning bench checkpoint
 
 ### Phase 2.1: Sanctioned-competition foundations
 
@@ -194,8 +201,10 @@ These must be respected throughout, not deferred to a phase:
 | 0. Hardware proof | 6/6 | Complete | 2026-05-13 |
 | 1. Single-laptop training MVP | 18/18 | Complete | 2026-05-16 |
 | 1.5. Public demo + landing page | 3/3 | Complete | 2026-05-15 |
-| 2.0. 4-klubbs MVP (parallel with MeOS) | 0/TBD | Planning | hard deadline 2026-05-20 |
+| 2.0. 4-klubbs MVP (parallel with MeOS) | 0/7 | Planned | hard deadline 2026-05-20 |
 | 2.1. Sanctioned-competition foundations | 0/TBD | Not started | - |
 | 3. Children's finish, public engagement | 0/TBD | Not started | - |
 | 4. Multi-arena, radio controls | 0/TBD | Not started | - |
 | 5. O-ringen scale | 0/TBD | Not started | - |
+</content>
+</invoke>
