@@ -98,6 +98,26 @@ const PatchProfileSchema = z
   })
   .strict();
 
+/** True when err is a SQLite UNIQUE-constraint violation on
+ * competitors.card_number — i.e. the D-11 partial unique index
+ * `competitors_card_per_comp` rejected the write. better-sqlite3 sets
+ * `.code = 'SQLITE_CONSTRAINT_UNIQUE'` and the message includes the
+ * column path.
+ *
+ * Defense in depth for the card_taken race (PR #3 review — Gemini
+ * medium): the pre-flight SELECT is non-transactional, so two
+ * concurrent walk-ups / card replacements could both pass the
+ * collision check before either commits. The partial unique index
+ * still rejects the second write at the SQL layer; this helper lets
+ * the handler convert that into the same structured 409 the pre-flight
+ * path returns, instead of leaking a 500 with a raw SQLite error. */
+function isCardCollisionError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const code = (err as Error & { code?: string }).code;
+  if (code !== 'SQLITE_CONSTRAINT_UNIQUE') return false;
+  return err.message.includes('competitors.card_number');
+}
+
 function competitorRowToDTO(row: Competitor): CompetitorDTO {
   return {
     id: row.id,
@@ -187,38 +207,64 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
       // (5r) Atomic UPDATE + card_bound event. consent_at_ms preserved.
       const now = Date.now();
       let seq: number | null = null;
-      app.fartolDb.sqlite.transaction(() => {
-        app.fartolDb.db
-          .update(competitors)
-          .set({ cardNumber: newCardNumber })
-          .where(eq(competitors.id, target.id))
-          .run();
+      try {
+        app.fartolDb.sqlite.transaction(() => {
+          app.fartolDb.db
+            .update(competitors)
+            .set({ cardNumber: newCardNumber })
+            .where(eq(competitors.id, target.id))
+            .run();
 
-        // PATTERNS S-2 injection — same path as create mode so test 9
-        // covers both branches.
-        seq = app.fartolNextLocalSeq(app.fartolDb, app.fartolNodeId);
-        app.fartolDb.db
-          .insert(events)
-          .values({
-            nodeId: app.fartolNodeId,
-            localSeq: seq,
-            competitionId: input.competition_id,
-            eventType: 'card_bound',
-            eventTimeMs: now,
-            recordedAtMs: now,
-            payload: {
-              event_type: 'card_bound',
-              competitor_id: target.id,
-              card_number: newCardNumber,
-              walkup: true,
-              // REQ-PRIV-001: preserve the original consent timestamp.
-              // Fallback to `now` only if the row pre-existed without a
-              // consent_at_ms (legacy data from plan 05 EntryList import).
-              consent_at_ms: target.consentAtMs ?? now,
-            },
-          })
-          .run();
-      })();
+          // PATTERNS S-2 injection — same path as create mode so test 9
+          // covers both branches.
+          seq = app.fartolNextLocalSeq(app.fartolDb, app.fartolNodeId);
+          app.fartolDb.db
+            .insert(events)
+            .values({
+              nodeId: app.fartolNodeId,
+              localSeq: seq,
+              competitionId: input.competition_id,
+              eventType: 'card_bound',
+              eventTimeMs: now,
+              recordedAtMs: now,
+              payload: {
+                event_type: 'card_bound',
+                competitor_id: target.id,
+                card_number: newCardNumber,
+                walkup: true,
+                // REQ-PRIV-001: preserve the original consent timestamp.
+                // Fallback to `now` only if the row pre-existed without a
+                // consent_at_ms (legacy data from plan 05 EntryList import).
+                consent_at_ms: target.consentAtMs ?? now,
+              },
+            })
+            .run();
+        })();
+      } catch (err) {
+        // The pre-flight SELECT above is non-transactional, so a concurrent
+        // request can land the same card_number between our check and
+        // commit. The partial unique index still rejects the second write
+        // — convert that into the same structured 409 the pre-flight
+        // returns. Look up the colliding row again so the response carries
+        // a useful existing_competitor_id.
+        if (isCardCollisionError(err)) {
+          const collision = app.fartolDb.db
+            .select({ id: competitors.id })
+            .from(competitors)
+            .where(
+              and(
+                eq(competitors.competitionId, input.competition_id),
+                eq(competitors.cardNumber, newCardNumber)
+              )
+            )
+            .get();
+          return reply.code(409).send({
+            error: 'card_taken',
+            existing_competitor_id: collision?.id ?? null,
+          });
+        }
+        throw err;
+      }
 
       if (seq !== null) {
         app.wsBroadcast(readoutChannel(input.competition_id), {
@@ -309,60 +355,85 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
     const competitorId = crypto.randomUUID();
     let seq: number | null = null;
 
-    app.fartolDb.sqlite.transaction(() => {
-      app.fartolDb.db
-        .insert(competitors)
-        .values({
-          id: competitorId,
-          competitionId: input.competition_id,
-          name: createName,
-          club: input.club,
-          classId: createClassId,
-          cardNumber: input.card_number,
-          consentAtMs: now,
-          consentStatus: 'explicit',
-          scrubbedAtMs: null,
-        })
-        .run();
-
-      if (input.club !== null && input.club.length > 0) {
-        // ON CONFLICT (name) DO UPDATE last_seen_at_ms = excluded.last_seen_at_ms.
-        // Drizzle exposes onConflictDoUpdate on the sqlite insert builder.
+    try {
+      app.fartolDb.sqlite.transaction(() => {
         app.fartolDb.db
-          .insert(clubs)
-          .values({ name: input.club, lastSeenAtMs: now })
-          .onConflictDoUpdate({
-            target: clubs.name,
-            set: { lastSeenAtMs: now },
-          })
-          .run();
-      }
-
-      if (input.card_number !== null) {
-        // PATTERNS S-2 injection: app.fartolNextLocalSeq defaults to the
-        // real nextLocalSeq trailing-edge SELECT; test 9 swaps in a
-        // throwing fn to verify transactional atomicity.
-        seq = app.fartolNextLocalSeq(app.fartolDb, app.fartolNodeId);
-        app.fartolDb.db
-          .insert(events)
+          .insert(competitors)
           .values({
-            nodeId: app.fartolNodeId,
-            localSeq: seq,
+            id: competitorId,
             competitionId: input.competition_id,
-            eventType: 'card_bound',
-            eventTimeMs: now,
-            recordedAtMs: now,
-            payload: {
-              event_type: 'card_bound',
-              competitor_id: competitorId,
-              card_number: input.card_number,
-              walkup: true,
-              consent_at_ms: now,
-            },
+            name: createName,
+            club: input.club,
+            classId: createClassId,
+            cardNumber: input.card_number,
+            consentAtMs: now,
+            consentStatus: 'explicit',
+            scrubbedAtMs: null,
           })
           .run();
+
+        if (input.club !== null && input.club.length > 0) {
+          // ON CONFLICT (name) DO UPDATE last_seen_at_ms = excluded.last_seen_at_ms.
+          // Drizzle exposes onConflictDoUpdate on the sqlite insert builder.
+          app.fartolDb.db
+            .insert(clubs)
+            .values({ name: input.club, lastSeenAtMs: now })
+            .onConflictDoUpdate({
+              target: clubs.name,
+              set: { lastSeenAtMs: now },
+            })
+            .run();
+        }
+
+        if (input.card_number !== null) {
+          // PATTERNS S-2 injection: app.fartolNextLocalSeq defaults to the
+          // real nextLocalSeq trailing-edge SELECT; test 9 swaps in a
+          // throwing fn to verify transactional atomicity.
+          seq = app.fartolNextLocalSeq(app.fartolDb, app.fartolNodeId);
+          app.fartolDb.db
+            .insert(events)
+            .values({
+              nodeId: app.fartolNodeId,
+              localSeq: seq,
+              competitionId: input.competition_id,
+              eventType: 'card_bound',
+              eventTimeMs: now,
+              recordedAtMs: now,
+              payload: {
+                event_type: 'card_bound',
+                competitor_id: competitorId,
+                card_number: input.card_number,
+                walkup: true,
+                consent_at_ms: now,
+              },
+            })
+            .run();
+        }
+      })();
+    } catch (err) {
+      // Race-safety net (PR #3 review — Gemini medium). See the
+      // matching catch in replace-mode above. The pre-flight SELECT is
+      // non-transactional; the partial unique index catches concurrent
+      // collisions at commit time. Look up the winner and surface the
+      // same structured 409.
+      if (isCardCollisionError(err) && input.card_number !== null) {
+        const collision = app.fartolDb.db
+          .select({ id: competitors.id })
+          .from(competitors)
+          .where(
+            and(
+              eq(competitors.competitionId, input.competition_id),
+              eq(competitors.cardNumber, input.card_number)
+            )
+          )
+          .get();
+        return reply.code(409).send({
+          error: 'card_taken',
+          existing_competitor_id: collision?.id ?? null,
+        });
       }
-    })();
+      throw err;
+    }
 
     // (6) Broadcast AFTER commit so subscribers only see committed state.
     if (input.card_number !== null && seq !== null) {
