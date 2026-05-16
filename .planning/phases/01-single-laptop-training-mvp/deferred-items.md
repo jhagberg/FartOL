@@ -4,7 +4,7 @@ Out-of-scope discoveries surfaced while executing plans. Each entry: where
 found, what the symptom is, what fix is appropriate, and which plan should
 pick it up.
 
-## 2026-05-15 — e2e flake under heavy parallel load
+## 2026-05-15 — e2e flake under heavy parallel load (resolved/superseded)
 
 **Found during:** plan 01-16 (IOF XML export e2e)
 
@@ -40,3 +40,10 @@ plan.
 **Not a regression** caused by plan 01-16. Verified by running the
 full e2e suite with `tests/e2e/export.spec.ts` moved aside — 13 pass,
 2 skipped, 0 fail. With it included — 13 pass, 2 skipped, 1 fail.
+
+**Resolution on 2026-05-16:** no longer an active deferred item. The
+suite was stabilized/contained by the post-review e2e fixes and CI worker
+settings, and a current clean run of `CI=1 pnpm e2e --workers=1` passes:
+15 passed, 2 skipped. Keep this entry as historical context only; no
+Phase 2 follow-up is required unless the project later requires high-worker
+parallel e2e execution with a shared dev server and shared SQLite DB.
