@@ -1,0 +1,800 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FartOL — modern, offline-first orienteringstävlingssystem</title>
+  <meta name="description" content="FartOL är ett modernt, plattformsoberoende och offline-först tävlingssystem för orientering. Ersätter och kompletterar MeOS/OLA/SportSoftware för svenska orienteringsklubbar." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: oklch(0.98 0.005 90);
+      --bg-elev: oklch(1 0 0);
+      --bg-sunken: oklch(0.96 0.006 90);
+      --bg-deep: oklch(0.20 0.01 145);
+      --fg: oklch(0.22 0.01 240);
+      --fg-muted: oklch(0.50 0.01 240);
+      --fg-faint: oklch(0.68 0.01 240);
+      --border: oklch(0.90 0.005 90);
+      --border-strong: oklch(0.82 0.005 90);
+      --accent: oklch(0.50 0.08 145);
+      --accent-fg: oklch(0.98 0.005 90);
+      --accent-soft: oklch(0.94 0.03 145);
+      --accent-strong: oklch(0.42 0.09 145);
+      --orange: #F36F21;
+      --ok: oklch(0.55 0.13 145);
+      --warn: oklch(0.70 0.15 75);
+      --warn-soft: oklch(0.95 0.06 80);
+      --dnf: oklch(0.55 0.18 25);
+      --radius: 8px;
+      --radius-lg: 14px;
+      --shadow-sm: 0 1px 2px rgba(20, 20, 30, 0.04), 0 0 0 1px rgba(20, 20, 30, 0.04);
+      --shadow-md: 0 4px 14px rgba(20, 20, 30, 0.06), 0 0 0 1px rgba(20, 20, 30, 0.04);
+      --shadow-lg: 0 12px 40px rgba(20, 20, 30, 0.10), 0 0 0 1px rgba(20, 20, 30, 0.04);
+      --font-ui: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+      --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font-ui);
+      font-size: 16px;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    a { color: var(--accent-strong); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+    a:hover { color: var(--accent); }
+    code, .mono { font-family: var(--font-mono); font-feature-settings: 'tnum' 1, 'zero' 1; }
+
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 28px; }
+    .wrap-narrow { max-width: 760px; margin: 0 auto; padding: 0 28px; }
+
+    /* ---------- top bar ---------- */
+    .topbar {
+      position: sticky; top: 0; z-index: 10;
+      background: color-mix(in srgb, var(--bg) 92%, transparent);
+      backdrop-filter: saturate(120%) blur(8px);
+      -webkit-backdrop-filter: saturate(120%) blur(8px);
+      border-bottom: 1px solid var(--border);
+    }
+    .topbar-inner {
+      display: flex; align-items: center; gap: 16px;
+      padding: 14px 28px;
+      max-width: 1080px; margin: 0 auto;
+    }
+    .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; font-size: 17px; letter-spacing: -0.01em; }
+    .brand-mark { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; }
+    .brand-mark svg { width: 100%; height: 100%; }
+    .topbar nav { display: flex; gap: 22px; margin-left: auto; font-size: 14px; }
+    .topbar nav a { color: var(--fg-muted); text-decoration: none; font-weight: 500; }
+    .topbar nav a:hover { color: var(--fg); }
+    .topbar .cta {
+      padding: 9px 16px; background: var(--accent); color: var(--accent-fg);
+      border-radius: var(--radius); font-weight: 600; font-size: 14px;
+      text-decoration: none; border: 1px solid var(--accent);
+    }
+    .topbar .cta:hover { background: var(--accent-strong); border-color: var(--accent-strong); color: #fff; }
+
+    /* ---------- hero ---------- */
+    .hero {
+      padding: 80px 0 64px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; right: -120px; top: 40px;
+      width: 480px; height: 480px;
+      background: radial-gradient(circle, var(--accent-soft) 0%, transparent 65%);
+      opacity: 0.7;
+      pointer-events: none;
+    }
+    .hero-inner {
+      position: relative;
+      display: grid; grid-template-columns: 1.4fr 1fr; gap: 56px;
+      align-items: center;
+    }
+    @media (max-width: 880px) {
+      .hero { padding: 56px 0 40px; }
+      .hero-inner { grid-template-columns: 1fr; gap: 32px; }
+    }
+    .hero .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: var(--font-mono); font-size: 12px;
+      color: var(--accent-strong);
+      background: var(--accent-soft);
+      padding: 5px 10px; border-radius: 999px;
+      margin-bottom: 18px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+    .hero h1 {
+      font-size: clamp(36px, 5.2vw, 56px);
+      line-height: 1.04;
+      margin: 0 0 18px;
+      letter-spacing: -0.02em;
+      font-weight: 600;
+    }
+    .hero h1 .accent { color: var(--accent); }
+    .hero .lede {
+      font-size: 19px;
+      color: var(--fg-muted);
+      margin: 0 0 28px;
+      max-width: 52ch;
+    }
+    .hero .lede b { color: var(--fg); font-weight: 600; }
+    .hero-ctas { display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 22px;
+      font-size: 15px; font-weight: 600;
+      border-radius: var(--radius);
+      text-decoration: none;
+      border: 1px solid var(--border-strong);
+      background: var(--bg-elev);
+      color: var(--fg);
+      cursor: pointer;
+      transition: border 0.12s, background 0.12s, transform 0.08s;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+    .btn.primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); color: #fff; }
+    .btn .arrow { font-family: var(--font-mono); }
+
+    .hero-mock {
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      padding: 18px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.5;
+      transform: rotate(0.4deg);
+    }
+    .hero-mock .mock-head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px dashed var(--border); margin-bottom: 12px; }
+    .hero-mock .mock-head .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); display: inline-block; margin-right: 6px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent); animation: pulse 2s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent); } 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--ok) 8%, transparent); } }
+    .hero-mock .row { display: flex; justify-content: space-between; padding: 5px 0; }
+    .hero-mock .row b { color: var(--fg); font-weight: 600; }
+    .hero-mock .row.hi { background: var(--accent-soft); color: var(--accent-strong); padding: 6px 8px; margin: 2px -8px; border-radius: 4px; }
+    .hero-mock .big {
+      font-size: 32px; font-weight: 600; color: var(--accent-strong);
+      letter-spacing: -0.02em; line-height: 1.1; padding: 8px 0;
+    }
+    .hero-mock .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-muted); font-weight: 500; }
+
+    /* ---------- generic sections ---------- */
+    section { padding: 72px 0; }
+    @media (max-width: 880px) { section { padding: 48px 0; } }
+    section.tinted { background: var(--bg-sunken); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .sec-head { margin-bottom: 36px; }
+    .sec-eyebrow { font-family: var(--font-mono); font-size: 12px; color: var(--accent-strong); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+    .sec-head h2 { font-size: clamp(28px, 3.6vw, 38px); margin: 8px 0 12px; letter-spacing: -0.015em; font-weight: 600; line-height: 1.1; }
+    .sec-head p { margin: 0; color: var(--fg-muted); max-width: 60ch; font-size: 17px; }
+
+    /* ---------- differentiators ---------- */
+    .diff-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 18px;
+    }
+    .diff-card {
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 22px 22px 24px;
+      position: relative;
+      transition: border 0.12s, transform 0.12s;
+    }
+    .diff-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .diff-num {
+      font-family: var(--font-mono); font-size: 11px;
+      color: var(--accent-strong);
+      font-weight: 600;
+      letter-spacing: 0.05em;
+    }
+    .diff-card h3 { margin: 6px 0 8px; font-size: 17px; font-weight: 600; letter-spacing: -0.005em; }
+    .diff-card p { margin: 0; font-size: 14.5px; color: var(--fg-muted); line-height: 1.55; }
+    .diff-card .vs {
+      margin-top: 14px; padding-top: 12px;
+      border-top: 1px dashed var(--border);
+      font-family: var(--font-mono); font-size: 11.5px;
+      color: var(--fg-faint);
+    }
+    .diff-card .vs b { color: var(--fg); font-weight: 600; }
+
+    /* ---------- roadmap ---------- */
+    .phases {
+      position: relative;
+      display: grid; gap: 14px;
+    }
+    .phase {
+      display: grid;
+      grid-template-columns: 84px 1fr auto;
+      gap: 18px;
+      padding: 18px 20px;
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      align-items: start;
+    }
+    @media (max-width: 720px) {
+      .phase { grid-template-columns: 60px 1fr; }
+      .phase .pill { grid-column: 1 / -1; justify-self: start; }
+    }
+    .phase.done { border-color: color-mix(in srgb, var(--ok) 35%, var(--border)); }
+    .phase.live { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+    .phase .ord {
+      font-family: var(--font-mono);
+      font-size: 13px; font-weight: 600;
+      color: var(--fg-muted);
+      letter-spacing: -0.02em;
+      padding-top: 2px;
+    }
+    .phase.done .ord, .phase.live .ord { color: var(--accent-strong); }
+    .phase h4 { margin: 0 0 6px; font-size: 17px; font-weight: 600; letter-spacing: -0.005em; }
+    .phase p { margin: 0; color: var(--fg-muted); font-size: 14.5px; line-height: 1.5; }
+    .phase .crit {
+      display: flex; flex-wrap: wrap; gap: 4px 10px;
+      margin-top: 10px;
+      font-size: 12px; color: var(--fg-faint);
+      font-family: var(--font-mono);
+    }
+    .phase .crit span::before { content: '· '; color: var(--border-strong); margin-right: 2px; }
+    .phase .crit span:first-child::before { display: none; }
+    .pill {
+      font-family: var(--font-mono); font-size: 11px;
+      padding: 4px 10px; border-radius: 999px; font-weight: 600;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+      align-self: start;
+    }
+    .pill.done { background: color-mix(in srgb, var(--ok) 18%, var(--bg)); color: var(--ok); }
+    .pill.live { background: var(--accent); color: var(--accent-fg); }
+    .pill.next { background: var(--warn-soft); color: oklch(0.40 0.12 75); }
+    .pill.planned { background: var(--bg-sunken); color: var(--fg-muted); border: 1px solid var(--border); }
+
+    /* ---------- demo card ---------- */
+    .demo-card {
+      background: var(--bg-deep);
+      color: #f4f4f1;
+      border-radius: var(--radius-lg);
+      padding: 48px;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 40px;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+    @media (max-width: 720px) {
+      .demo-card { grid-template-columns: 1fr; padding: 32px; }
+    }
+    .demo-card::before {
+      content: '';
+      position: absolute; right: -200px; bottom: -180px;
+      width: 460px; height: 460px;
+      background: radial-gradient(circle, color-mix(in srgb, var(--accent) 28%, transparent) 0%, transparent 65%);
+      pointer-events: none;
+    }
+    .demo-card h2 { margin: 0 0 12px; font-size: 30px; letter-spacing: -0.01em; font-weight: 600; line-height: 1.1; }
+    .demo-card p { margin: 0 0 18px; color: oklch(0.85 0.005 90); font-size: 16px; max-width: 50ch; }
+    .demo-card .btn { background: #fff; color: var(--bg-deep); border-color: #fff; }
+    .demo-card .btn:hover { background: oklch(0.92 0.005 90); color: var(--bg-deep); }
+    .demo-card .btn.secondary { background: transparent; color: #fff; border-color: oklch(0.40 0.02 145); }
+    .demo-card .btn.secondary:hover { background: rgba(255,255,255,0.06); color: #fff; }
+    .demo-bullets {
+      list-style: none; margin: 0; padding: 0;
+      display: grid; gap: 10px;
+      font-family: var(--font-mono); font-size: 12.5px;
+    }
+    .demo-bullets li {
+      display: flex; gap: 10px; align-items: start;
+      color: oklch(0.78 0.005 90);
+    }
+    .demo-bullets li::before {
+      content: '>'; color: var(--orange); font-weight: 700; flex-shrink: 0;
+    }
+    .demo-bullets li b { color: #fff; font-weight: 600; }
+
+    /* ---------- principles ---------- */
+    .principles {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 22px;
+    }
+    .principle {
+      padding: 18px 0;
+      border-left: 2px solid var(--accent);
+      padding-left: 18px;
+    }
+    .principle h4 { margin: 0 0 6px; font-size: 15.5px; font-weight: 600; letter-spacing: -0.005em; }
+    .principle p { margin: 0; color: var(--fg-muted); font-size: 14px; line-height: 1.55; }
+
+    /* ---------- tech / standards ---------- */
+    .tech-grid {
+      display: grid; gap: 24px;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    }
+    .tech-col h4 {
+      margin: 0 0 12px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--fg-muted);
+      font-weight: 600;
+      font-family: var(--font-mono);
+    }
+    .tech-col ul { list-style: none; margin: 0; padding: 0; }
+    .tech-col li {
+      display: flex; justify-content: space-between; align-items: baseline;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .tech-col li b { font-weight: 600; }
+    .tech-col li span { font-family: var(--font-mono); font-size: 12px; color: var(--fg-muted); text-align: right; }
+
+    /* ---------- footer ---------- */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 36px 0;
+      color: var(--fg-muted);
+      font-size: 13px;
+    }
+    .footer-inner { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: baseline; }
+    .footer-inner .links a { color: var(--fg-muted); margin-right: 18px; }
+    .footer-inner .links a:hover { color: var(--fg); }
+
+    .kbd {
+      font-family: var(--font-mono); font-size: 11px;
+      padding: 2px 6px;
+      border: 1px solid var(--border-strong);
+      border-radius: 4px;
+      background: var(--bg-sunken);
+      color: var(--fg-muted);
+    }
+
+    .callout {
+      background: var(--warn-soft);
+      border: 1px solid color-mix(in srgb, var(--warn) 35%, var(--border));
+      border-left: 4px solid var(--warn);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      display: flex; gap: 14px;
+      font-size: 14.5px; line-height: 1.5;
+    }
+    .callout b { font-weight: 600; }
+    .callout-icon {
+      font-family: var(--font-mono); font-size: 18px; font-weight: 700;
+      color: oklch(0.42 0.16 75); flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a href="#top" class="brand">
+        <span class="brand-mark">
+          <svg viewBox="0 0 28 28">
+            <g transform="rotate(45 14 14)">
+              <rect x="4" y="4" width="20" height="10" fill="#ffffff" stroke="#1a1a1a" stroke-width="1.4"/>
+              <rect x="4" y="14" width="20" height="10" fill="#F36F21" stroke="#1a1a1a" stroke-width="1.4"/>
+            </g>
+          </svg>
+        </span>
+        FartOL
+      </a>
+      <nav>
+        <a href="#vision">Vision</a>
+        <a href="#diff">Skillnader</a>
+        <a href="#roadmap">Roadmap</a>
+        <a href="adr.html">ADR</a>
+        <a href="#tech">Standarder</a>
+        <a href="https://github.com/jhagberg/FartOL" target="_blank" rel="noopener">GitHub</a>
+      </nav>
+      <a href="demo/index.html" class="cta">Öppna demo →</a>
+    </div>
+  </header>
+
+  <a id="top"></a>
+
+  <!-- ---------- HERO ---------- -->
+  <section class="hero">
+    <div class="wrap hero-inner">
+      <div>
+        <span class="eyebrow">● Phase 1 · single-laptop training MVP · 2026-05-15</span>
+        <h1>Tidtagning för orientering, byggd för <span class="accent">klubben och skogen</span>.</h1>
+        <p class="lede">
+          FartOL kommer ersätta och komplettera MeOS, OLA och SportSoftware. Det funkar på Linux, Mac, Windows och Android — inte bara Windows. Varje SI-stämpling sparas som en oöveränderlig händelse, resultat räknas fram. Schemat är att först köra klubbträning med tjugo startande, sen sanktionerad tävling, sen O-Ringen.
+        </p>
+        <div class="hero-ctas">
+          <a href="demo/index.html" class="btn primary">Öppna klickbar demo <span class="arrow">→</span></a>
+          <a href="https://github.com/jhagberg/FartOL" class="btn" target="_blank" rel="noopener">GitHub-repo</a>
+        </div>
+        <div style="margin-top: 22px; font-family: var(--font-mono); font-size: 12px; color: var(--fg-faint);">
+          Demon kör helt i webbläsaren · ingen hårdvara behövs · <span class="kbd">P</span> skriver ut kvitto
+        </div>
+      </div>
+
+      <!-- Mini-mock of the readout view -->
+      <div class="hero-mock" aria-hidden="true">
+        <div class="mock-head">
+          <span><span class="dot"></span><b>Senaste avläsning</b> · live</span>
+          <span style="color: var(--fg-muted);">14:32:11</span>
+        </div>
+        <div class="row"><span class="label">Bricka</span><span><b style="color: var(--accent-strong); font-size: 18px;">2 078 451</b></span></div>
+        <div class="row"><span><b>Erik Lindqvist</b></span><span>H21 · StorTuna OK</span></div>
+        <div class="big">38:11 <span style="font-size: 12px; color: var(--ok); margin-left: 6px; font-weight: 500;">● OK · 1:a</span></div>
+        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 6px;">
+          <span style="text-align:center; padding: 6px 0; background: var(--accent-soft); border-radius: 3px; color: var(--accent-strong); font-size: 10px;">31<br><b>0:46</b></span>
+          <span style="text-align:center; padding: 6px 0; background: var(--accent-soft); border-radius: 3px; color: var(--accent-strong); font-size: 10px;">45<br><b>1:32</b></span>
+          <span style="text-align:center; padding: 6px 0; background: var(--accent-soft); border-radius: 3px; color: var(--accent-strong); font-size: 10px;">52<br><b>2:11</b></span>
+          <span style="text-align:center; padding: 6px 0; background: var(--accent-soft); border-radius: 3px; color: var(--accent-strong); font-size: 10px;">38<br><b>2:32</b></span>
+          <span style="text-align:center; padding: 6px 0; background: var(--accent-soft); border-radius: 3px; color: var(--accent-strong); font-size: 10px;">M<br><b>3:43</b></span>
+        </div>
+        <div class="row hi" style="margin-top: 12px;">
+          <span>🖨 Kvitto utskrivet</span><span>Star TSP143</span>
+        </div>
+        <div class="row" style="margin-top: 6px;">
+          <span style="color: var(--fg-faint);">BSM7-USB · /dev/ttyUSB0</span>
+          <span style="color: var(--ok);">● ansluten</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- VISION ---------- -->
+  <section id="vision" class="tinted">
+    <div class="wrap-narrow">
+      <div class="sec-head" style="text-align: center; max-width: none;">
+        <div class="sec-eyebrow">Varför</div>
+        <h2>Tidtagning som inte ramlar ihop när 4G:n gör det.</h2>
+        <p style="margin: 0 auto;">
+          MeOS behöver en master-maskin som äger en delad databas. FartOL behöver det inte. Varje SI-stämpling är en händelse i en lokal append-only-logg, och resultaten räknas fram från loggen. Det gör att flera sekretariat kan jobba samtidigt och att en nätdipp inte slutar i att någon måste återskapa state under press.
+        </p>
+      </div>
+
+      <div class="callout" style="margin-top: 8px;">
+        <span class="callout-icon">!</span>
+        <div>
+          <b>Var det står:</b> Phase 0 (hårdvarubevis) klar, taggad <code>v0.0.1-handshake</code>.
+          Phase 1 (single-laptop training MVP) — alla 18 planer i mål. Redo för en riktig tisdagsträning hos StorTuna OK. Den här sidan är Phase 1.5.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- DIFFERENTIATORS ---------- -->
+  <section id="diff">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="sec-eyebrow">Sex saker som skiljer</div>
+        <h2>Inte ännu en MeOS-klon.</h2>
+        <p>Varje punkt är ett konkret val mot MeOS — inte en säljpitch.</p>
+      </div>
+
+      <div class="diff-grid">
+        <div class="diff-card">
+          <span class="diff-num">01 · PLATTFORM</span>
+          <h3>Kör där man hälst öppnar Chrome</h3>
+          <p>Linux-laptop, Mac, Windows, Android-platta. Inga Windows-bara drivare, ingen flotta att underhålla.</p>
+          <div class="vs"><b>vs MeOS:</b> Windows-bunden</div>
+        </div>
+        <div class="diff-card">
+          <span class="diff-num">02 · ARKITEKTUR</span>
+          <h3>Ingen master-maskin</h3>
+          <p>Varje edge-nod är autonom. När en nod tappar nätet hänger den inte upp resten.</p>
+          <div class="vs"><b>vs MeOS:</b> en master = en felpunkt</div>
+        </div>
+        <div class="diff-card">
+          <span class="diff-num">03 · SAMARBETE</span>
+          <h3>Flera sekretariat samtidigt</h3>
+          <p>Två personer redigerar startlistan på var sin laptop utan att skriva över varandra. Yjs CRDT över delad WebSocket från Phase 2.</p>
+          <div class="vs"><b>vs MeOS:</b> en operatör i taget</div>
+        </div>
+        <div class="diff-card">
+          <span class="diff-num">04 · DATA</span>
+          <h3>Buggar är reparerbara</h3>
+          <p>Stämplingarna ligger som händelser. Ändra reducern, räkna om — inget korrupt resultatregister att laga på plats.</p>
+          <div class="vs"><b>vs MeOS:</b> muterad delad SQL-state</div>
+        </div>
+        <div class="diff-card">
+          <span class="diff-num">05 · BARN</span>
+          <h3>Målgång för 9-åringar</h3>
+          <p>Animerad målskärm, ljud, namnuppläsning och ett samlingsbart "Skogis"-kvitto. Rekryteringsverktyg — inte något vi tar nästa år.</p>
+          <div class="vs"><b>vs MeOS:</b> ingenting</div>
+        </div>
+        <div class="diff-card">
+          <span class="diff-num">06 · STANDARDER</span>
+          <h3>Pratar med det som redan finns</h3>
+          <p>IOF XML 3.0, Eventor, ROC, SIRAP, MeOS TCP-input. En klubb kan köra MeOS primärt och FartOL parallellt under migrationen.</p>
+          <div class="vs"><b>vs MeOS:</b> primärt eget format</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- DEMO CARD ---------- -->
+  <section style="padding-top: 0;">
+    <div class="wrap">
+      <div class="demo-card">
+        <div>
+          <span class="eyebrow" style="background: rgba(255,255,255,0.08); color: #fff;">Klickbar demo</span>
+          <h2 style="margin-top: 16px;">Hela operatörsflödet i webbläsaren.</h2>
+          <p>Demon är en komplett mockup av Phase 1, helt på klientsidan — ingen backend, ingen hårdvara. Tryck på <b>Simulera avläsning</b> i sidopanelen för att låta deltagare komma i mål. Den följer faktisk kod i <code>jhagberg/FartOL@gsd/phase-1-training-mvp</code>.</p>
+          <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            <a href="demo/index.html" class="btn">Öppna demo <span class="arrow">→</span></a>
+            <a href="https://github.com/jhagberg/FartOL/issues/new?labels=demo-feedback" class="btn secondary" target="_blank" rel="noopener">Lämna feedback</a>
+          </div>
+        </div>
+        <ul class="demo-bullets">
+          <li>3-klicks tävlingsguide · <b>importera Purple Pen .xml</b></li>
+          <li>Live-avläsning · <b>simulera SI-kort</b> · auto-print-toggle</li>
+          <li>Walk-up med samtyckesruta <b>(REQ-PRIV-001)</b></li>
+          <li>Redigera deltagare · bryt · <b>återkalla brytning</b></li>
+          <li>Sex kvittomallar · Klassisk · <b>Skogis</b> för barn</li>
+          <li>Liveresultat per klass · helskärmsläge</li>
+          <li>IOF XML 3.0 export · <b>XSD-validerad</b></li>
+          <li>Sv/En · täthet · accentfärg · hög kontrast</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- ROADMAP ---------- -->
+  <section id="roadmap" class="tinted">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="sec-eyebrow">Roadmap</div>
+        <h2>Sex faser. En riktig användare per fas.</h2>
+        <p>Vi går inte vidare förrän nuvarande fas använts av en riktig orienterare på ett riktigt arrangemang. Träning räknas.</p>
+      </div>
+
+      <div class="phases">
+        <div class="phase done">
+          <span class="ord">Phase 0</span>
+          <div>
+            <h4>Hårdvarubevis</h4>
+            <p>Node-skript som läser SI-kort via BSM7/BSM8 på Linux och loggar JSON. CRC16-CCITT-validering, SI5/8/9/10/SIAC.</p>
+            <div class="crit">
+              <span>BSM7/8 @ /dev/ttyUSB0</span>
+              <span>38400 baud handskakning</span>
+              <span>5 korttyper</span>
+              <span>v0.0.1-handshake</span>
+            </div>
+          </div>
+          <span class="pill done">✓ Klar · 2026-05-13</span>
+        </div>
+
+        <div class="phase live">
+          <span class="ord">Phase 1</span>
+          <div>
+            <h4>Single-laptop training MVP</h4>
+            <p>Kör en klubbträning från start till mål på en Linux-laptop. Inget internet behövs. Purple Pen-import, walk-up, DNF/MP-detektering, ESC/POS-kvitto, IOF XML 3.0 export.</p>
+            <div class="crit">
+              <span>SvelteKit PWA</span>
+              <span>Fastify + SQLite</span>
+              <span>WebSocket live-feed</span>
+              <span>18 av 18 planer i mål</span>
+            </div>
+          </div>
+          <span class="pill live">▶ Pågående</span>
+        </div>
+
+        <div class="phase live">
+          <span class="ord">Phase 1.5</span>
+          <div>
+            <h4>Publik demo + landningssida</h4>
+            <p>Det här. GitHub Pages med klickbar demo och en feedback-knapp innan Phase 2 börjar. Hela flödet i webbläsaren — ingen hårdvara, ingen backend.</p>
+            <div class="crit">
+              <span>jhagberg.github.io/FartOL</span>
+              <span>Pre-fylld GitHub-issue</span>
+              <span>actions/deploy-pages</span>
+            </div>
+          </div>
+          <span class="pill next">↗ Levereras nu</span>
+        </div>
+
+        <div class="phase">
+          <span class="ord">Phase 2</span>
+          <div>
+            <h4>Sanktionerad tävling</h4>
+            <p>100–200 startande med samtidiga operatörer. Eventor pull/push, Yjs samtidig redigering, åskådar-resultat på arena-WiFi, klarar att brygg-processen dödas och startas om.</p>
+            <div class="crit">
+              <span>Eventor REST</span>
+              <span>Yjs CRDT</span>
+              <span>QR-kvitto</span>
+              <span>3+ samtidiga klienter</span>
+            </div>
+          </div>
+          <span class="pill planned">Planerad</span>
+        </div>
+
+        <div class="phase">
+          <span class="ord">Phase 3</span>
+          <div>
+            <h4>Barnmål + publik</h4>
+            <p>Det synliga UX-språnget. Animerad målskärm med TTS, SMS till föräldrar, inbäddningsbar live-widget för klubbens hemsida, speaker-dashboard.</p>
+            <div class="crit">
+              <span>HDMI big-screen</span>
+              <span>46elks / Twilio</span>
+              <span>Klubbteman</span>
+            </div>
+          </div>
+          <span class="pill planned">Planerad</span>
+        </div>
+
+        <div class="phase">
+          <span class="ord">Phase 4</span>
+          <div>
+            <h4>Multi-arena + radio-kontroller</h4>
+            <p>ROC-protokollmottagning, SIRAP TCP-gateway, peer-to-peer sync mellan edge-noder under simulerad partition, MeOS TCP-input för parallell körning under migration.</p>
+            <div class="crit">
+              <span>ROC / Pi+4G</span>
+              <span>SIRAP</span>
+              <span>SI-Master clock sync</span>
+              <span>Relä-stöd</span>
+            </div>
+          </div>
+          <span class="pill planned">Planerad</span>
+        </div>
+
+        <div class="phase">
+          <span class="ord">Phase 5</span>
+          <div>
+            <h4>O-Ringen-skala</h4>
+            <p>Bevisad kapacitet för femdagars med 25 000+ startande. Partitionerad Postgres per etapp, CDN-tier för 30 000 samtidiga tittare, 4G/5G + Starlink-uplink-playbook.</p>
+            <div class="crit">
+              <span>Partitionerad Postgres</span>
+              <span>Cloudflare CDN</span>
+              <span>Livelox API</span>
+              <span>IOF-feed-compliance</span>
+            </div>
+          </div>
+          <span class="pill planned">Vision</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- PRINCIPLES ---------- -->
+  <section>
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="sec-eyebrow">Principer</div>
+        <h2>Vad som styr designen.</h2>
+        <p>Ingen av punkterna nedan är en preferens. De kommer från användarna och federationen.</p>
+      </div>
+
+      <div class="principles">
+        <div class="principle">
+          <h4>Funkar i skogen</h4>
+          <p>Tjänster som behöver internet finns inte ute på stigen. Edge-noden ska klara en hel tävlingsdag offline och synka när den kommer hem.</p>
+        </div>
+        <div class="principle">
+          <h4>Svenska först</h4>
+          <p>Användarna är 40–70 år, tekniskt kunniga men inte utvecklare. Alla strängar börjar på svenska. Engelska kommer sen.</p>
+        </div>
+        <div class="principle">
+          <h4>SI5 överges aldrig</h4>
+          <p>Klubbar äger SI5-kort. Legacy-stöd är inte förhandlingsbart. Samma gäller IOF XML 2.0.3 för äldre banverktyg.</p>
+        </div>
+        <div class="principle">
+          <h4>Stora träffytor</h4>
+          <p>Operatörer jobbar i stress, i solljus, på 13"-laptop. Inga 12px-grå-på-vita texter. 44px minsta träffyta, högkontrast-läge.</p>
+        </div>
+        <div class="principle">
+          <h4>Samtycke skrivs ner</h4>
+          <p>REQ-PRIV-001: personuppgifter kräver bekräftat samtycke, tidstämplat. 30 dagars retention för kontaktinfo. GDPR art. 20/17 i Phase 4.</p>
+        </div>
+        <div class="principle">
+          <h4>Öppen källkod</h4>
+          <p>Appen är AGPL-3.0. <code>packages/sportident</code> är MIT — samma licens som uppströmsbiblioteket vi portar från.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- TECH & STANDARDS ---------- -->
+  <section id="tech" class="tinted">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="sec-eyebrow">Teknik & standarder</div>
+        <h2>Tråkig stack, öppna format.</h2>
+      </div>
+
+      <div class="tech-grid">
+        <div class="tech-col">
+          <h4>Edge-bridge</h4>
+          <ul>
+            <li><b>Node.js</b><span>24 LTS</span></li>
+            <li><b>Fastify</b><span>REST + WS</span></li>
+            <li><b>better-sqlite3</b><span>+ Drizzle</span></li>
+            <li><b>serialport</b><span>v13</span></li>
+            <li><b>node-thermal-printer</b><span>ESC/POS</span></li>
+          </ul>
+        </div>
+        <div class="tech-col">
+          <h4>Webbklient</h4>
+          <ul>
+            <li><b>SvelteKit</b><span>adapter-static</span></li>
+            <li><b>Svelte 5</b><span>runes</span></li>
+            <li><b>i18next</b><span>sv → en</span></li>
+            <li><b>Vitest + Playwright</b><span>tests + e2e</span></li>
+            <li><b>Yjs</b><span>Phase 2+</span></li>
+          </ul>
+        </div>
+        <div class="tech-col">
+          <h4>Standarder</h4>
+          <ul>
+            <li><b>IOF XML 3.0</b><span>im/export</span></li>
+            <li><b>IOF XML 2.0.3</b><span>läs · Phase 2</span></li>
+            <li><b>Purple Pen .xml</b><span>banimport</span></li>
+            <li><b>Eventor REST</b><span>Phase 2</span></li>
+            <li><b>ROC / SIRAP</b><span>Phase 4</span></li>
+            <li><b>SportIdent</b><span>BSM7/8, SI5/8/9/10/SIAC</span></li>
+          </ul>
+        </div>
+        <div class="tech-col">
+          <h4>Hårdvara</h4>
+          <ul>
+            <li><b>BSM7/8-USB</b><span>läsare</span></li>
+            <li><b>SRR-dongel</b><span>Phase 4</span></li>
+            <li><b>BSF8/9</b><span>punch-mode</span></li>
+            <li><b>Star TSP143</b><span>kvittoskrivare</span></li>
+            <li><b>Epson TM-T20</b><span>kvittoskrivare</span></li>
+            <li><b>Brother PJ-7</b><span>mobil kvittoskrivare</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- CTA / FEEDBACK ---------- -->
+  <section>
+    <div class="wrap-narrow" style="text-align: center;">
+      <div class="sec-eyebrow">Hjälp oss</div>
+      <h2 style="font-size: 32px; margin: 10px 0 14px; letter-spacing: -0.015em; font-weight: 600;">Vad funkar? Vad saknas? Vad är fel?</h2>
+      <p style="color: var(--fg-muted); margin: 0 0 28px; font-size: 17px;">
+        FartOL byggs av och för svenska orienteringsklubbar. Är du operatör, deltagare eller bara nyfiken — prova demon och säg vad du tänker. Det är enklare nu än när Phase 2 är byggd.
+      </p>
+      <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+        <a href="demo/index.html" class="btn primary">Öppna demo</a>
+        <a href="https://github.com/jhagberg/FartOL/issues/new?labels=demo-feedback&template=demo-feedback.yml&title=%5Bdemo%5D+" class="btn" target="_blank" rel="noopener">Skicka feedback ↗</a>
+        <a href="https://github.com/jhagberg/FartOL" class="btn" target="_blank" rel="noopener">GitHub-repo ↗</a>
+      </div>
+      <div style="margin-top: 18px; font-family: var(--font-mono); font-size: 12px; color: var(--fg-faint);">
+        Tips i demon: <span class="kbd">simulera avläsning</span> i sidopanelen · slå på <span class="kbd">Tweaks</span> i verktygsfältet för att byta sv/en, täthet, accentfärg
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap footer-inner">
+      <div>
+        <b>FartOL</b> · arbetsnamn · AGPL-3.0 · <code style="font-size: 12px;">packages/sportident</code> är MIT<br>
+        <span style="color: var(--fg-faint); font-size: 12px;">Full fart från start till mål eller slipp skit i resultatlistan.</span>
+      </div>
+      <div class="links">
+        <a href="https://github.com/jhagberg/FartOL" target="_blank" rel="noopener">GitHub</a>
+        <a href="adr.html">ADR (7)</a>
+        <a href="https://github.com/jhagberg/FartOL/tree/main/.planning" target="_blank" rel="noopener">Planning docs</a>
+        <a href="https://github.com/jhagberg/FartOL/blob/main/LICENSE" target="_blank" rel="noopener">Licens</a>
+        <a href="demo/index.html">Demo</a>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

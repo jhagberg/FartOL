@@ -1,0 +1,371 @@
+// FartOL Phase 1 prototype — app shell, routing, state
+const { useState, useEffect, useMemo, useRef } = React;
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "locale": "sv",
+  "density": "med",
+  "accent": "forest",
+  "contrast": false,
+  "font": "plex"
+}/*EDITMODE-END*/;
+
+// Map accent key → CSS class on root
+const ACCENT_CLASS = {
+  forest: '',
+  blue: 'accent-blue',
+  magenta: 'accent-magenta',
+  charcoal: 'accent-charcoal',
+};
+
+function App() {
+  const [tw, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const t = useT(tw.locale);
+
+  // Routing state
+  const [route, setRoute] = useState('readout'); // home | readout | results | export
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [walkupOpen, setWalkupOpen] = useState(false);
+  const [walkupCard, setWalkupCard] = useState(null);
+  const [editingCompetitor, setEditingCompetitor] = useState(null);
+  const [consentToast, setConsentToast] = useState(null);
+  const [resultsFullscreen, setResultsFullscreen] = useState(false);
+  const [dismissedConsent, setDismissedConsent] = useState(() => new Set());
+
+  // Live state
+  const [currentRead, setCurrentRead] = useState(window.MOCK_READS[0]);
+  const [history, setHistory] = useState(window.MOCK_READS.slice(0, 6));
+  const [pendingUnknown, setPendingUnknown] = useState(window.MOCK_PENDING_UNKNOWN || []);
+  const [flashKey, setFlashKey] = useState(0);
+  const [printedToast, setPrintedToast] = useState(false);
+  const [savedToast, setSavedToast] = useState(false);
+  const [clock, setClock] = useState('14:32:11');
+  const [autoPrint, setAutoPrint] = useState(false);
+  const [defaultTpl, setDefaultTpl] = useState('classic');
+
+  useEffect(() => {
+    let t = 14*3600 + 32*60 + 11; // 14:32:11 — wall clock at the readout table
+    const id = setInterval(() => {
+      t += 1;
+      const h = Math.floor(t/3600).toString().padStart(2,'0');
+      const m = Math.floor((t%3600)/60).toString().padStart(2,'0');
+      const s = (t%60).toString().padStart(2,'0');
+      setClock(`${h}:${m}:${s}`);
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Simulated card-read queue
+  const simRef = useRef(0);
+  const simulateRead = () => {
+    const candidates = [
+      window.MOCK_READS[1], // Anna — D21 OK — has pending_first_read → triggers consent toast
+      window.MOCK_READS[2], // Mikael — H45 MP
+      // walk-up unknown card
+      { cardNumber: 9128344, unknown: true, readTime: clock, status: 'PEND' },
+      window.MOCK_READS[3], // Karin
+      window.MOCK_READS[4], // Johan
+    ];
+    const next = candidates[simRef.current % candidates.length];
+    simRef.current += 1;
+    setCurrentRead(next);
+    setHistory(h => [next, ...h].slice(0, 12));
+    setFlashKey(k => k + 1);
+    if (next.unknown) {
+      setPendingUnknown(p => p.includes(next.cardNumber) ? p : [next.cardNumber, ...p]);
+      setTimeout(() => { setWalkupCard(next.cardNumber); setWalkupOpen(true); }, 600);
+    } else {
+      // C-M4 consent toast: surface on first card_read for runners whose
+      // consent_status is 'pending_first_read'.
+      const consent = (window.CONSENT_BY_CARD || {})[next.cardNumber];
+      if (consent === 'pending_first_read' && !dismissedConsent.has(next.cardNumber)) {
+        setConsentToast({ cardNumber: next.cardNumber, name: next.name, className: next.cls });
+      }
+      if (autoPrint && next.punches) {
+        setTimeout(() => onPrint(), 400);
+      }
+    }
+  };
+
+  const onPrint = () => {
+    setPrintedToast(true);
+    setTimeout(() => setPrintedToast(false), 2000);
+  };
+
+  const showSavedToast = () => {
+    setSavedToast(true);
+    setTimeout(() => setSavedToast(false), 1800);
+  };
+
+  const onWalkupSave = ({ name, club, cls, card }) => {
+    const completed = {
+      cardNumber: parseInt(card) || 9128344,
+      name, club: club || '—', cls,
+      readTime: clock,
+      startTime: '14:02:00',
+      elapsed: '30:11',
+      status: 'OK',
+      place: null,
+    };
+    setCurrentRead(completed);
+    setHistory(h => [completed, ...h.slice(1)]);
+    setPendingUnknown(p => p.filter(c => c !== completed.cardNumber));
+    setWalkupOpen(false);
+    setWalkupCard(null);
+    showSavedToast();
+  };
+
+  const onEdit = (read) => {
+    setEditingCompetitor(read);
+  };
+
+  const onEditSave = (updated) => {
+    // Replace in history + currentRead by card number.
+    setHistory(h => h.map(r => r.cardNumber === updated.cardNumber ? { ...r, ...updated } : r));
+    setCurrentRead(r => r && r.cardNumber === updated.cardNumber ? { ...r, ...updated } : r);
+    setEditingCompetitor(null);
+    showSavedToast();
+  };
+
+  const onManualDnf = (read, reason) => {
+    const patch = { status: 'DNF', dnfReason: reason, place: null };
+    setHistory(h => h.map(r => r.cardNumber === read.cardNumber ? { ...r, ...patch } : r));
+    setCurrentRead(r => r && r.cardNumber === read.cardNumber ? { ...r, ...patch } : r);
+    showSavedToast();
+  };
+
+  const onUnDnf = (read) => {
+    const patch = { status: 'OK', dnfReason: null };
+    setHistory(h => h.map(r => r.cardNumber === read.cardNumber ? { ...r, ...patch } : r));
+    setCurrentRead(r => r && r.cardNumber === read.cardNumber ? { ...r, ...patch } : r);
+    showSavedToast();
+  };
+
+  const onPickPending = (cardNumber) => {
+    setWalkupCard(cardNumber);
+    setWalkupOpen(true);
+  };
+
+  const onConsentConfirm = () => {
+    setConsentToast(null);
+    showSavedToast();
+  };
+  const onConsentDismiss = () => {
+    if (consentToast) {
+      setDismissedConsent(s => new Set(s).add(consentToast.cardNumber));
+    }
+    setConsentToast(null);
+  };
+
+  const rootClass = [
+    ACCENT_CLASS[tw.accent] || '',
+    tw.contrast ? 'contrast-high' : '',
+    'font-' + (tw.font || 'plex'),
+  ].filter(Boolean).join(' ');
+
+  return (
+    <div className={'app ' + rootClass}>
+      <aside className="sidebar">
+        <div className="brand">
+          <span className="brand-mark" aria-label="Control flag">
+            <svg viewBox="0 0 28 28">
+              <g transform="rotate(45 14 14)">
+                <rect x="4" y="4" width="20" height="10" fill="#ffffff" stroke="#1a1a1a" strokeWidth="1.4"/>
+                <rect x="4" y="14" width="20" height="10" fill="#F36F21" stroke="#1a1a1a" strokeWidth="1.4"/>
+              </g>
+            </svg>
+          </span>
+          <span>
+            <span className="brand-name">{t('app.title')}</span>
+          </span>
+        </div>
+
+        <button className={'nav-item ' + (route === 'home' ? 'active' : '')} onClick={() => setRoute('home')}>
+          <span style={{width: 16, textAlign: 'center'}}>◇</span> {t('nav.competitions')}
+        </button>
+        <button className={'nav-item ' + (route === 'readout' ? 'active' : '')} onClick={() => setRoute('readout')}>
+          <span className="dot"></span> {t('nav.readout')}
+          <span className="badge">{history.length}</span>
+        </button>
+        <button className={'nav-item ' + (route === 'results' ? 'active' : '')} onClick={() => setRoute('results')}>
+          <span style={{width: 16, textAlign: 'center'}}>≣</span> {t('nav.results')}
+        </button>
+        <button className={'nav-item ' + (route === 'export' ? 'active' : '')} onClick={() => setRoute('export')}>
+          <span style={{width: 16, textAlign: 'center'}}>↗</span> {t('nav.export')}
+          <span className="badge" style={{fontSize: 9}}>IOF 3.0</span>
+        </button>
+
+        <div className="sidebar-footer">
+          <div className="station-card">
+            <div className="row"><b style={{fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--fg-muted)'}}>{t('ro.station')}</b></div>
+            <div className="row"><span className="pulse-dot"></span><b className="mono" style={{fontSize: 12}}>BSM7-USB</b></div>
+            <div className="row" style={{justifyContent: 'space-between'}}><span className="mono faint">593656</span><span style={{color: 'var(--ok)', fontSize: 11}}>● {t('ro.online')}</span></div>
+            <div className="row" style={{justifyContent: 'space-between', fontSize: 11}}><span className="faint">/dev/ttyUSB0</span><span className="mono faint">38400</span></div>
+          </div>
+          <div style={{fontSize: 11, color: 'var(--fg-faint)', fontFamily: 'var(--font-mono)'}}>v0.1.0-phase1 · localhost</div>
+        </div>
+      </aside>
+
+      <main className="main">
+        <div className="topbar">
+          <div className="crumb">
+            {route === 'home' && <>FartOL / <strong>{t('nav.competitions')}</strong></>}
+            {route === 'readout' && <>FartOL / Tisdagsträning v.20 / <strong>{t('nav.readout')}</strong></>}
+            {route === 'results' && <>FartOL / Tisdagsträning v.20 / <strong>{t('nav.results')}</strong></>}
+            {route === 'export' && <>FartOL / Tisdagsträning v.20 / <strong>{t('nav.export')}</strong></>}
+          </div>
+          <div className="spacer"></div>
+          {route === 'readout' && (
+            <div className="row" style={{fontSize: 13}}>
+              <span className="pulse-dot"></span>
+              <span style={{color: 'var(--ok)', fontWeight: 500}}>{t('ro.online')}</span>
+              <span className="muted mono" style={{fontSize: 12}}>· {t('ro.heartbeat')} 0.4s</span>
+            </div>
+          )}
+          <div className="clock mono" title="Lokal tid · synkad mot bryggans klocka">
+            <span style={{fontSize: 10, color: 'var(--fg-muted)', marginRight: 6, fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500}}>Tid</span>
+            {clock}
+          </div>
+        </div>
+
+        <div className="content">
+          {route === 'home' && (
+            <HomeView t={t}
+              competitions={window.MOCK_COMPETITIONS}
+              onOpenWizard={() => setWizardOpen(true)}
+              onOpenCompetition={() => setRoute('readout')}
+            />
+          )}
+          {route === 'readout' && (
+            <ReadoutView
+              t={t}
+              density={tw.density}
+              currentRead={currentRead}
+              history={history}
+              pendingUnknown={pendingUnknown}
+              onSimulate={simulateRead}
+              onPrint={onPrint}
+              onSelectRead={r => { setCurrentRead(r); setFlashKey(k => k + 1); }}
+              walkupOpen={walkupOpen}
+              setWalkupOpen={setWalkupOpen}
+              lastFlashKey={flashKey}
+              autoPrint={autoPrint}
+              setAutoPrint={setAutoPrint}
+              defaultTpl={defaultTpl}
+              setDefaultTpl={setDefaultTpl}
+              onEdit={onEdit}
+              onManualDnf={onManualDnf}
+              onUnDnf={onUnDnf}
+              onPickPending={onPickPending}
+            />
+          )}
+          {route === 'results' && (
+            <ResultsView t={t} fullscreen={resultsFullscreen} setFullscreen={setResultsFullscreen} />
+          )}
+          {route === 'export' && (
+            <ExportView t={t} />
+          )}
+        </div>
+      </main>
+
+      {wizardOpen && (
+        <NewCompetitionWizard
+          t={t}
+          onCancel={() => setWizardOpen(false)}
+          onComplete={() => { setWizardOpen(false); setRoute('readout'); }}
+        />
+      )}
+
+      {walkupOpen && (
+        <WalkupModal
+          t={t}
+          cardNumber={walkupCard || (currentRead && currentRead.unknown ? currentRead.cardNumber : 9128344)}
+          classes={window.MOCK_CLASSES}
+          onCancel={() => { setWalkupOpen(false); setWalkupCard(null); }}
+          onSave={onWalkupSave}
+        />
+      )}
+
+      {editingCompetitor && (
+        <EditCompetitorModal
+          t={t}
+          competitor={editingCompetitor}
+          classes={window.MOCK_CLASSES}
+          onCancel={() => setEditingCompetitor(null)}
+          onSave={onEditSave}
+        />
+      )}
+
+      {consentToast && (
+        <ConsentConfirmationToast
+          t={t}
+          name={consentToast.name}
+          className={consentToast.className}
+          onConfirm={onConsentConfirm}
+          onDismiss={onConsentDismiss}
+        />
+      )}
+
+      {printedToast && (
+        <div style={{position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: 'var(--fg)', color: 'var(--bg)', padding: '12px 20px', borderRadius: 8, fontSize: 14, boxShadow: 'var(--shadow-lg)', zIndex: 90, fontWeight: 500}}>
+          🖨  {t('ro.printed')} · Star TSP143
+        </div>
+      )}
+
+      {savedToast && !printedToast && (
+        <div style={{position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: 'var(--ok)', color: '#fff', padding: '10px 18px', borderRadius: 8, fontSize: 13, boxShadow: 'var(--shadow-lg)', zIndex: 90, fontWeight: 500}}>
+          ✓ Sparat
+        </div>
+      )}
+
+      <TweaksPanel>
+        <TweakSection label={t('tw.title')} />
+        <TweakRadio
+          label={t('tw.locale')}
+          value={tw.locale}
+          options={['sv', 'en']}
+          onChange={v => setTweak('locale', v)}
+        />
+        <TweakRadio
+          label={t('tw.density')}
+          value={tw.density}
+          options={['low', 'med', 'high']}
+          onChange={v => setTweak('density', v)}
+        />
+        <TweakColor
+          label={t('tw.accent')}
+          value={tw.accent}
+          options={[
+            { value: 'forest', color: '#2f7c4f' },
+            { value: 'blue', color: '#2a6fdb' },
+            { value: 'magenta', color: '#b03a8a' },
+            { value: 'charcoal', color: '#3a3a3a' },
+          ].map(o => o.color)}
+          onChange={v => {
+            const m = {'#2f7c4f':'forest','#2a6fdb':'blue','#b03a8a':'magenta','#3a3a3a':'charcoal'};
+            setTweak('accent', m[v] || 'forest');
+          }}
+        />
+        <TweakToggle
+          label={t('tw.contrast')}
+          value={tw.contrast}
+          onChange={v => setTweak('contrast', v)}
+        />
+        <TweakSelect
+          label={t('tw.font')}
+          value={tw.font}
+          options={[
+            { value: 'plex', label: 'IBM Plex Sans / Mono' },
+            { value: 'geist', label: 'Geist / Geist Mono' },
+            { value: 'source', label: 'Source Sans 3 / JetBrains' },
+            { value: 'atkinson', label: 'Atkinson Hyperlegible / JB' },
+          ]}
+          onChange={v => setTweak('font', v)}
+        />
+        <TweakSection label={t('tw.sim')} />
+        <TweakButton label={t('tw.sim.fire') + ' →'} onClick={simulateRead} />
+      </TweaksPanel>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
