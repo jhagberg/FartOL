@@ -15,9 +15,82 @@
 
   <script src="data.js"></script>
   <script src="i18n.js"></script>
+
+  <style>
+    /* Mobile interstitial — shown on touch-primary devices */
+    #mobile-warning { display: none; }
+    @media (pointer: coarse) and (hover: none) {
+      #mobile-warning {
+        display: flex;
+        position: fixed; inset: 0; z-index: 99999;
+        background: rgba(20, 20, 30, 0.92);
+        padding: 24px;
+        align-items: center; justify-content: center;
+        font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+      }
+      body.mw-dismissed #mobile-warning { display: none; }
+    }
+    #mobile-warning .mw-card {
+      background: #ffffff;
+      border-radius: 14px;
+      max-width: 420px;
+      padding: 28px 26px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+    }
+    #mobile-warning .mw-eyebrow {
+      font-family: 'IBM Plex Mono', ui-monospace, monospace;
+      font-size: 11px; color: #5a7d4a;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    #mobile-warning h2 {
+      margin: 0 0 14px; font-size: 22px; font-weight: 600;
+      color: #1a1a1a; letter-spacing: -0.01em; line-height: 1.2;
+    }
+    #mobile-warning p {
+      margin: 0 0 12px; font-size: 15px; line-height: 1.5; color: #444;
+    }
+    #mobile-warning p.muted { font-size: 13px; color: #777; }
+    #mobile-warning .mw-actions {
+      display: flex; flex-direction: column; gap: 10px;
+      margin-top: 18px;
+    }
+    #mobile-warning .mw-btn {
+      display: inline-block; text-align: center;
+      padding: 12px 18px; border-radius: 8px;
+      font-size: 15px; font-weight: 600;
+      text-decoration: none; cursor: pointer;
+      border: 1px solid transparent;
+    }
+    #mobile-warning .mw-btn.primary { background: #5a7d4a; color: #fff; border-color: #5a7d4a; }
+    #mobile-warning .mw-btn.ghost { background: transparent; color: #1a1a1a; border-color: #d4d4d0; }
+  </style>
 </head>
 <body>
+  <div id="mobile-warning" role="dialog" aria-modal="true" aria-labelledby="mw-title">
+    <div class="mw-card">
+      <div class="mw-eyebrow">Heads-up</div>
+      <h2 id="mw-title">Demon är gjord för sekretariatslaptop</h2>
+      <p>FartOL Phase 1 är operatörsverktyget bakom målgången — designat för en 13"+ skärm med tangentbord. På mobil ser layouten konstig ut.</p>
+      <p class="muted">Du kan klicka runt ändå, men det är inte så här en sekretariatsoperatör ser det.</p>
+      <div class="mw-actions">
+        <a href="../index.html" class="mw-btn primary">← Tillbaka till landningssidan</a>
+        <button type="button" class="mw-btn ghost" id="mw-continue">Fortsätt till demon ändå</button>
+      </div>
+    </div>
+  </div>
+
   <div id="root"></div>
+
+  <script>
+    (() => {
+      const btn = document.getElementById('mw-continue');
+      if (btn) btn.addEventListener('click', () => {
+        document.body.classList.add('mw-dismissed');
+      });
+    })();
+  </script>
 
   <script type="text/babel" src="tweaks-panel.jsx"></script>
   <script type="text/babel" src="screens-readout.jsx"></script>
