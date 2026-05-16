@@ -44,12 +44,19 @@
     cardNumber: number;
     competitionId: string;
     classes: ClassDTO[];
+    /** Optional SI card firmware-side name hint. When non-null, pre-fills
+     * the name field so the operator only confirms instead of re-typing.
+     * Empty string is treated the same as null. */
+    cardHolderHint?: string | null;
   }
 
-  let { cardNumber, competitionId, classes }: Props = $props();
+  let { cardNumber, competitionId, classes, cardHolderHint = null }: Props = $props();
 
   // --- form state -----------------------------------------------------------
-  let name = $state('');
+  // Pre-fill name from the SI card's card_holder field when the firmware
+  // carried one (rental fleet cards usually didn't; personal cards often
+  // did). Operator can still edit before submit.
+  let name = $state(cardHolderHint && cardHolderHint.length > 0 ? cardHolderHint : '');
   let club = $state('');
   let classId = $state('');
   // The initial cardNumber prop is the URL's ?walkup=<n> coercion; we copy

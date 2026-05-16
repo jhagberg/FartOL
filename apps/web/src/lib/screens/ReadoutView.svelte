@@ -122,6 +122,17 @@
   // modal when this is non-null; for plan 13 we expose the same signal
   // so the auto-redirect skips when the modal is already open.
   const walkupCard = $derived(page.url.searchParams.get('walkup'));
+  /** Firmware-side card_holder hint from the latest unmatched history row
+   * for the walk-up card. Pre-fills the walk-up modal's name field when
+   * the SI card was programmed at issuance (PR #3 Gemini suggestion).
+   * Most rental fleet cards have no hint; personal cards usually do. */
+  const walkupHint = $derived.by((): string | null => {
+    if (walkupCard === null) return null;
+    const n = Number(walkupCard);
+    if (!Number.isInteger(n) || n <= 0) return null;
+    const row = history.find((r) => r.card_number === n && r.unmatched);
+    return row?.card_holder_hint ?? null;
+  });
 
   // C-M4 consent-confirmation toast state (plan 14). Set when a card_read
   // resolves to a competitor with consent_status='pending_first_read' AND
@@ -663,6 +674,7 @@
       cardNumber={Number(walkupCard)}
       {competitionId}
       {classes}
+      cardHolderHint={walkupHint}
     />
   {/if}
 

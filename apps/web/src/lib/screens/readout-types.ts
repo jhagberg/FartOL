@@ -36,6 +36,10 @@ export interface ReadoutHistoryRow {
   finish_half_day: number | null;
   start_seconds_in_half_day: number | null;
   start_half_day: number | null;
+  /** Firmware-side name from the SI card (owner programs via SPORTident
+   * Config+). Non-null only on unmatched rows; pre-fills the walk-up
+   * name field. Most rental cards have card_holder=null. */
+  card_holder_hint: string | null;
 }
 
 export interface ReadoutResponse {

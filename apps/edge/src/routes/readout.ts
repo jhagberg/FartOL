@@ -66,6 +66,29 @@ interface HistoryRow {
   /** Start timestamp on the card, or null. */
   start_seconds_in_half_day: number | null;
   start_half_day: number | null;
+  /** Suggested name extracted from the SI card's firmware-side
+   * card_holder field (the owner programs this via SPORTident Config+).
+   * Populated only when the card did NOT match a registered competitor
+   * (unmatched=true). Lets the walk-up modal pre-fill the name field.
+   * Most rental / club fleet cards have card_holder=null; personal cards
+   * often have it set. Never persisted to competitors.name — the
+   * operator confirms or edits the suggestion before binding. */
+  card_holder_hint: string | null;
+}
+
+/** Pull a displayable name out of the SI card's firmware-side
+ * card_holder object. SiCard9/10/11/SIAC parse a semicolon-separated
+ * string into { first_name, last_name, ... }; SiCard5 only carries
+ * { country_code, club_code } and yields null here. Returns null
+ * when the card_holder is empty / not present / has only structural
+ * fields. */
+function extractCardHolderHint(cardHolder: unknown): string | null {
+  if (!cardHolder || typeof cardHolder !== 'object') return null;
+  const h = cardHolder as Record<string, unknown>;
+  const first = typeof h['first_name'] === 'string' ? (h['first_name'] as string).trim() : '';
+  const last = typeof h['last_name'] === 'string' ? (h['last_name'] as string).trim() : '';
+  const joined = `${first} ${last}`.trim();
+  return joined.length > 0 ? joined : null;
 }
 
 interface ReadoutResponse {
@@ -129,6 +152,10 @@ export default async function registerReadoutRoute(app: FastifyInstance): Promis
           competitor_name: competitor?.name ?? null,
           status: view?.status ?? 'PEND',
           unmatched: !competitor,
+          // PR #3 Gemini medium: surface card_holder firmware string as a
+          // hint for walk-up flow. Only emit when there's no competitor
+          // binding — for matched cards we already have the real name.
+          card_holder_hint: competitor ? null : extractCardHolderHint(payload.card_holder),
           punches: payload.punches.map((p) => ({
             code: p.code,
             seconds_in_half_day: p.seconds_in_half_day,
