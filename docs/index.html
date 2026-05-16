@@ -81,6 +81,16 @@
       text-decoration: none; border: 1px solid var(--accent);
     }
     .topbar .cta:hover { background: var(--accent-strong); border-color: var(--accent-strong); color: #fff; }
+    .topbar .cta { white-space: nowrap; }
+
+    /* ---------- mobile topbar + wrap padding ---------- */
+    @media (max-width: 720px) {
+      .wrap, .wrap-narrow { padding: 0 16px; }
+      .topbar-inner { padding: 12px 16px; gap: 10px; }
+      .topbar nav { display: none; }
+      .topbar .cta { padding: 8px 12px; font-size: 13px; }
+      .brand { font-size: 16px; }
+    }
 
     /* ---------- hero ---------- */
     .hero {
