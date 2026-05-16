@@ -76,6 +76,7 @@
   "ro.editTitle": "Redigera deltagare",
   "ro.editSave": "Spara",
   "ro.editSaving": "Sparar…",
+  "ro.meosMerge": "{{count}} löpare hämtade från MeOS",
 
   "res.title": "Liveresultat",
   "res.all": "Alla",

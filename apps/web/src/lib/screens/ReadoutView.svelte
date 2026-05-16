@@ -412,6 +412,18 @@
         }
         break;
       }
+      case 'meos_merge': {
+        // Phase 2.0 plan 02-04 (D-MOP-3): MOP receiver auto-merged N MeOS-
+        // only competitors into our competitors table; surface a Swedish
+        // toast so the operator sees the recovery happened. No re-fetch —
+        // the next card_read flow already re-queries competitors when
+        // needed (PATTERNS S-4 + RESEARCH "Plan 5 nuance").
+        const count = (payload as { count?: number } | null)?.count;
+        if (typeof count === 'number' && count > 0) {
+          toast(t('ro.meosMerge', { count }));
+        }
+        break;
+      }
       default:
         break;
     }

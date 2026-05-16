@@ -76,6 +76,7 @@
   "ro.editTitle": "Edit competitor",
   "ro.editSave": "Save",
   "ro.editSaving": "Saving…",
+  "ro.meosMerge": "{{count}} runners imported from MeOS",
 
   "res.title": "Live results",
   "res.all": "All",
