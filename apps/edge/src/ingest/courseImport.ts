@@ -22,7 +22,7 @@
 //   (atomic create + import in one SQL transaction — opts.outerTransaction
 //   is the seam that lets the from-wizard endpoint share the transaction)
 
-import { sql } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import crypto from 'node:crypto';
 
 import type { DbHandle } from '../db/index.ts';
@@ -59,7 +59,7 @@ function doIngest(
   const existingClasses = handle.db
     .select({ id: classes.id, name: classes.name })
     .from(classes)
-    .where(sql`${classes.competitionId} = ${competitionId}`)
+    .where(eq(classes.competitionId, competitionId))
     .all();
   for (const row of existingClasses) {
     classIdByName.set(row.name, row.id);
@@ -86,7 +86,7 @@ function doIngest(
     const existing = handle.db
       .select({ id: controls.id })
       .from(controls)
-      .where(sql`${controls.competitionId} = ${competitionId} AND ${controls.code} = ${ct.code}`)
+      .where(and(eq(controls.competitionId, competitionId), eq(controls.code, ct.code)))
       .get();
     if (existing) {
       controlIdByCode.set(ct.code, existing.id);
