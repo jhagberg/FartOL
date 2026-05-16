@@ -397,10 +397,11 @@
       </a>
       <nav>
         <a href="#vision">Vision</a>
-        <a href="#diff">Skillnader</a>
+        <a href="#diff">Design</a>
         <a href="#roadmap">Roadmap</a>
         <a href="adr.html">ADR</a>
         <a href="#tech">Standarder</a>
+        <a href="#om">Om</a>
         <a href="https://github.com/jhagberg/FartOL" target="_blank" rel="noopener">GitHub</a>
       </nav>
       <a href="demo/index.html" class="cta">Öppna demo →</a>
@@ -416,7 +417,7 @@
         <span class="eyebrow">● Phase 1 · single-laptop training MVP · 2026-05-15</span>
         <h1>Tidtagning för orientering, byggd för <span class="accent">klubben och skogen</span>.</h1>
         <p class="lede">
-          FartOL kommer ersätta och komplettera MeOS, OLA och SportSoftware. Det funkar på Linux, Mac, Windows och Android — inte bara Windows. Varje SI-stämpling sparas som en oöveränderlig händelse, resultat räknas fram. Schemat är att först köra klubbträning med tjugo startande, sen sanktionerad tävling, sen O-Ringen.
+          FartOL är ett tävlingssystem som funkar i webbläsaren på Linux, Mac, Windows och Android. Varje SI-stämpling sparas som en idempotent händelse i en lokal logg, och resultaten räknas fram. Schemat är att först köra klubbträning med tjugo startande, sen sanktionerad tävling, sen O-Ringen.
         </p>
         <div class="hero-ctas">
           <a href="demo/index.html" class="btn primary">Öppna klickbar demo <span class="arrow">→</span></a>
@@ -461,7 +462,7 @@
         <div class="sec-eyebrow">Varför</div>
         <h2>Tidtagning som inte ramlar ihop när 4G:n gör det.</h2>
         <p style="margin: 0 auto;">
-          MeOS behöver en master-maskin som äger en delad databas. FartOL behöver det inte. Varje SI-stämpling är en händelse i en lokal append-only-logg, och resultaten räknas fram från loggen. Det gör att flera sekretariat kan jobba samtidigt och att en nätdipp inte slutar i att någon måste återskapa state under press.
+          FartOL bygger på en lokal append-only-logg där varje SI-stämpling är en händelse. Resultaten räknas fram från loggen i stället för att skrivas in i en delad databas. Det gör att flera sekretariat kan jobba samtidigt, att klienter funkar offline, och att en nätdipp inte slutar i att någon måste återskapa läget under press.
         </p>
       </div>
 
@@ -479,47 +480,41 @@
   <section id="diff">
     <div class="wrap">
       <div class="sec-head">
-        <div class="sec-eyebrow">Sex saker som skiljer</div>
-        <h2>Inte ännu en MeOS-klon.</h2>
-        <p>Varje punkt är ett konkret val mot MeOS — inte en säljpitch.</p>
+        <div class="sec-eyebrow">Sex tekniska val</div>
+        <h2>Hur FartOL är designat.</h2>
+        <p>Varje punkt är ett konkret val, inte en säljpitch.</p>
       </div>
 
       <div class="diff-grid">
         <div class="diff-card">
           <span class="diff-num">01 · PLATTFORM</span>
           <h3>Kör där man helst öppnar Chrome</h3>
-          <p>Linux-laptop, Mac, Windows, Android-platta. Inga drivrutiner låsta till Windows, ingen flotta att underhålla.</p>
-          <div class="vs"><b>vs MeOS:</b> Windows-bunden</div>
+          <p>Linux-laptop, Mac, Windows, Android-platta. Inga drivrutiner låsta till en plattform, ingen flotta att underhålla.</p>
         </div>
         <div class="diff-card">
           <span class="diff-num">02 · ARKITEKTUR</span>
-          <h3>Ingen master-maskin</h3>
-          <p>Varje edge-nod är autonom. När en nod tappar nätet hänger den inte upp resten.</p>
-          <div class="vs"><b>vs MeOS:</b> en master = en felpunkt</div>
+          <h3>Autonoma edge-noder</h3>
+          <p>Varje nod äger sin egen händelselogg. När en nod tappar nätet hänger den inte upp resten — sekretariatet jobbar vidare lokalt och synkar när nätet kommer tillbaka.</p>
         </div>
         <div class="diff-card">
           <span class="diff-num">03 · SAMARBETE</span>
           <h3>Flera sekretariat samtidigt</h3>
-          <p>Två personer redigerar startlistan på var sin laptop utan att skriva över varandra. Yjs CRDT över delad WebSocket från Phase 2.</p>
-          <div class="vs"><b>vs MeOS:</b> en operatör i taget</div>
+          <p>Två personer redigerar startlistan på var sin laptop utan att skriva över varandra. Yjs CRDT över delad WebSocket — landar i Phase 2.</p>
         </div>
         <div class="diff-card">
           <span class="diff-num">04 · DATA</span>
           <h3>Buggar är reparerbara</h3>
-          <p>Stämplingarna ligger som händelser. Ändra reducern, räkna om — inget korrupt resultatregister att laga på plats.</p>
-          <div class="vs"><b>vs MeOS:</b> muterad delad SQL-state</div>
+          <p>Stämplingarna ligger som händelser, inte som muterad state. Ändra reducern, räkna om — inget korrupt resultatregister att laga på plats.</p>
         </div>
         <div class="diff-card">
           <span class="diff-num">05 · BARN</span>
           <h3>Målgång för 9-åringar</h3>
-          <p>Animerad målskärm, ljud, namnuppläsning och ett samlingsbart "Skogis"-kvitto. Rekryteringsverktyg — inte något vi tar nästa år.</p>
-          <div class="vs"><b>vs MeOS:</b> ingenting</div>
+          <p>Animerad målskärm, ljud, namnuppläsning och ett samlingsbart "Skogis"-kvitto. Rekryteringsverktyg från Phase 3 — inte något vi skjuter på till "sen".</p>
         </div>
         <div class="diff-card">
           <span class="diff-num">06 · STANDARDER</span>
           <h3>Pratar med det som redan finns</h3>
-          <p>IOF XML 3.0, Eventor, ROC, SIRAP, MeOS TCP-input. En klubb kan köra MeOS primärt och FartOL parallellt under migrationen.</p>
-          <div class="vs"><b>vs MeOS:</b> primärt eget format</div>
+          <p>IOF XML 3.0, Eventor, ROC, SIRAP, MeOS TCP-input. En klubb kan köra ett befintligt system primärt och FartOL parallellt under en eventuell övergång.</p>
         </div>
       </div>
     </div>
@@ -532,7 +527,7 @@
         <div>
           <span class="eyebrow" style="background: rgba(255,255,255,0.08); color: #fff;">Klickbar demo</span>
           <h2 style="margin-top: 16px;">Hela operatörsflödet i webbläsaren.</h2>
-          <p>Demon är en komplett mockup av Phase 1, helt på klientsidan — ingen backend, ingen hårdvara. Tryck på <b>Simulera avläsning</b> i sidopanelen för att låta deltagare komma i mål. Den följer faktisk kod i <code>jhagberg/FartOL@gsd/phase-1-training-mvp</code>.</p>
+          <p>Demon är en designprototyp av hela Phase 1-flödet, helt på klientsidan — ingen backend, ingen hårdvara. Tryck på <b>Simulera avläsning</b> i sidopanelen för att låta deltagare komma i mål. Prototypen var designen som Phase 1 byggdes efter; eventuell drift mellan demo och shipped app är feedback i sig.</p>
           <div style="display: flex; gap: 12px; flex-wrap: wrap;">
             <a href="demo/index.html" class="btn">Öppna demo <span class="arrow">→</span></a>
             <a href="https://github.com/jhagberg/FartOL/issues/new?labels=demo-feedback" class="btn secondary" target="_blank" rel="noopener">Lämna feedback</a>
@@ -654,7 +649,7 @@
           <span class="ord">Phase 5</span>
           <div>
             <h4>O-Ringen-skala</h4>
-            <p>Bevisad kapacitet för femdagars med 25 000+ startande. Partitionerad Postgres per etapp, CDN-tier för 30 000 samtidiga tittare, 4G/5G + Starlink-uplink-playbook.</p>
+            <p>Mål-kapacitet för femdagars med 25 000+ startande. Partitionerad Postgres per etapp, CDN-tier för 30 000 samtidiga tittare, 4G/5G + Starlink-uplink-playbook.</p>
             <div class="crit">
               <span>Partitionerad Postgres</span>
               <span>Cloudflare CDN</span>
@@ -758,6 +753,22 @@
           </ul>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- ---------- WHO BUILDS IT ---------- -->
+  <section id="om">
+    <div class="wrap-narrow">
+      <div class="sec-head">
+        <div class="sec-eyebrow">Vem bygger</div>
+        <h2>Det här är ett fritidsprojekt.</h2>
+        <p>
+          Jonas Hagberg, StorTuna OK. FartOL byggs på lediga kvällar och helger, dels för att jag tror att vi behöver en ny generation tävlingssystem klar innan den nuvarande pensioneras, dels för att SI-protokollet är roligare att läsa specifikationer för än man kan tro.
+        </p>
+      </div>
+      <p style="color: var(--fg-muted); font-size: 15.5px; margin-top: 4px;">
+        Projektet är pengafritt, AGPL-3.0-licensierat och utan exit-mål. Säg hej via <a href="https://github.com/jhagberg" target="_blank" rel="noopener">GitHub</a> eller öppna en <a href="https://github.com/jhagberg/FartOL/issues" target="_blank" rel="noopener">issue</a> — feedback från riktiga sekretariat och löpare är det enda som styr roadmapen.
+      </p>
     </div>
   </section>
 
