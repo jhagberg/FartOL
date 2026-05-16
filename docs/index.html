@@ -81,6 +81,52 @@
       text-decoration: none; border: 1px solid var(--accent);
     }
     .topbar .cta:hover { background: var(--accent-strong); border-color: var(--accent-strong); color: #fff; }
+    .topbar .cta { white-space: nowrap; }
+
+    /* ---------- hamburger (desktop: hidden) ---------- */
+    .hamburger {
+      display: none;
+      align-items: center; justify-content: center;
+      background: var(--bg-elev);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius);
+      padding: 6px 10px;
+      font-size: 18px; line-height: 1;
+      cursor: pointer;
+      color: var(--fg);
+    }
+    .hamburger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    /* ---------- mobile topbar + wrap padding ---------- */
+    @media (max-width: 720px) {
+      .wrap, .wrap-narrow { padding: 0 16px; }
+      .topbar { position: sticky; }
+      .topbar-inner { padding: 12px 16px; gap: 8px; position: relative; }
+      .brand { font-size: 16px; }
+      .topbar .cta { margin-left: auto; padding: 8px 12px; font-size: 13px; }
+      .hamburger { display: inline-flex; }
+
+      .topbar nav {
+        display: none;
+        position: absolute;
+        top: 100%; left: 0; right: 0;
+        flex-direction: column; align-items: stretch;
+        margin-left: 0;
+        background: var(--bg-elev);
+        border-bottom: 1px solid var(--border);
+        padding: 6px 16px 14px;
+        gap: 0;
+        box-shadow: var(--shadow-md);
+      }
+      .topbar[data-open="true"] nav { display: flex; }
+      .topbar[data-open="true"] .hamburger { background: var(--bg-sunken); }
+      .topbar nav a {
+        padding: 14px 4px;
+        font-size: 16px;
+        border-bottom: 1px solid var(--border);
+      }
+      .topbar nav a:last-child { border-bottom: none; }
+    }
 
     /* ---------- hero ---------- */
     .hero {
@@ -417,7 +463,7 @@
         </span>
         FartOL
       </a>
-      <nav>
+      <nav id="topnav">
         <a href="#vision">Vision</a>
         <a href="#diff">Design</a>
         <a href="#roadmap">Roadmap</a>
@@ -427,6 +473,7 @@
         <a href="https://github.com/jhagberg/FartOL" target="_blank" rel="noopener">GitHub</a>
       </nav>
       <a href="demo/index.html" class="cta">Öppna demo →</a>
+      <button type="button" class="hamburger" aria-controls="topnav" aria-expanded="false" aria-label="Öppna meny">☰</button>
     </div>
   </header>
 
@@ -837,5 +884,27 @@
     </div>
   </footer>
 
+  <script>
+    (() => {
+      const topbar = document.querySelector('.topbar');
+      const btn = topbar && topbar.querySelector('.hamburger');
+      const nav = topbar && topbar.querySelector('nav');
+      if (!topbar || !btn || !nav) return;
+      const setOpen = (open) => {
+        topbar.setAttribute('data-open', String(open));
+        btn.setAttribute('aria-expanded', String(open));
+        btn.setAttribute('aria-label', open ? 'Stäng meny' : 'Öppna meny');
+      };
+      btn.addEventListener('click', () => {
+        setOpen(topbar.getAttribute('data-open') !== 'true');
+      });
+      nav.addEventListener('click', (e) => {
+        if (e.target.tagName === 'A') setOpen(false);
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') setOpen(false);
+      });
+    })();
+  </script>
 </body>
 </html>
