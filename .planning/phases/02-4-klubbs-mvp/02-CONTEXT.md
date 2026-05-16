@@ -188,27 +188,436 @@ Total committed: **~3.5d**. Wednesday morning is the buffer / dry-run.
   is allowed to be re-fetched any time, so retention-scrub doesn't
   touch it. Adds a new SQLite table outside the append-only domain.
 
-## Open questions (resolve in `/gsd-discuss-phase 2`)
+## Open questions — RESOLVED in `/gsd-discuss-phase 2` (round 2, 2026-05-16 evening)
 
-- ~~Eventor download endpoint shape~~ — **resolved 2026-05-16 (twice).**
-  First-round guess was `/api/persons/organisations/637` (STK-only, no
-  SI cards). Re-checked against MeOS source: the right endpoint is
-  `/api/export/cachedcompetitors` (national, 252 919 competitors,
-  96 918 SI cards, open to club keys). See revised
-  `.planning/research/eventor-api-smoke.md`.
-- ~~Multi-club key coordination~~ — **resolved 2026-05-16.** No longer
-  needed; the cachedcompetitors export is national.
-- MIP authentication — MeOS supports a plain-text `pwd` header. For
-  4-klubbs (closed club LAN) we probably skip it; for Phase 2.1
-  (sanctioned event with bigger LAN attack surface) we add it.
-- MOP storage shape — do we project MeOS `<cmp>` rows into the existing
-  `competitors` table, or keep a shadow `meos_competitors` table to
-  avoid cross-contaminating ground truth? Recommend shadow table; let
-  the planner confirm.
-- Hyrbricka column placement — `competitors.hired_card BOOLEAN` vs a
-  separate junction. Recommend column; trivial migration.
+All five open questions are now locked. See the `<decisions>` block below
+for the full set of round-2 implementation decisions. Summary pointers:
+
+- ~~Eventor download endpoint shape~~ — **resolved (twice, 2026-05-16).**
+  Parallel agent investigation landed `/api/export/cachedcompetitors`
+  (national, 252 919 competitors, 96 918 SI cards). See revised
+  `.planning/research/eventor-api-smoke.md`. Round 2 added: upstart-on-
+  bridge-boot trigger, 7-day staleness threshold, warn-and-run offline
+  behavior. See D-EV-1 / D-EV-2 / D-EV-3 below.
+- ~~Multi-club key coordination~~ — **resolved.** Cachedcompetitors is
+  national; no per-club key dance needed.
+- ~~MIP authentication~~ — **resolved D-MIP-1.** No `pwd` for 4-klubbs
+  (closed club LAN); revisit for 2.1 sanctioned events.
+- ~~MOP storage shape~~ — **resolved D-MOP-1.** Shadow `meos_*` tables;
+  TRUNCATE+INSERT in transaction on `<MOPComplete>`; auto-merge MeOS-
+  only competitors into `competitors` with `source='meos'`.
+- ~~Hyrbricka column placement~~ — **resolved D-HB-1.** Junction table
+  `hired_cards (competition_id, card_number, marked_at_ms, returned_at_ms,
+  contact_name, contact_phone, contact_email, note)` — strict superset of
+  MeOS's flat `hiredCardHash<int>` design (verified at
+  `/home/jonas/src/meos/code/oEvent.h:930-934`). Adds contact info MeOS
+  lacks for the "hunt down non-returners" use case.
 - Branch rename — current branch is
   `gsd/phase-2-sanctioned-competition` (off the original Phase 2 name).
   Consider renaming to `gsd/phase-2.0-4-klubbs-mvp` to match the split.
-  Not blocking.
+  Not blocking; planner discretion.
+
 </domain>
+
+<decisions>
+## Implementation Decisions (round 2 — 2026-05-16 evening)
+
+These 14 decisions came out of `/gsd-discuss-phase 2` round 2, after the
+parallel Eventor agent had landed its endpoint research (commits 80d9ab4 +
+97b22ac). Together with the 7 first-round locked decisions in `<domain>`
+above, they fully scope Phase 2.0 for `/gsd-plan-phase 2`.
+
+### Eventor löpardatabasen cache (Plan 1)
+
+- **D-EV-1:** Refresh trigger = **upstart job on bridge boot + admin
+  "Uppdatera från Eventor" button**. No background cron (bridge is
+  competition-only, not always-on). Operator can force a refresh from
+  the admin/tweaks surface. Reason: the bridge isn't always running, so
+  cron is the wrong abstraction; on-boot fetch + on-demand mirrors how
+  MeOS does it.
+- **D-EV-2:** Staleness threshold = **re-fetch on bridge boot if cache
+  > 7 days old**, otherwise reuse the local copy. Admin button is the
+  override for "I want fresh data right now". Respects Eventor ToS
+  ("members fetched once per day is plenty"; weekly is comfortably
+  inside).
+- **D-EV-3:** Bridge boots with stale/empty cache and no internet =
+  **warn + run with what we have**. If cache exists: use it, surface a
+  UI indicator `Eventor: cache N dagar gammal`. If empty: walkup falls
+  back to the Phase 1 `cardHolderHint` flow, indicator says `Eventor:
+  offline`. Honors REQ-OPS-001 (no internet required). NEVER blocks
+  bridge startup on network reachability.
+
+### MIP server `<entry>` push (Plan 3)
+
+- **D-MIP-1:** Auth = **none** for 4-klubbs (closed club LAN). MeOS's
+  `pwd` header is ignored. Revisit for Phase 2.1 sanctioned events.
+- **D-MIP-2:** `lastid` source = **reuse `events.local_seq`**. Phase 1's
+  events table already provides monotonic local_seq; MIP serves
+  `WHERE local_seq > ?` and serializes matching `card_bound` rows to
+  MIP `<entry>` (and matching `card_read` rows IF Plan 3 ever extends —
+  see D-MIP-3). Zero new state.
+- **D-MIP-3:** Push scope = **`<entry>` on bind + `<entry>` re-emit on
+  card-replace updates**. NOT full `<card>` punch dumps (would violate
+  locked decision #3 "no runner double-stamping"). The replace-card
+  409 flow re-emits the same FartOL UUID via `<extId>` so MeOS UPDATEs
+  rather than inserts.
+- **D-MIP-4:** Entry shape = **`<classname>` (string) + `<extId>`
+  (FartOL competitor UUID)**. Verified against MeOS source at
+  `/home/jonas/src/meos/code/onlineinput.cpp:989-997`: parser falls back
+  to `oe.getClass(clsName)` when `<classid>` is absent or unknown.
+  Eliminates the MOP-bootstrap dance entirely. Precondition: MeOS has
+  the five 4-klubbs classes (Vit/Grön/Gul/Orange/Violett) set up
+  pre-event — covered by the parallel-run playbook.
+
+### MOP receiver `<MOPComplete>` / `<MOPDiff>` (Plan 4)
+
+- **D-MOP-1:** Storage = **shadow `meos_competitors` / `meos_classes` /
+  `meos_clubs` tables** (not projected into the active `competitors`
+  table). Clean separation of FartOL ground truth from MeOS view;
+  reconciliation is an explicit step. Crash-recovery query becomes
+  trivial: `WHERE NOT EXISTS (SELECT 1 FROM competitors WHERE
+  card_number = meos_competitors.card_number)`.
+- **D-MOP-2:** `<MOPComplete>` semantics = **TRUNCATE + INSERT inside
+  a single transaction**. Matches MOP spec ("receiver should drop prior
+  state and replace it"). Transaction makes partial-parse safe (rollback
+  preserves prior snapshot). `<MOPDiff>` does plain UPSERT by id, plus
+  DELETE for rows with `delete="true"`.
+- **D-MOP-3:** Reconciliation behavior = **auto-merge MeOS-only
+  competitors into `competitors`**. On every MOP write, find shadow rows
+  whose `card_number` doesn't exist in `competitors` and INSERT them
+  with `source='meos'`, `consent_status='pending_first_read'` (operator
+  confirms on first card_read, same Phase 1 path). Surface a toast:
+  `N löpare hämtade från MeOS`. Matches locked decision #2 "MeOS
+  registrations during outage flow back via MOP on restart."
+- **D-MOP-4:** Lifecycle = **always-on, no auth**. `/mop` mounts
+  whenever the bridge runs. Consistent with D-MIP-1; no per-competition
+  toggle. Operator just points MeOS at the URL and it works.
+
+### Hyrbricka model + UX (Plans 2 + 5)
+
+- **D-HB-1:** Data shape = **junction table `hired_cards
+  (competition_id, card_number PK, marked_at_ms, returned_at_ms
+  NULLABLE, contact_name, contact_phone, contact_email, note)`**.
+  Card-centric (matches the "zero lost rental cards" inventory framing)
+  AND carries contact info MeOS lacks. Strict superset of MeOS's flat
+  `oEvent::hiredCardHash` (`set<int>` per event — see
+  `/home/jonas/src/meos/code/oEvent.h:930-934` and usage in
+  `TabSI.cpp:3272`). Same lookup pattern at finish-readout: `EXISTS
+  (SELECT 1 FROM hired_cards WHERE card_number = ? AND returned_at_ms
+  IS NULL)`. ADD to REQ-PRIV-002 retention scrub list.
+- **D-HB-2:** Return flow = **"Returnerad" button at finish-readout +
+  admin "Aktiva hyrbrickor" backstop**. Finish-readout shows the
+  Hyrbricka toast with contact info AND a one-tap return button.
+  Operator hands card back, clicks, sets `returned_at_ms = now()`.
+  Admin page lists open rentals for end-of-event reconciliation.
+- **D-HB-3:** Walkup UX = **Hyrbricka checkbox + expandable contact
+  fields when checked** (name/phone/email/note). Contact fields are
+  required when checkbox is set (operator can't save a hired card
+  without at least a phone OR email). Reason: the whole point is being
+  able to reach the renter if they don't return.
+
+### Known limitation — documented in playbook (Plan 6)
+
+- **D-LIM-1:** MOP `<cmp>` does NOT carry the hired flag, so rentals
+  marked in MeOS during a FartOL outage will NOT auto-import on
+  recovery. The parallel-run playbook documents the manual workaround:
+  operator re-enters those rentals in FartOL post-restart. Not worth
+  fixing in 2.0 because (a) the typical outage is short, (b) MeOS
+  operators eyeball rental returns anyway, (c) belt+braces is sufficient.
+
+### Claude's Discretion
+
+Areas explicitly left to the planner / executor:
+
+- Exact Fastify route file organization for `apps/edge/src/integrations/meos/`
+  (mip.ts + mop.ts + shared types).
+- Streaming XML parser library for the 86 MB Eventor download
+  (`saxes`, `sax`, `fast-xml-parser` stream mode — Phase 1 already
+  uses XML parsing patterns; reuse where sensible).
+- Whether the upstart-on-bridge-boot Eventor fetch shows a splash
+  screen, a background indicator, or both. UI-SPEC discretion.
+- ADR-0009 ("National runner DB cached locally for walk-up
+  autocomplete") timing — Plan 1 task 0 (recommended per
+  eventor-api-smoke.md), or a sibling commit before Plan 1's first
+  code change.
+- Wording of Swedish toasts (`Eventor: cache N dagar gammal`,
+  `⚠️ Hyrbricka — be om att få tillbaka brickan!`, `N löpare hämtade
+  från MeOS`, `Returnerad`) — UI-SPEC can polish before plan execution.
+- Exact MIP polling response when nothing's new (empty
+  `<MIPData lastid="N"/>` is the obvious answer; MeOS spec allows it).
+- Exact UPDATEs to a competitor row that trigger a MIP `<entry>`
+  re-emit (D-MIP-3). Safe default: card_number change, class_id
+  change, name change.
+- Exact bin path / udev / install-smoke changes for Phase 2 (Phase 1
+  Plan 18 patterns hold; planner extends).
+- Branch rename (`gsd/phase-2.0-4-klubbs-mvp`) — cosmetic; not
+  blocking.
+
+</decisions>
+
+<canonical_refs>
+## Canonical References
+
+**Downstream agents MUST read these before planning or implementing.**
+This list supersedes the unstructured "References" list inside `<domain>`
+above for downstream consumption.
+
+### Phase 2.0 research outputs (MUST READ)
+
+- `.planning/research/meos-protocols.md` — Full MeOS protocol matrix
+  (MOP, MIP, SendPunch TCP, UDP broadcast). Sample payloads, XSD
+  locations, version landmines, cost estimates. Drives Plans 3 + 4.
+- `.planning/research/eventor-api-smoke.md` — Eventor API smoke test +
+  endpoint matrix. Locks Plan 1 schema (`eventor_competitors`,
+  `eventor_clubs`) and download flow. Includes privacy + ToS
+  considerations.
+
+### MeOS source code (referenced during round 2 discussion)
+
+- `/home/jonas/src/meos/code/onlineinput.cpp:985-1100` — MIP
+  `<entry>` parser. Verified that `<classname>` string lookup works
+  (line 994-996: `entry.getObjectString("classname", clsName); cls =
+  oe.getClass(clsName);`). Locks D-MIP-4 entry shape.
+- `/home/jonas/src/meos/code/onlineinput.cpp:1065-1073` — MIP card +
+  hired parsing. Locks `<card hired="true">12345</card>` wire format.
+- `/home/jonas/src/meos/code/oEvent.h:930-934` — MeOS hired-card API
+  (`hasHiredCardData`, `isHiredCard(cardNo)`, `setHiredCard`,
+  `getHiredCards`, `clearHiredCards`). Confirms MeOS uses flat
+  `set<int>` per event — our D-HB-1 junction is a strict superset.
+- `/home/jonas/src/meos/code/TabSI.cpp:3272,3309` — MeOS finish-readout
+  hired-check pattern (`runner->isRentalCard() || oe->isHiredCard(...)`).
+  Reference for our finish-readout `EXISTS` query in D-HB-1.
+- `/home/jonas/src/meos/code/TabCompetition.cpp:3107-3108` — MeOS's
+  own Eventor cachedcompetitors download call. Locks Plan 1 endpoint
+  choice (this is the only Eventor endpoint that's open to club-level
+  API keys for the full national DB).
+
+### Event fixtures (the actual race data)
+
+- `docs/2026-05-20 4-klubbs_coursedata.xml` — Condes 10.8.12 IOF XML
+  3.0 course export for the 4-klubbs event. Use verbatim as the e2e
+  fixture for any Plan that touches course import. 5 courses:
+  Vit/Grön/Gul/Orange/Violett.
+- `docs/2026-05-20 4-klubbs.wcd` — Purple Pen / Condes native
+  sibling. Not load-bearing; FartOL ingests the XML.
+- `docs/Guide_Eventor_-_Hamta_data_via_API.pdf` — Eventor API
+  reference (ToS guidance for D-EV-1 cadence; key handling).
+
+### Phase 1 code being extended
+
+- `apps/web/src/lib/screens/WalkupModal.svelte` — Plan 2 extends.
+  Already has `cardHolderHint` from SI firmware; Plan 2 adds Eventor
+  cache lookup as a second autocomplete source AND the Hyrbricka
+  checkbox + contact fields (D-HB-3).
+- `apps/web/src/lib/screens/ReadoutView.svelte` — Plan 5 extends with
+  the Hyrbricka finish-readout toast + Returnerad button (D-HB-2).
+- `apps/edge/src/db/schema.ts` — Plans 1 + 4 + 5 add new tables:
+  `eventor_competitors`, `eventor_clubs`, `meos_competitors`,
+  `meos_classes`, `meos_clubs`, `hired_cards`. Migrations follow
+  Phase 1's drizzle-kit pattern.
+- `apps/edge/src/ingest/entryImport.ts` — Pattern for clubs upsert +
+  competitor insert in a transaction. MIP `<entry>` push (Plan 3)
+  follows the inverse: emit `<entry>` for every `card_bound` row.
+- `apps/edge/src/routes/` — Plans 3 + 4 add a new `integrations/meos/`
+  subdirectory with `mip.ts` (GET /mip) and `mop.ts` (POST /mop) Fastify
+  route plugins.
+- `apps/edge/src/privacy/` — Phase 1 retention scrubber. Plan 5
+  extends to include `hired_cards.contact_*` columns (REQ-PRIV-002).
+
+### Locked decisions (ADRs)
+
+- `.planning/adr/0008-pii-in-append-only-event-log.md` — PII
+  retention rules. Runner cache from Eventor (Plan 1) and rental
+  contact info (D-HB-1) need scrub coverage. ADR-0009 (forthcoming
+  per Plan 1 / Claude's Discretion) extends with national-DB
+  considerations.
+- `.planning/adr/0006-tech-stack.md` — Node.js 22 LTS + Fastify +
+  better-sqlite3 + SvelteKit. Plans 1-6 stay inside this stack.
+- `.planning/adr/0007-standards-first-interop.md` — IOF XML 3.0 +
+  Eventor + MeOS interop posture. Phase 2.0 instantiates the MeOS
+  interop (via MIP+MOP) and the Eventor interop (via cachedcompetitors).
+
+### Phase 1 dependencies
+
+- `.planning/phases/01-single-laptop-training-mvp/01-CONTEXT.md` —
+  D-01..D-15 locked. Especially D-09 (mutable config tables, immutable
+  events), D-10 (Drizzle ORM), D-11 (card-to-competitor partial unique
+  index), D-13 (WebSocket transport).
+
+</canonical_refs>
+
+<code_context>
+## Existing Code Insights
+
+### Reusable Assets
+
+- **`apps/web/src/lib/screens/WalkupModal.svelte`** — Phase 1 walk-up
+  modal with `cardHolderHint` SI-firmware autocomplete. Plan 2 adds
+  Eventor `si_card` lookup as a second source AND Hyrbricka checkbox
+  + expandable contact fields. The existing `createCompetitor()` API
+  call extends with `hired_card`-context (`hired_card: true` triggers
+  a separate `hired_cards` INSERT in the same transaction on the edge).
+- **`apps/web/src/lib/screens/ReadoutView.svelte`** — Phase 1 live
+  readout view. Plan 5 mounts a Hyrbricka toast + Returnerad button
+  on finish-readout for cards with an open `hired_cards` row.
+- **`apps/edge/src/db/schema.ts`** — Phase 1 Drizzle schema. New
+  tables follow the same patterns (text PKs / cascade FKs / scrub
+  columns). The `competitors.cardNumber` partial unique index pattern
+  is reused for `eventor_competitors.si_card` index.
+- **`apps/edge/src/ingest/entryImport.ts`** — Transaction + bulk-upsert
+  pattern. MIP outbound serializer (Plan 3) and MOP inbound writer
+  (Plan 4) follow the same shape.
+- **`apps/edge/src/privacy/`** (Phase 1 retention scrubber) — extends
+  to scrub `hired_cards.contact_*` after 30 days.
+- **`events.local_seq`** monotonic ID — MIP `lastid` reuses it
+  directly (D-MIP-2).
+
+### Established Patterns
+
+- **Pure-projection reducers over the event log** (Phase 1 D-12) —
+  MIP serialization is essentially a projection over `events` filtered
+  by `local_seq > ?`. MOP reception writes ONLY to shadow `meos_*`
+  tables (no event_log writes — MOP is mutable mirror state).
+- **Conventional Commits + commitlint + lefthook** — Phase 0 baseline,
+  Phase 1 carries forward, Phase 2 stays inside.
+- **TypeScript strict + `noUncheckedIndexedAccess` +
+  `exactOptionalPropertyTypes`** — Phase 0 baseline; carry into
+  `apps/edge/src/integrations/meos/` and the Eventor cache code.
+- **Swedish-first i18n** (Phase 1 D-02) — all new strings authored as
+  i18next keys with `sv.json` + `en.json` populated from day one.
+
+### Integration Points
+
+- **WalkupModal → /api/competitors** — extended payload carries
+  `hired_card: boolean` and `hired_contact: {name, phone, email, note}`
+  when hired. Backend creates a `hired_cards` row in the same
+  transaction as the competitor row.
+- **ReadoutView → WebSocket** — Phase 1 WebSocket already broadcasts
+  card_read events. Plan 5 subscribes to the same channel, queries
+  `hired_cards` on each card_read, decides toast presentation.
+- **`apps/edge/src/integrations/meos/mip.ts`** (NEW) — Fastify route
+  `GET /mip?competition=&lastid=&pwd=`. Queries `events WHERE
+  local_seq > ?` and serializes matching `card_bound` events to MIP
+  XML. Hooks `hired_cards` for the `<card hired="true">` flag.
+- **`apps/edge/src/integrations/meos/mop.ts`** (NEW) — Fastify route
+  `POST /mop` (with optional `POST /mop/zip` for gzipped variant).
+  Parses incoming `<MOPComplete>` / `<MOPDiff>`, writes to shadow
+  `meos_*` tables in a transaction, runs the auto-merge step
+  (D-MOP-3).
+- **`apps/edge/src/eventor/cache.ts`** (NEW) — Streaming download +
+  SQLite write for cachedcompetitors + clubs. Called from bridge boot
+  (D-EV-1) and `/api/admin/eventor/refresh` (admin button).
+
+</code_context>
+
+<specifics>
+## Specific Ideas
+
+- **Hard deadline:** Wednesday **2026-05-20** (4-klubbs training at
+  Stora Tuna OK). 4 days from this discussion.
+- **MeOS source available** at `/home/jonas/src/meos/` — verified
+  during round 2 discussion that `<classname>` lookup, hired-card
+  semantics, and Eventor download endpoint all match Phase 2.0
+  assumptions. Future MeOS-protocol questions during Plan execution
+  should grep this source rather than guess.
+- **MeOS-as-superset philosophy** — where MeOS has a feature, we
+  match its observable behavior (hired-card check at finish-readout,
+  Eventor cachedcompetitors download). Where MeOS is thin (no return
+  tracking, no contact info on rentals), we extend with cleaner
+  primitives.
+- **Eventor key in `.eventor-env`** (gitignored, commit 7ec8866).
+  Loaded on bridge boot (D-EV-1); if missing → Eventor cache is
+  disabled, indicator says `Eventor: nyckel saknas`.
+- **MIP/MOP polling** — MeOS is the HTTP client for BOTH protocols
+  (it polls our `/mip` and POSTs to our `/mop`). FartOL is the HTTP
+  server in both cases. This is the inverse of what newcomers expect
+  from "MIP = input protocol".
+- **Mobile readability** (Phase 1 carry-forward) — Jonas reads on
+  mobile. AskUserQuestion / chat replies stay terse. Long content
+  goes in CONTEXT.md / PLAN.md / ADRs.
+- **MeOS as parallel safety backup** — locked decision #2 (round 1)
+  AND D-MOP-3 (round 2) jointly imply: FartOL is primary, MeOS is the
+  parachute. Belt+braces, not redundant.
+
+</specifics>
+
+<deferred>
+## Deferred Ideas
+
+### Multi-course-per-card, same event (Phase 2.1)
+
+Jonas raised during round 2: "if you run a class like H45 and then
+you want to run an open course also you need two cards. If our system
+can handle two different courses same event competition that would be
+super." This is a real Phase 1 limitation (competitors.cardNumber
+unique within a competition) that today's MeOS shares.
+
+Three solution sketches, each non-trivial:
+1. Relax the unique index + projection that figures out which course
+   matched a given card_read attempt.
+2. New `competitor_courses (competitor_id, course_id)` junction; one
+   competitor row, multiple registered courses; reducer iterates.
+3. Operator-driven "New attempt" button that rebinds the card mid-event.
+
+Deferred to **Phase 2.1** because: hard Wednesday deadline; not a
+4-klubbs blocker (existing workaround = register twice with two
+cards); designing this properly needs a focused planning cycle and
+projection-layer thinking. Document in the parallel-run playbook
+that the operator workaround is "register twice with two cards" for
+2.0.
+
+### Phase 2.1 carryovers (from round 1)
+
+- **Yjs collaborative editing** (REQ-UI-008) — 4-klubbs scale doesn't
+  need it; Phase 2.1 sanctioned competition does.
+- **QR-code self-signup public route** — Phase 2.1 stretch; sibling
+  todo `.planning/todos/pending/2026-05-15-parent-self-signup-qr-flow.md`
+  + `.planning/todos/pending/2026-05-15-tailscale-cloudflare-tunnel-for-self-signup.md`.
+- **Eventor entries pull** (REQ-STD-004 read path) — irrelevant for
+  4-klubbs; Phase 2.1.
+- **Eventor results push** (REQ-STD-004 write path) — keep manual IOF
+  XML 3.0 export + Eventor web upload; Phase 2.1.
+- **MeOS SendPunch TCP / UDP broadcast** — 2014-era binary protocols
+  skipped entirely. MIP+MOP cover every Phase 2.0 use case.
+- **Spectator live results page** — Phase 2.1.
+- **Bridge crash recovery hardening** beyond D-MOP-3 — Phase 2.1.
+
+### MIP authentication for Phase 2.1
+
+D-MIP-1 chose no-auth for 4-klubbs. Phase 2.1 (sanctioned events,
+bigger LAN attack surface) should revisit — likely an env-var `pwd`
+check on both MIP and MOP endpoints.
+
+### MeOS-side hired-card visibility on FartOL crash recovery
+
+D-LIM-1: MOP `<cmp>` doesn't carry the hired flag, so MeOS-side
+rentals during a FartOL outage won't auto-import. Operator re-enters
+on restart. Worth revisiting in Phase 2.1 if it becomes painful — a
+custom MIP `<response type="hiredcards"/>` query might work, but
+that's speculative (not in the spec we have).
+
+### Reviewed Todos (not folded)
+
+- `.planning/todos/pending/2026-05-15-parent-self-signup-qr-flow.md`
+  — Phase 2.1 / 3. Public-facing surface, needs tunnel research first.
+- `.planning/todos/pending/2026-05-15-tailscale-cloudflare-tunnel-for-self-signup.md`
+  — Phase 2.1 dependency for QR self-signup.
+- `.planning/todos/pending/2026-05-16-si-card-write-program-name.md`
+  — Phase 3 or 4. Walk-up "write back" UX is a follow-on capability,
+  not 4-klubbs MVP.
+- `.planning/todos/pending/2026-05-16-stortuna-tuesday-to-wednesday-cleanup.md`
+  — Docs cleanup; planner can fold into Plan 6 (ops playbook) or run
+  as standalone post-Phase-2.0 PR.
+- `.planning/todos/pending/2026-05-16-centralize-event-inserts-via-insertevent-helper.md`
+  — Refactor; not phase-bound. Pick up opportunistically.
+- `.planning/todos/pending/2026-05-16-perf-*` (4 perf todos) — Phase
+  4 / 5 territory; not 4-klubbs scale concerns.
+- `.planning/todos/pending/2026-05-14-revisit-thermal-receipt-rendering.md`
+  — Phase 3 polish; current Phase 1 path works.
+
+</deferred>
+
+---
+
+*Phase: 2-4-klubbs-mvp*
+*Context gathered: 2026-05-16 (round 1) + 2026-05-16 evening (round 2)*
