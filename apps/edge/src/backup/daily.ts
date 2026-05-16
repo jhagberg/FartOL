@@ -27,7 +27,7 @@
 //   without waiting wall-clock hours)
 
 import path from 'node:path';
-import { mkdirSync, readdirSync, unlinkSync, statSync, existsSync } from 'node:fs';
+import { mkdirSync, readdirSync, unlinkSync, existsSync } from 'node:fs';
 
 import type { DbHandle } from '../db/index.ts';
 
@@ -70,12 +70,21 @@ export function formatLocalDate(d: Date): string {
 const RETRY_MS = 60 * 60 * 1000;
 
 /** Delete all-but-the-most-recent `keepLast` snapshots in `dir`. Newest by
- * filesystem mtime. Filename match is anchored to the bak- date pattern so
- * unrelated files in the same directory are NOT touched. */
+ * the date embedded in the filename (lexicographic sort on YYYY-MM-DD).
+ * Filename match is anchored to the bak- date pattern so unrelated files in
+ * the same directory are NOT touched.
+ *
+ * Filename date is preferred over filesystem mtime because mtime drifts on
+ * copy/clone/restore-from-backup operations while the embedded date is the
+ * canonical identity (one backup per day, see runOnce()). PR #3 Gemini
+ * medium review feedback. */
 function prune(dir: string, keepLast: number): void {
   if (!existsSync(dir)) return;
   const files = readdirSync(dir).filter((f) => /^fartol\.db\.bak-\d{4}-\d{2}-\d{2}$/.test(f));
-  files.sort((a, b) => statSync(path.join(dir, b)).mtimeMs - statSync(path.join(dir, a)).mtimeMs);
+  // YYYY-MM-DD sorts lexicographically. Sort ascending then reverse so the
+  // newest sits at index 0, matching the prior mtime-DESC semantics.
+  files.sort();
+  files.reverse();
   for (const f of files.slice(keepLast)) {
     try {
       unlinkSync(path.join(dir, f));

@@ -100,8 +100,11 @@ describe('scheduleDailyBackup', () => {
   });
 
   test('test 4: prune keeps the N most-recent files; older snapshots are removed', async () => {
-    // Seed 10 fake backup files spanning 10 days. utimes back-dates the older
-    // ones so the mtime-sort in prune() picks the right "most recent" set.
+    // Seed 10 fake backup files spanning 10 days. Filename embeds the
+    // date (YYYY-MM-DD); prune() sorts lexicographically and keeps the
+    // newest keepLast. utimes back-dates kept for historical parity (the
+    // older mtime-based prune() used these; lexicographic sort produces
+    // the same ordering since filenames are date-sortable).
     const dates = [
       '2026-05-05',
       '2026-05-06',

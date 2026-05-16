@@ -52,17 +52,20 @@ function doIngest(
   let coursesCreated = 0;
 
   // (1) Classes — reuse existing by name within the same competition.
+  // Pre-load all existing classes for this competition into a Map so we
+  // hit the DB once for the lookup instead of N times. PR #3 Gemini
+  // medium feedback. Same pattern as the clubs dedupe in entryImport.ts.
   const classIdByName = new Map<string, string>();
+  const existingClasses = handle.db
+    .select({ id: classes.id, name: classes.name })
+    .from(classes)
+    .where(sql`${classes.competitionId} = ${competitionId}`)
+    .all();
+  for (const row of existingClasses) {
+    classIdByName.set(row.name, row.id);
+  }
   for (const c of data.classes) {
-    const existing = handle.db
-      .select({ id: classes.id })
-      .from(classes)
-      .where(sql`${classes.competitionId} = ${competitionId} AND ${classes.name} = ${c.name}`)
-      .get();
-    if (existing) {
-      classIdByName.set(c.name, existing.id);
-      continue;
-    }
+    if (classIdByName.has(c.name)) continue;
     const id = crypto.randomUUID();
     handle.db
       .insert(classes)
