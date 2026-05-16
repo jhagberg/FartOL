@@ -21,7 +21,7 @@ jobs:
       # SHA pin per advisory GHSA-69fq-xp46-6x23 — supply-chain hardening.
       # 0.36.0 release; bump explicitly when upgrading.
       - name: Run Trivy filesystem scan
-        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scan-ref: .
