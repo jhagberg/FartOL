@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v0.0.1
 milestone_name: milestone
 status: phase-ready-for-discussion
-stopped_at: Phase 1 + 1.5 merged to main 2026-05-16. Phase 2.0 (4-klubbs MVP) CONTEXT.md written; deadline Wed 2026-05-20.
-last_updated: '2026-05-16T18:30:00.000Z'
+stopped_at: Phase 2 round-2 context gathered — 14 implementation decisions locked across MIP/MOP/Eventor/Hyrbricka; ready for /gsd-plan-phase 2
+last_updated: "2026-05-16T19:58:29.718Z"
 progress:
-  total_phases: 7
-  completed_phases: 3
-  total_plans: 27
-  completed_plans: 27
-  percent: 100
+  total_phases: 8
+  completed_phases: 2
+  total_plans: 24
+  completed_plans: 25
+  percent: 25
 ---
 
 # STATE
@@ -259,9 +259,9 @@ None. Phase 0 plans created.
 
 ## Session Continuity
 
-Last session: 2026-05-14T10:57:07.864Z
-Stopped At: Phase 1 plans approved (post codex review, 18 plans, 6 waves)
-Resume File: .planning/phases/01-single-laptop-training-mvp/01-01-PLAN.md
+Last session: 2026-05-16T19:58:29.664Z
+Stopped At: Phase 2 round-2 context gathered — 14 implementation decisions locked across MIP/MOP/Eventor/Hyrbricka; ready for /gsd-plan-phase 2
+Resume File: .planning/phases/02-4-klubbs-mvp/02-CONTEXT.md
 
 ---
 
@@ -279,6 +279,7 @@ Resume File: .planning/phases/01-single-laptop-training-mvp/01-01-PLAN.md
   entirely — MIP XSD v3.0 (uploaded 2026-05-14) and MOP v2.0 (March 2025) are
   the only actively-versioned protocols and cover every documented use case.
   Hyrbricka handled in both systems independently (FartOL toast at finish-readout
+
   + MIP `hired="true"` triggers MeOS reminder). Yjs and QR self-signup deferred
   to Phase 2.1. CONTEXT.md at `.planning/phases/02-4-klubbs-mvp/02-CONTEXT.md`.
   ROADMAP.md updated with the split. MeOS protocol research at
