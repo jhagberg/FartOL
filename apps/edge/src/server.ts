@@ -59,6 +59,7 @@ import registerExportRoutes from './routes/export.ts';
 import registerAdminRoutes from './routes/admin.ts';
 import registerEventorRoutes from './routes/eventor.ts';
 import registerMipRoute from './integrations/meos/mip.ts';
+import registerMopRoute from './integrations/meos/mop.ts';
 import wsPlugin from './ws/index.ts';
 import type { DbHandle } from './db/index.ts';
 import type { PrinterSink } from './print/sink.ts';
@@ -235,6 +236,10 @@ export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyIn
     // not /api/*, because MeOS hard-codes its poll URL and won't add a
     // prefix. D-MIP-1: no auth (closed club LAN).
     await app.register(registerMipRoute);
+    // Phase 2.0 Plan 02-04 — MOP receiver (POST /mop). Same root-mount
+    // posture as MIP — MeOS hard-codes its push URL. D-MOP-4: no auth,
+    // always-on; D-MOP-1..3 govern the shadow-table writes and auto-merge.
+    await app.register(registerMopRoute);
     await app.register(registerDevRoutes);
   }
 
