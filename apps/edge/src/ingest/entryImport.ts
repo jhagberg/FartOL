@@ -76,6 +76,19 @@ function doIngest(
 
   const missing = new Set<string>();
   let competitorsCreated = 0;
+  // Bulk-upsert distinct club names ONCE after the competitor loop instead
+  // of per-row inside it (PR #3 review — Gemini medium). For an EntryList
+  // with N competitors sharing K distinct clubs, this drops to K writes
+  // worst-case versus N writes per import. Save is small at Phase 1 / 2
+  // scale (~100ms at most) but the cost is also small (~3 lines) so worth
+  // it for clarity.
+  //
+  // Add to the Set only on the SUCCESSFUL insert path (Codex round-2
+  // WR-001). Before this guard, rows that the loop skipped (duplicate
+  // card or missing class) still leaked their club into the clubs table
+  // — small data-retention drift between the accepted competitor set and
+  // the autocomplete table.
+  const distinctClubs = new Set<string>();
 
   for (const e of data.competitors) {
     const classId = classIdByName.get(e.class_name);
@@ -111,16 +124,6 @@ function doIngest(
       })
       .run();
     competitorsCreated++;
-  }
-
-  // Bulk-upsert distinct club names ONCE after the competitor loop instead
-  // of per-row inside it (PR #3 review — Gemini medium). For an EntryList
-  // with N competitors sharing K distinct clubs, this drops K writes
-  // worst-case versus N writes per import. Save is small at Phase 1 / 2
-  // scale (~100ms at most) but the cost is also small (~3 lines) so worth
-  // it for clarity.
-  const distinctClubs = new Set<string>();
-  for (const e of data.competitors) {
     if (e.club !== null && e.club.length > 0) distinctClubs.add(e.club);
   }
   for (const clubName of distinctClubs) {
