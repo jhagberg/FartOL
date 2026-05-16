@@ -7,17 +7,55 @@
  * so the Tweaks panel toggle is instant — there is no fallback flash when an
  * operator switches pairs at the readout table.
  *
- * `display=swap` lets the browser render with the system fallback before the
- * Google-hosted file resolves; this is what gives Phase 1 a fast first paint
- * on the localhost laptop without blocking on the network.
+ * Fonts ship LOCALLY via @fontsource/* packages. Vite bundles the woff2 files
+ * for the per-weight imports listed below; tree-shakes everything else.
+ * REQ-OPS-001 (no internet required) — a laptop offline at a forest training
+ * event renders with the locked typography, not a system fallback.
+ *
+ * @fontsource @font-face rules declare `font-display: swap`, so first paint
+ * still hits the system fallback if a woff2 hasn't arrived yet — preserves
+ * the fast-paint behaviour of the previous Google Fonts setup.
  *
  * Locked by:
  * - 01-UI-SPEC.md §Design System (IBM Plex Sans + Mono defaults)
  * - 01-UI-SPEC.md §Typography (4-pair font alternates)
  * - 01-11-PLAN.md task 1
+ * - REQ-OPS-001 (offline-first; PR #3 Gemini round-4 review)
  */
 
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap');
+/* IBM Plex Sans: 400, 500, 600, 700 */
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/ibm-plex-sans/700.css';
+
+/* IBM Plex Mono: 400, 500, 700 */
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import '@fontsource/ibm-plex-mono/700.css';
+
+/* Geist Sans: 400, 500, 600, 700 — registered as 'Geist Sans' (see tokens.css) */
+@import '@fontsource/geist-sans/400.css';
+@import '@fontsource/geist-sans/500.css';
+@import '@fontsource/geist-sans/600.css';
+@import '@fontsource/geist-sans/700.css';
+
+/* Geist Mono: 400, 500, 700 */
+@import '@fontsource/geist-mono/400.css';
+@import '@fontsource/geist-mono/500.css';
+@import '@fontsource/geist-mono/700.css';
+
+/* Source Sans 3: 400, 500, 600, 700 */
+@import '@fontsource/source-sans-3/400.css';
+@import '@fontsource/source-sans-3/500.css';
+@import '@fontsource/source-sans-3/600.css';
+@import '@fontsource/source-sans-3/700.css';
+
+/* JetBrains Mono: 400, 500, 700 */
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+@import '@fontsource/jetbrains-mono/700.css';
+
+/* Atkinson Hyperlegible: 400, 700 */
+@import '@fontsource/atkinson-hyperlegible/400.css';
+@import '@fontsource/atkinson-hyperlegible/700.css';

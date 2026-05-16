@@ -95,7 +95,8 @@
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 [data-font-pair="geist"] {
-  --font-ui: "Geist", system-ui, sans-serif;
+  /* @fontsource/geist-sans registers the family as "Geist Sans" (not "Geist") */
+  --font-ui: "Geist Sans", system-ui, sans-serif;
   --font-mono: "Geist Mono", ui-monospace, monospace;
 }
 [data-font-pair="source"] {
