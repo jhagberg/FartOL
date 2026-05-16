@@ -1,0 +1,42 @@
+{
+  "name": "@fartol/web",
+  "version": "0.0.0",
+  "description": "FartOL web client — SvelteKit PWA (adapter-static SPA) served by the edge bridge",
+  "license": "AGPL-3.0-or-later",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "vite dev --port 5173",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "svelte-kit sync && tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@fartol/shared-types": "workspace:*",
+    "i18next": "^26.1.0"
+  },
+  "devDependencies": {
+    "@fontsource/atkinson-hyperlegible": "^5.1.0",
+    "@fontsource/geist-mono": "^5.1.0",
+    "@fontsource/geist-sans": "^5.1.0",
+    "@fontsource/ibm-plex-mono": "^5.1.0",
+    "@fontsource/ibm-plex-sans": "^5.1.0",
+    "@fontsource/jetbrains-mono": "^5.1.0",
+    "@fontsource/source-sans-3": "^5.1.0",
+    "@sveltejs/adapter-static": "^3.0.10",
+    "@sveltejs/kit": "^2.59.1",
+    "@sveltejs/vite-plugin-svelte": "^4.0.0",
+    "jsdom": "^25.0.0",
+    "svelte": "^5.55.5",
+    "svelte-check": "^4.0.0",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.0",
+    "vitest": "^2.1.0"
+  }
+}

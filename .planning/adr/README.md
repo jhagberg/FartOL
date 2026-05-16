@@ -36,3 +36,4 @@ decisions, omit the optional sections.
 | [0005](0005-sportident-code-isolated-mit.md)      | SportIdent protocol code isolated in MIT-licensed package         | accepted |
 | [0006](0006-tech-stack.md)                        | Tech stack: Node.js + Fastify + SQLite/Postgres + SvelteKit       | accepted |
 | [0007](0007-standards-first-interop.md)           | Standards-first interop: IOF XML, Eventor, ROC, SIRAP, MeOS TCP   | accepted |
+| [0008](0008-pii-in-append-only-event-log.md)      | PII in append-only event log: scrub competitor row, not payload   | accepted |

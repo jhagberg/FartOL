@@ -6,3 +6,15 @@
 # See .planning/phases/00-hardware-proof/00-01-SUMMARY.md for the full rationale.
 packages:
   - 'packages/*'
+  - 'apps/*'
+
+# Allow native-binding build scripts for packages whose runtime relies on
+# compiled .node addons. pnpm 10+ defaults to denying postinstall scripts;
+# these three are required for Phase 1:
+# - @serialport/bindings-cpp: serialport native binding (Phase 0 dep)
+# - better-sqlite3: SQLite native binding (Phase 1 plan 02)
+# - lefthook: installs the git hook binaries
+onlyBuiltDependencies:
+  - '@serialport/bindings-cpp'
+  - better-sqlite3
+  - lefthook

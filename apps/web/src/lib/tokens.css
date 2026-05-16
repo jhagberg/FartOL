@@ -1,0 +1,179 @@
+/*
+ * Authored for fartol. Not ported from upstream.
+ *
+ * Locked design-token contract for the FartOL Phase 1 SPA. Ported verbatim
+ * from .planning/phases/01-single-laptop-training-mvp/01-SKETCHES/
+ * claude-design-bundle/project/styles.css, extended with the spacing scale,
+ * receipt-typography tokens, density modifiers, and font-pair attribute
+ * selectors called out in 01-UI-SPEC.md §Design System.
+ *
+ * Locked by:
+ * - 01-UI-SPEC.md §Spacing Scale + §Typography + §Color (LOCKED 60/30/10,
+ *   4 status colors, 4-pair font alternates)
+ * - 01-UI-SPEC.md §"Accent runtime overrides" + §"High-contrast bright-sun mode"
+ * - 01-UI-SPEC.md §"Visual Anchors" (TID clock, hybrid-density rows)
+ * - 01-11-PLAN.md task 1
+ *
+ * NOTE: This file only declares variables + a tiny base reset. All
+ * component styling lives inside the respective .svelte files (Svelte 5
+ * scoped <style> blocks) so HMR + scoped selectors do the heavy lifting.
+ */
+
+:root {
+  /* ───── Spacing scale (4 → 64) ────────────────────────────────────── */
+  --space-2xs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 56px;
+  --space-4xl: 64px;
+
+  /* ───── Layout dimensions ─────────────────────────────────────────── */
+  --hit: 44px;
+  --sidebar-w: 240px;
+  --topbar-h: 56px;
+  --rail-w-lg: 380px;
+  --rail-w-md: 340px;
+  --receipt-w: 300px;
+
+  /* ───── Radii + shadows ───────────────────────────────────────────── */
+  --radius: 8px;
+  --radius-lg: 12px;
+  --shadow-sm: 0 1px 2px rgba(20, 20, 30, 0.04), 0 0 0 1px rgba(20, 20, 30, 0.04);
+  --shadow-md: 0 4px 12px rgba(20, 20, 30, 0.06), 0 0 0 1px rgba(20, 20, 30, 0.04);
+  --shadow-lg: 0 12px 40px rgba(20, 20, 30, 0.12), 0 0 0 1px rgba(20, 20, 30, 0.04);
+
+  /* ───── Color tokens — locked oklch palette ───────────────────────── */
+  --bg: oklch(0.98 0.005 90);
+  --bg-elev: oklch(1 0 0);
+  --bg-sunken: oklch(0.96 0.006 90);
+  --fg: oklch(0.22 0.01 240);
+  --fg-muted: oklch(0.50 0.01 240);
+  --fg-faint: oklch(0.68 0.01 240);
+  --border: oklch(0.90 0.005 90);
+  --border-strong: oklch(0.82 0.005 90);
+
+  /* Accent — forest green (orienteering map vibe). Default of 4 variants. */
+  --accent: oklch(0.50 0.08 145);
+  --accent-fg: oklch(0.98 0.005 90);
+  --accent-soft: oklch(0.94 0.03 145);
+  --accent-strong: oklch(0.42 0.09 145);
+
+  /* Status — locked by 01-UI-SPEC §"Status colors" */
+  --ok: oklch(0.55 0.13 145);
+  --ok-soft: oklch(0.94 0.05 145);
+  --mp: oklch(0.70 0.15 75);
+  --mp-soft: oklch(0.95 0.06 80);
+  --dnf: oklch(0.55 0.18 25);
+  --dnf-soft: oklch(0.94 0.05 25);
+  --pend: oklch(0.70 0.005 240);
+  --pend-soft: oklch(0.94 0.005 240);
+
+  /* ───── Typography ────────────────────────────────────────────────── */
+  --fs-caption: 12px;
+  --fs-label: 14px;
+  --fs-body: 16px;
+  --fs-heading: 22px;
+  --fs-display: 28px;
+
+  /* Receipt typography (consumed by plan 15 print path) */
+  --fs-rcpt-title: 13px;
+  --fs-rcpt-body: 11.5px;
+  --fs-rcpt-total: 14px;
+  --fs-rcpt-foot: 10.5px;
+
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* ───── Font-pair runtime overrides ─────────────────────────────────── */
+[data-font-pair="plex"] {
+  --font-ui: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+[data-font-pair="geist"] {
+  /* @fontsource/geist-sans registers the family as "Geist Sans" (not "Geist") */
+  --font-ui: "Geist Sans", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
+}
+[data-font-pair="source"] {
+  --font-ui: "Source Sans 3", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+[data-font-pair="atkinson"] {
+  --font-ui: "Atkinson Hyperlegible", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* ───── Accent runtime overrides (UI-SPEC §"Accent runtime overrides") ── */
+[data-accent="blue"] {
+  --accent: oklch(0.50 0.10 245);
+  --accent-soft: oklch(0.94 0.03 245);
+  --accent-strong: oklch(0.42 0.11 245);
+}
+[data-accent="magenta"] {
+  --accent: oklch(0.50 0.13 330);
+  --accent-soft: oklch(0.94 0.03 330);
+  --accent-strong: oklch(0.42 0.14 330);
+}
+[data-accent="charcoal"] {
+  --accent: oklch(0.30 0.01 240);
+  --accent-soft: oklch(0.92 0.005 240);
+  --accent-strong: oklch(0.20 0.01 240);
+}
+
+/* ───── High-contrast bright-sun mode (UI-SPEC §"High-contrast bright-sun") */
+.contrast-high {
+  --bg: #ffffff;
+  --bg-elev: #ffffff;
+  --bg-sunken: #f1f1f1;
+  --fg: #000000;
+  --fg-muted: #1f1f1f;
+  --fg-faint: #3a3a3a;
+  --border: #000000;
+  --border-strong: #000000;
+  --accent: #00541e;
+  --accent-fg: #ffffff;
+  --accent-soft: #d8eedd;
+  --accent-strong: #003912;
+  --ok: #005f1a;
+  --mp: #8a4a00;
+  --dnf: #8a0010;
+  --shadow-sm: 0 0 0 1px #000;
+  --shadow-md: 0 0 0 1.5px #000;
+  --shadow-lg: 0 0 0 2px #000;
+}
+
+/* ───── Density modifiers — readout rows (UI-SPEC §"Visual Anchors") ───── */
+[data-density="low"] {
+  /* Larger numbers, larger names; consumed by plan 13's readout view. */
+  --fs-display: 32px;
+  --fs-heading: 24px;
+  --fs-body: 17px;
+}
+[data-density="high"] {
+  --fs-display: 24px;
+  --fs-heading: 20px;
+  --fs-body: 15px;
+}
+
+/* ───── Base reset ────────────────────────────────────────────────────── */
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--fg);
+  font-size: var(--fs-body);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+input, select, textarea { font: inherit; color: inherit; }
+
+/* Tabular numeric utilities — used everywhere a time, place or seq prints. */
+.mono { font-family: var(--font-mono); font-feature-settings: "tnum" 1, "zero" 1; }
+.tnum { font-feature-settings: "tnum" 1; }

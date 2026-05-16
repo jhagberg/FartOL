@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1480, initial-scale=1" />
+  <title>FartOL — Phase 1 (Print)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+
+  <style>
+    /* Print layout: each .print-page is a fixed 1480×1100 frame, one page each */
+    @page { size: 1480px 1100px; margin: 0; }
+
+    html, body { background: #d6d3cb; height: auto; width: auto; overflow: visible; }
+    body { margin: 0; padding: 28px; }
+
+    .print-doc { display: flex; flex-direction: column; gap: 28px; }
+    .print-page {
+      width: 1480px; height: 1100px;
+      background: var(--bg);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+      break-after: page;
+      page-break-after: always;
+    }
+    .print-page:last-child { break-after: auto; page-break-after: auto; }
+
+    .print-head {
+      height: 44px; padding: 0 18px;
+      display: flex; align-items: center; gap: 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-elev);
+      font-family: var(--font-ui);
+      flex-shrink: 0;
+    }
+    .print-tag { font-size: 12px; }
+    .print-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--fg);
+    }
+
+    .print-body { flex: 1; min-height: 0; overflow: hidden; display: flex; background: var(--bg); }
+    .print-content { flex: 1; padding: 22px; min-width: 0; overflow: hidden; }
+
+    /* Readout-specific tweaks for print */
+    .readout-print .print-content,
+    .print-content.readout-print { padding: 18px; }
+    .readout-print .readout { height: 100%; }
+    /* Hide interactive controls in print mode */
+    .readout-print .btn.sm.ghost,
+    .readout-print .tpl-tab,
+    .readout-print .auto-toggle,
+    .readout-print .kbd { display: none !important; }
+    .readout-print .card-head > div[style*="background: var(--bg-sunken)"] { display: none !important; }
+    /* Make history rows non-clickable cursor */
+    .readout-print .hist-row { cursor: default; }
+    .readout-print .hist-row:hover { background: transparent; }
+    /* Tone down the pulse animation in print */
+    .readout-print .pulse-dot { animation: none; }
+
+    /* Wizard steps shown inline */
+    .wiz-step {
+      flex: 1; padding: 16px 14px;
+      border-radius: 8px;
+      background: var(--bg-sunken);
+      display: flex; gap: 12px; align-items: center;
+      font-size: 13px; color: var(--fg-muted);
+      border: 1px solid transparent;
+    }
+    .wiz-step .num {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--bg-elev);
+      border: 1.5px solid var(--border-strong);
+      display: grid; place-items: center;
+      font-family: var(--font-mono); font-weight: 600;
+      flex-shrink: 0;
+    }
+    .wiz-step.active { background: var(--accent-soft); color: var(--accent-strong); border-color: var(--accent); }
+    .wiz-step.active .num { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+    .wiz-step.done .num { background: var(--ok); color: var(--accent-fg); border-color: var(--ok); }
+    .wiz-step b { font-weight: 600; color: inherit; display: block; }
+    .drop-zone {
+      border: 2px dashed var(--border-strong);
+      border-radius: var(--radius-lg);
+      padding: 36px; text-align: center;
+      background: var(--bg-sunken);
+    }
+    .drop-zone.has-file {
+      border-style: solid; border-color: var(--ok);
+      background: var(--ok-soft); color: var(--ok);
+    }
+    .drop-zone .icon { font-size: 32px; margin-bottom: 8px; font-family: var(--font-mono); }
+    .class-chip {
+      font-family: var(--font-mono); font-size: 12px;
+      padding: 4px 10px;
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+    }
+
+    @media print {
+      html, body { background: white; }
+      body { padding: 0; }
+      .print-doc { gap: 0; }
+      .print-page {
+        box-shadow: none;
+        border: 0;
+      }
+    }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script src="data.js"></script>
+  <script src="i18n.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="screens-readout.jsx"></script>
+  <script type="text/babel" src="screens-home.jsx"></script>
+  <script type="text/babel" src="screens-results.jsx"></script>
+  <script type="text/babel" src="print-app.jsx"></script>
+
+  <script type="text/babel">
+    // Auto-print once fonts are loaded, Babel has parsed all scripts, and React has rendered.
+    (async function autoPrintWhenReady() {
+      try { await document.fonts.ready; } catch (e) {}
+      // Wait until the print pages exist in the DOM
+      const start = Date.now();
+      while (document.querySelectorAll('.print-page').length < 8 && Date.now() - start < 8000) {
+        await new Promise(r => setTimeout(r, 100));
+      }
+      // Final settle delay (per skill guidance)
+      await new Promise(r => setTimeout(r, 500));
+      window.print();
+    })();
+  </script>
+</body>
+</html>

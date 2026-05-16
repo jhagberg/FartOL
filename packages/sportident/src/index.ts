@@ -58,7 +58,7 @@ export { ModernSiCard } from './SiCard/types/ModernSiCard.ts';
 export type { IRaceResultData, IPunch } from './SiCard/IRaceResultData.ts';
 
 // --- NDJSON output ----------------------------------------------------------
-export { NdjsonEmitter } from './output/ndjson.ts';
+export { NdjsonEmitter, toHalfDayClock } from './output/ndjson.ts';
 export type {
   NdjsonEvent,
   NdjsonBase,
@@ -73,3 +73,4 @@ export type {
   NdjsonEmitterOpts,
 } from './output/ndjson.ts';
 export { emitDiagnostic } from './output/diagnostics.ts';
+export { inferCardType } from './SiCard/cardTypeFromNumber.ts';

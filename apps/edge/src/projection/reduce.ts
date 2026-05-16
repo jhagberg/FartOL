@@ -1,0 +1,267 @@
+// Authored for fartol. Not ported from upstream.
+//
+// Pure reducer over the event log → CompetitionState. Per codex review
+// C-H2: card_read payload carries top-level start/finish/check/clear
+// HalfDayClock fields. The reducer reads payload.start + payload.finish
+// for elapsed-time and DNF detection — NOT from punches[] with magic
+// control codes.
+//
+// Idempotency (REQ-EVT-004): two runs over the same event log produce
+// structurally identical CompetitionState. Events are sorted by
+// (event_time_ms, local_seq) before the walk so shuffled inputs converge.
+//
+// Manual-DNF semantics: once `manual_dnf` is observed for a competitor,
+// subsequent card_read events do NOT overwrite the status. `un_dnf`
+// clears the override and re-applies dnfMp.detectStatus against the most
+// recent card_read state.
+//
+// Cross-competition isolation (T-CROSS-COMP-LEAK): the loop short-
+// circuits any event whose `competitionId` doesn't match
+// `input.competition_id`. A single events table backs multiple
+// competitions; the reducer is per-competition.
+//
+// Locked by:
+// - .planning/phases/01-single-laptop-training-mvp/01-07-PLAN.md task 2
+// - .planning/phases/01-single-laptop-training-mvp/01-CONTEXT.md D-11 D-12
+// - .planning/phases/01-single-laptop-training-mvp/01-UI-SPEC.md
+//   §"Live results auto-update"
+// - .planning/phases/01-single-laptop-training-mvp/01-REVIEWS.md §C-H2
+//   (payload.start / payload.finish read directly; finish=null → DNF;
+//    elapsed from HalfDayClock pair)
+// - REQ-EVT-003 (derived state by reducers)
+// - REQ-EVT-004 (deterministic + idempotent)
+// - REQ-EVT-CMP-005 (auto-attach card → competitor)
+// - REQ-EVT-CMP-006 (DNF/MP from event log)
+
+import type { Event, Competitor, Course, Class } from '../db/types.ts';
+import type { EventPayload } from '../db/schema.ts';
+import { detectStatus } from './dnfMp.ts';
+import { buildCardIndex } from './matching.ts';
+import type { CompetitionState, CompetitorView, ResultView } from './types.ts';
+
+/** Course extended with the in-order list of expected control codes. Plan 08
+ * (projection store) loads courses via `course_controls` join + `controls`
+ * lookup and produces this `course + control_codes` shape; the reducer
+ * never touches the raw join. */
+export type CourseWithControlCodes = Course & { control_codes: readonly number[] };
+
+export interface ReduceInput {
+  competition_id: string;
+  events: readonly Event[];
+  competitors: readonly Competitor[];
+  classes: readonly Class[];
+  courses: readonly CourseWithControlCodes[];
+}
+
+const STATUS_ORDER: Record<CompetitorView['status'], number> = {
+  OK: 0,
+  MP: 1,
+  DNF: 2,
+  PEND: 3,
+};
+
+/**
+ * Pure reducer: events + course + competitors → CompetitionState.
+ *
+ * Does NOT touch the DB, does NOT broadcast, does NOT mutate input. Calls
+ * `dnfMp.detectStatus` per card_read for OK/MP/DNF + elapsed time, and
+ * `matching.matchCardToCompetitor` for card-to-competitor binding.
+ */
+export function reduce(input: ReduceInput): CompetitionState {
+  // Sort events deterministically. Shuffled input → identical output.
+  const sortedEvents = [...input.events].sort(
+    (a, b) => a.eventTimeMs - b.eventTimeMs || a.localSeq - b.localSeq
+  );
+
+  // Per-competition slice of competitors so cross-competition leakage cannot
+  // happen through matching (T-CROSS-COMP-LEAK).
+  const competitorsByCompetition = input.competitors.filter(
+    (c) => c.competitionId === input.competition_id
+  );
+
+  // Plan 09: build the cardNumber → Competitor index ONCE per reduce() call
+  // so the card_read case below is O(1) instead of O(n) linear scan. For
+  // 1000 events × 40 competitors this drops the inner work from ~40k
+  // comparisons to ~1000 Map.get() calls. Externally-visible behavior is
+  // identical to the plan-07 linear scan — same fixture, same output.
+  const cardIndex = buildCardIndex(competitorsByCompetition);
+
+  // Course lookup by class_id for fast per-event MP detection. A course may
+  // legitimately have classId=null during XML import; those competitors get
+  // an empty expected list and thus MP / OK based purely on punches presence.
+  const courseByClass = new Map<string, CourseWithControlCodes>();
+  for (const c of input.courses) {
+    if (c.classId !== null) courseByClass.set(c.classId, c);
+  }
+
+  // Seed competitor views (all PEND until a card_read or manual_dnf lands).
+  const competitorViews = new Map<string, CompetitorView>();
+  for (const c of competitorsByCompetition) {
+    competitorViews.set(c.id, {
+      id: c.id,
+      name: c.name,
+      club: c.club,
+      class_id: c.classId,
+      card_number: c.cardNumber,
+      status: 'PEND',
+      card_read_history: [],
+      latest_punches: [],
+      latest_start: null,
+      latest_finish: null,
+      missing_codes: [],
+      extra_codes: [],
+      out_of_order_codes: [],
+      elapsed_time_ms: null,
+      manual_dnf_reason: null,
+    });
+  }
+  const pendingUnknownCards = new Set<number>();
+  let lastEventSeq = 0;
+
+  for (const e of sortedEvents) {
+    if (e.competitionId !== input.competition_id) continue;
+    lastEventSeq = Math.max(lastEventSeq, e.localSeq);
+
+    const payload = e.payload as EventPayload;
+    switch (payload.event_type) {
+      case 'card_read': {
+        const competitor = cardIndex.get(payload.card_number) ?? null;
+        if (competitor === null) {
+          pendingUnknownCards.add(payload.card_number);
+          break;
+        }
+        const view = competitorViews.get(competitor.id);
+        if (view === undefined) break;
+        view.card_read_history.push({
+          event_time_ms: e.eventTimeMs,
+          card_number: payload.card_number,
+          punches: payload.punches,
+          start: payload.start,
+          finish: payload.finish,
+        });
+        view.latest_punches = payload.punches;
+        view.latest_start = payload.start;
+        view.latest_finish = payload.finish;
+        // manual_dnf wins: don't overwrite status/elapsed when an explicit
+        // operator override is in force.
+        if (view.manual_dnf_reason === null) {
+          const course = courseByClass.get(competitor.classId);
+          const expected = course?.control_codes ?? [];
+          const detected = detectStatus(
+            { start: payload.start, finish: payload.finish, punches: payload.punches },
+            expected
+          );
+          view.status = detected.status;
+          view.missing_codes = detected.missing_codes;
+          view.extra_codes = detected.extra_codes;
+          view.out_of_order_codes = detected.out_of_order_codes;
+          view.elapsed_time_ms = detected.elapsed_time_ms;
+        }
+        break;
+      }
+      case 'card_bound': {
+        // Once an operator binds a card via walk-up, drop it from the
+        // pending set so the modal closes.
+        pendingUnknownCards.delete(payload.card_number);
+        break;
+      }
+      case 'manual_dnf': {
+        const view = competitorViews.get(payload.competitor_id);
+        if (view !== undefined) {
+          view.status = 'DNF';
+          view.manual_dnf_reason = payload.reason;
+        }
+        break;
+      }
+      case 'un_dnf': {
+        const view = competitorViews.get(payload.competitor_id);
+        if (view !== undefined) {
+          view.manual_dnf_reason = null;
+          const competitor = competitorsByCompetition.find((c) => c.id === payload.competitor_id);
+          const course = competitor ? courseByClass.get(competitor.classId) : undefined;
+          const expected = course?.control_codes ?? [];
+          if (
+            view.latest_punches.length > 0 ||
+            view.latest_finish !== null ||
+            view.latest_start !== null
+          ) {
+            const detected = detectStatus(
+              {
+                start: view.latest_start,
+                finish: view.latest_finish,
+                punches: view.latest_punches,
+              },
+              expected
+            );
+            view.status = detected.status;
+            view.missing_codes = detected.missing_codes;
+            view.extra_codes = detected.extra_codes;
+            view.out_of_order_codes = detected.out_of_order_codes;
+            view.elapsed_time_ms = detected.elapsed_time_ms;
+          } else {
+            view.status = 'PEND';
+            view.missing_codes = [];
+            view.extra_codes = [];
+            view.out_of_order_codes = [];
+            view.elapsed_time_ms = null;
+          }
+        }
+        break;
+      }
+      // card_inserted, card_removed, frame_error, connection_changed,
+      // consent_confirmed do not change the projection state. consent_confirmed
+      // flips a competitor's consent_status column (mutated outside the reducer
+      // by plan 14 walk-up + plan 17 PII scrub); the projection only cares
+      // about punches + DNF.
+      default:
+        break;
+    }
+  }
+
+  // Build per-class results tables. Sort: OK first (by elapsed asc), then MP,
+  // then DNF, then PEND. Ties broken by competitor name.
+  const resultsByClass = new Map<string, ResultView[]>();
+  for (const cls of input.classes) {
+    const inClass: CompetitorView[] = [];
+    for (const v of competitorViews.values()) {
+      if (v.class_id === cls.id) inClass.push(v);
+    }
+    inClass.sort(
+      (a, b) =>
+        STATUS_ORDER[a.status] - STATUS_ORDER[b.status] ||
+        (a.elapsed_time_ms ?? Number.MAX_SAFE_INTEGER) -
+          (b.elapsed_time_ms ?? Number.MAX_SAFE_INTEGER) ||
+        a.name.localeCompare(b.name)
+    );
+    let place = 0;
+    let leaderTime: number | null = null;
+    const rows: ResultView[] = inClass.map((v) => {
+      let p: number | null = null;
+      let behind: number | null = null;
+      if (v.status === 'OK' && v.elapsed_time_ms !== null) {
+        place++;
+        p = place;
+        if (leaderTime === null) leaderTime = v.elapsed_time_ms;
+        behind = v.elapsed_time_ms - leaderTime;
+      }
+      return {
+        competitor_id: v.id,
+        name: v.name,
+        club: v.club,
+        status: v.status,
+        elapsed_time_ms: v.elapsed_time_ms,
+        place: p,
+        behind_leader_ms: behind,
+      };
+    });
+    resultsByClass.set(cls.id, rows);
+  }
+
+  return {
+    competition_id: input.competition_id,
+    competitors: competitorViews,
+    results_by_class: resultsByClass,
+    pending_unknown_cards: [...pendingUnknownCards].sort((a, b) => a - b),
+    last_event_seq: lastEventSeq,
+  };
+}

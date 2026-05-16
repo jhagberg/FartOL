@@ -1,0 +1,355 @@
+<!--
+  Authored for fartol. Not ported from upstream.
+
+  Three-step new-competition wizard. Codex C-H3 LOCKED: step 3 fires
+  ONE atomic POST to /api/competitions/from-wizard — the previous
+  revision fired TWO sequential POSTs (createCompetition then
+  importCompetitionFile), but HTTP requests cannot share a SQL
+  transaction so a mid-flight failure left an orphan competition row.
+  This revision routes both operations through the single atomic
+  endpoint; on failure the server's SQLite transaction rolls back and
+  no orphan row persists. wizard.spec.ts test 2 is the e2e regression
+  gate.
+
+  Wizard shell:
+   - Modal scrim with click-out-to-cancel (Avbryt is non-destructive at
+     all steps — deferred-POST contract).
+   - Top step indicator (1/2/3) with active + done states matching
+     screens-home.jsx.
+   - Body delegates to WizardStep1/2/3.
+   - Footer: Tillbaka (step > 1), Avbryt, Nästa (steps 1+2), and the
+     Start-button lives INSIDE step 3 so it can manage submit state.
+   - Inline error banner appears below step 3 on POST failure.
+
+  State shape uses Svelte 5 runes ($state) per the plan interface block.
+  pendingFile (File) stays in memory until step 3 commits — see the
+  C-H3 deferred-POST contract.
+
+  Locked by:
+  - 01-UI-SPEC.md §"Click 1, Click 2, Click 3" + §Wizard styling
+  - 01-REVIEWS.md §C-H3
+  - 01-12-PLAN.md task 2
+-->
+<script lang="ts">
+  import { goto } from '$app/navigation';
+  import { t } from '$lib/i18n/index.ts';
+  import WizardStep1 from './WizardStep1.svelte';
+  import WizardStep2 from './WizardStep2.svelte';
+  import WizardStep3 from './WizardStep3.svelte';
+
+  interface Props {
+    /** Where Avbryt routes to. Defaults to `/` so Home → wizard →
+     * Avbryt is a clean back-trip. */
+    cancelHref?: string;
+  }
+
+  let { cancelHref = '/' }: Props = $props();
+
+  type Step = 1 | 2 | 3;
+  type Kind = 'CourseData' | 'EntryList';
+  interface PreviewMeta {
+    filename: string;
+    kind: Kind;
+  }
+
+  let step: Step = $state(1);
+  let name = $state('');
+  let date = $state('');
+  let pendingFile: File | null = $state(null);
+  let preview: PreviewMeta | null = $state(null);
+  let dropError: string | null = $state(null);
+  let importError: string | null = $state(null);
+
+  const isoDate = /^\d{4}-\d{2}-\d{2}$/;
+  const canAdvanceFromStep1 = $derived(name.trim().length > 0 && isoDate.test(date));
+  const canAdvanceFromStep2 = $derived(pendingFile !== null && preview !== null && !dropError);
+
+  function setName(v: string): void {
+    name = v;
+  }
+  function setDate(v: string): void {
+    date = v;
+  }
+
+  function acceptFile(f: File, p: PreviewMeta): void {
+    pendingFile = f;
+    preview = p;
+    dropError = null;
+  }
+  function rejectFile(msg: string): void {
+    pendingFile = null;
+    preview = null;
+    dropError = msg;
+  }
+  function clearDrop(): void {
+    dropError = null;
+  }
+  function handleImportError(msg: string): void {
+    importError = msg;
+  }
+
+  function next(): void {
+    if (step === 1 && canAdvanceFromStep1) step = 2;
+    else if (step === 2 && canAdvanceFromStep2) step = 3;
+  }
+  function back(): void {
+    importError = null;
+    if (step === 3) step = 2;
+    else if (step === 2) step = 1;
+  }
+  function cancel(): void {
+    void goto(cancelHref);
+  }
+
+  function onScrimKey(e: KeyboardEvent): void {
+    if (e.key === 'Escape') cancel();
+  }
+</script>
+
+<svelte:window on:keydown={onScrimKey} />
+
+<div
+  class="modal-scrim"
+  role="presentation"
+  onclick={cancel}
+  data-testid="wizard-scrim"
+>
+  <div
+    class="modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="wiz-title"
+    onclick={(e) => e.stopPropagation()}
+    onkeydown={(e) => e.stopPropagation()}
+  >
+    <header class="modal-head">
+      <h2 id="wiz-title">{t('wiz.title')}</h2>
+      <span class="muted mono small">{step}/3</span>
+    </header>
+
+    <div class="wiz-steps" aria-label="wizard progress">
+      {#each [1, 2, 3] as n (n)}
+        <div class="wiz-step {step === n ? 'active' : step > n ? 'done' : ''}">
+          <span class="num">{step > n ? '✓' : n}</span>
+          <span class="lbl">
+            <b>{t(`wiz.step${n}.title`)}</b>
+            <span class="small">{n === 1 ? 'Skapa' : n === 2 ? 'Importera' : 'Klar'}</span>
+          </span>
+        </div>
+      {/each}
+    </div>
+
+    <div class="modal-body">
+      {#if step === 1}
+        <WizardStep1
+          {name}
+          {date}
+          onnamechange={setName}
+          ondatechange={setDate}
+        />
+      {:else if step === 2}
+        <WizardStep2
+          file={pendingFile}
+          {preview}
+          error={dropError}
+          onfile={acceptFile}
+          onerror={rejectFile}
+          onclear={clearDrop}
+        />
+      {:else}
+        <WizardStep3
+          {name}
+          {date}
+          {pendingFile}
+          onerror={handleImportError}
+        />
+        {#if importError}
+          <div class="err-banner" role="alert" data-testid="wizard-error">
+            {importError}
+          </div>
+        {/if}
+      {/if}
+    </div>
+
+    <footer class="modal-foot">
+      {#if step > 1}
+        <button type="button" class="btn ghost" onclick={back} data-testid="wiz-back">
+          ← {t('wiz.back')}
+        </button>
+      {/if}
+      <button type="button" class="btn ghost" onclick={cancel} data-testid="wiz-cancel">
+        {t('wiz.cancel')}
+      </button>
+      <div class="spacer"></div>
+      {#if step < 3}
+        <button
+          type="button"
+          class="btn primary"
+          disabled={(step === 1 && !canAdvanceFromStep1) || (step === 2 && !canAdvanceFromStep2)}
+          onclick={next}
+          data-testid="wiz-next"
+        >
+          {t('wiz.next')} →
+        </button>
+      {/if}
+    </footer>
+  </div>
+</div>
+
+<style>
+  .modal-scrim {
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 20, 30, 0.32);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-lg);
+    z-index: 50;
+    backdrop-filter: blur(2px);
+  }
+  .modal {
+    background: var(--bg-elev);
+    border-radius: 14px;
+    box-shadow: var(--shadow-lg);
+    width: min(720px, 100%);
+    max-height: calc(100vh - 48px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .modal-head {
+    padding: 18px 22px;
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-head h2 {
+    margin: 0;
+    font-size: 19px;
+  }
+  .muted {
+    color: var(--fg-muted);
+    margin-left: auto;
+  }
+  .small {
+    font-size: 13px;
+  }
+  .mono {
+    font-family: var(--font-mono);
+  }
+  .modal-body {
+    padding: 22px;
+    overflow: auto;
+  }
+  .modal-foot {
+    padding: var(--space-md) 22px;
+    display: flex;
+    gap: 10px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-sunken);
+    align-items: center;
+  }
+  .spacer {
+    flex: 1;
+  }
+  .wiz-steps {
+    display: flex;
+    gap: 8px;
+    padding: 8px 22px 0;
+  }
+  .wiz-step {
+    flex: 1;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: var(--bg-sunken);
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    font-size: 13px;
+    color: var(--fg-muted);
+    border: 1px solid transparent;
+  }
+  .wiz-step .num {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--bg-elev);
+    border: 1.5px solid var(--border-strong);
+    display: grid;
+    place-items: center;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .wiz-step.active {
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+    border-color: var(--accent);
+  }
+  .wiz-step.active .num {
+    background: var(--accent);
+    color: var(--accent-fg);
+    border-color: var(--accent);
+  }
+  .wiz-step.done .num {
+    background: var(--ok);
+    color: var(--accent-fg);
+    border-color: var(--ok);
+  }
+  .lbl {
+    display: grid;
+  }
+  .lbl b {
+    font-weight: 600;
+    color: inherit;
+  }
+  .lbl .small {
+    font-size: 11px;
+    color: var(--fg-muted);
+  }
+  .btn {
+    height: var(--hit);
+    min-height: var(--hit);
+    padding: 0 var(--space-md);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-strong);
+    background: var(--bg-elev);
+    color: var(--fg);
+    font-size: var(--fs-label);
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .btn:hover {
+    background: var(--bg-sunken);
+  }
+  .btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .btn.primary {
+    background: var(--accent);
+    color: var(--accent-fg);
+    border-color: var(--accent);
+  }
+  .btn.primary:hover:not(:disabled) {
+    background: var(--accent-strong);
+  }
+  .btn.ghost {
+    background: transparent;
+    border-color: transparent;
+  }
+  .btn.ghost:hover {
+    background: var(--bg-sunken);
+  }
+  .err-banner {
+    margin-top: 16px;
+    padding: 12px 16px;
+    background: var(--bg-elev);
+    border: 1px solid var(--dnf);
+    border-radius: var(--radius);
+    color: var(--dnf);
+    font-size: 14px;
+  }
+</style>

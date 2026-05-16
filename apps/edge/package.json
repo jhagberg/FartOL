@@ -1,0 +1,68 @@
+{
+  "name": "@fartol/edge",
+  "version": "0.1.0",
+  "description": "FartOL — single-laptop orienteering training MVP (edge bridge + SQLite event log + SPA + SportIdent bridge). Installs the `fartol` binary via `npm install -g`.",
+  "license": "AGPL-3.0-or-later",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "main": "./dist/server.cjs",
+  "exports": {
+    ".": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.mjs",
+      "require": "./dist/server.cjs"
+    }
+  },
+  "bin": {
+    "fartol": "./dist/bin/fartol.cjs"
+  },
+  "scripts": {
+    "build": "tsup && mkdir -p dist/xml && cp src/xml/IOF.xsd dist/xml/IOF.xsd",
+    "dev": "tsx watch src/bin/fartol.ts",
+    "test": "node --test --test-reporter=spec --import tsx 'src/**/*.test.ts'",
+    "test:watch": "node --test --watch --test-reporter=spec --import tsx 'src/**/*.test.ts'",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "db:generate": "drizzle-kit generate",
+    "pack:tarball": "bash scripts/build-tarball.sh"
+  },
+  "files": [
+    "dist",
+    "drizzle",
+    "systemd",
+    "udev",
+    "README.md",
+    "NOTICE.md"
+  ],
+  "dependencies": {
+    "@fastify/cors": "^11.2.0",
+    "@fastify/multipart": "^9.0.0",
+    "@fastify/sensible": "^6.0.4",
+    "@fastify/static": "^9.1.3",
+    "@fastify/websocket": "^11.2.0",
+    "better-sqlite3": "^12.10.0",
+    "drizzle-orm": "^0.45.2",
+    "fast-xml-parser": "^5.2.0",
+    "fastify": "^5.8.5",
+    "fastify-plugin": "^5.1.0",
+    "node-thermal-printer": "^4.4.3",
+    "sharp": "^0.34.0",
+    "xmllint-wasm": "^5.0.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@fartol/shared-types": "workspace:*",
+    "@fartol/sportident": "workspace:*",
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/node": "^22.10.0",
+    "@types/ws": "^8.18.1",
+    "drizzle-kit": "^0.31.10",
+    "tsup": "^8.3.5",
+    "tsx": "^4.20.0",
+    "typescript": "^5.6.3",
+    "ws": "^8.20.1"
+  }
+}

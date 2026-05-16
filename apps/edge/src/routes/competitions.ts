@@ -1,0 +1,229 @@
+// Authored for fartol. Not ported from upstream.
+//
+// REST CRUD for competitions — the mutable-config-tables (CONTEXT D-09)
+// surface that the SvelteKit wizard (plan 12) consumes. D-15 three-click
+// wizard locks the four mutable fields (name, date, receipt_template,
+// auto_print); UI-SPEC §"Auto-print toggle" persists the boolean on the
+// competitions row.
+//
+// Routes registered here:
+//   - GET    /api/competitions                — list ordered by created_at_ms DESC
+//   - POST   /api/competitions                — create + 201 echo of stored row
+//   - GET    /api/competitions/:id            — 200 with embedded classes + courses, 404 if missing
+//   - PATCH  /api/competitions/:id            — partial update; 200 with the post-update row, 404 if missing
+//
+// Body validation pattern (used everywhere in plan 04):
+//   const parsed = Schema.safeParse(req.body);
+//   if (!parsed.success) return reply.code(400).send({ errors: parsed.error.issues.map(...) });
+//
+// Empty-body PATCH is intentionally a no-op 200 — Zod's `.optional()` chain
+// accepts {} as valid input. The Drizzle update is short-circuited when
+// `Object.keys(parsed.data).length === 0` so we don't issue an UPDATE with
+// no SET clause.
+//
+// Out of scope: DELETE competition (UI-SPEC §"Destructive actions" — not in
+// Phase 1).
+//
+// Locked by:
+// - .planning/phases/01-single-laptop-training-mvp/01-04-PLAN.md task 1
+// - .planning/phases/01-single-laptop-training-mvp/01-CONTEXT.md D-09 D-15
+// - .planning/phases/01-single-laptop-training-mvp/01-UI-SPEC.md §Wizard
+// - .planning/phases/01-single-laptop-training-mvp/01-UI-SPEC.md §"Auto-print
+//   toggle" (event-level boolean, persisted on competitions row)
+
+import type { FastifyInstance } from 'fastify';
+import crypto from 'node:crypto';
+import { desc, eq, asc } from 'drizzle-orm';
+
+import {
+  CompetitionCreateInput,
+  CompetitionPatchInput,
+  type CompetitionDTO,
+  type ClassDTO,
+  type CourseDTO,
+  type CourseControlDTO,
+} from '@fartol/shared-types';
+import { competitions, classes, courses, courseControls, controls } from '../db/schema.ts';
+import type { Competition } from '../db/types.ts';
+import { issuesToErrors } from './_zod-errors.ts';
+
+// ---------------------------------------------------------------------------
+// Row → DTO mappers. apps/edge owns the boundary translation; shared-types
+// stays Drizzle-free (C-H5).
+// ---------------------------------------------------------------------------
+
+const VALID_RECEIPT_TEMPLATES = new Set([
+  'classic',
+  'standing',
+  'detailed',
+  'top4',
+  'minimal',
+  'kids',
+] as const);
+type ReceiptTemplate = CompetitionDTO['receipt_template'];
+
+function normaliseReceiptTemplate(value: string): ReceiptTemplate {
+  // Schema column is plain TEXT (plan 02 left enum narrowing to the Zod
+  // boundary). The route boundary only writes the six locked values, but a
+  // hand-edited row could be anything — fall back to 'classic' so the wire
+  // DTO always satisfies the Zod enum.
+  return VALID_RECEIPT_TEMPLATES.has(value as ReceiptTemplate)
+    ? (value as ReceiptTemplate)
+    : 'classic';
+}
+
+function competitionRowToDTO(row: Competition): CompetitionDTO {
+  return {
+    id: row.id,
+    name: row.name,
+    date: row.date,
+    receipt_template: normaliseReceiptTemplate(row.receiptTemplate),
+    auto_print: row.autoPrint,
+    created_at_ms: row.createdAtMs,
+  };
+}
+
+export default async function registerCompetitions(app: FastifyInstance): Promise<void> {
+  // GET /api/competitions — list ordered by created_at_ms DESC.
+  app.get('/api/competitions', async () => {
+    const rows = app.fartolDb.db
+      .select()
+      .from(competitions)
+      .orderBy(desc(competitions.createdAtMs))
+      .all();
+    return { competitions: rows.map(competitionRowToDTO) };
+  });
+
+  // POST /api/competitions — create + 201 echo.
+  app.post('/api/competitions', async (req, reply) => {
+    const parsed = CompetitionCreateInput.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send(issuesToErrors(parsed.error.issues));
+    }
+    const now = Date.now();
+    const id = crypto.randomUUID();
+    // UI-SPEC §"Receipt template DEFAULT" — 'classic' server-side; §"Auto-print
+    // toggle" — defaults to false (OFF). The Drizzle `competitions` row stores
+    // receipt_template as TEXT (no enum at the column layer, by design — plan
+    // 02 left enum narrowing to the Zod boundary so post-Phase-1 templates
+    // don't require a schema migration).
+    const row = {
+      id,
+      name: parsed.data.name,
+      date: parsed.data.date,
+      receiptTemplate: parsed.data.receipt_template ?? 'classic',
+      autoPrint: parsed.data.auto_print ?? false,
+      createdAtMs: now,
+    };
+    app.fartolDb.db.insert(competitions).values(row).run();
+    return reply.code(201).send(competitionRowToDTO(row));
+  });
+
+  // GET /api/competitions/:id — 200 with embedded classes + courses, 404 if missing.
+  app.get<{ Params: { id: string } }>('/api/competitions/:id', async (req, reply) => {
+    const { id } = req.params;
+    const compRow = app.fartolDb.db
+      .select()
+      .from(competitions)
+      .where(eq(competitions.id, id))
+      .get();
+    if (!compRow) return reply.code(404).send({ error: 'competition not found' });
+
+    const classRows = app.fartolDb.db
+      .select()
+      .from(classes)
+      .where(eq(classes.competitionId, id))
+      .orderBy(asc(classes.name))
+      .all();
+    const classDTOs: ClassDTO[] = classRows.map((c) => ({
+      id: c.id,
+      competition_id: c.competitionId,
+      name: c.name,
+      short_name: c.shortName,
+    }));
+
+    // Courses + embedded controls. Two SELECTs: courses for the competition,
+    // then a single joined SELECT of all course_controls × controls for those
+    // courses ordered by (course_id, order_idx). Group in TS by course_id.
+    const courseRows = app.fartolDb.db
+      .select()
+      .from(courses)
+      .where(eq(courses.competitionId, id))
+      .orderBy(asc(courses.name))
+      .all();
+    const controlsByCourse = new Map<string, CourseControlDTO[]>();
+    for (const c of courseRows) controlsByCourse.set(c.id, []);
+    if (courseRows.length > 0) {
+      const joined = app.fartolDb.db
+        .select({
+          courseId: courseControls.courseId,
+          orderIdx: courseControls.orderIdx,
+          code: controls.code,
+        })
+        .from(courseControls)
+        .innerJoin(controls, eq(courseControls.controlId, controls.id))
+        .where(eq(controls.competitionId, id))
+        .orderBy(asc(courseControls.courseId), asc(courseControls.orderIdx))
+        .all();
+      for (const row of joined) {
+        const arr = controlsByCourse.get(row.courseId);
+        if (arr) arr.push({ control_code: row.code, order_idx: row.orderIdx });
+      }
+    }
+    const courseDTOs: CourseDTO[] = courseRows.map((c) => ({
+      id: c.id,
+      competition_id: c.competitionId,
+      name: c.name,
+      class_id: c.classId,
+      length_m: c.lengthM,
+      climb_m: c.climbM,
+      controls: controlsByCourse.get(c.id) ?? [],
+    }));
+
+    return {
+      competition: competitionRowToDTO(compRow),
+      classes: classDTOs,
+      courses: courseDTOs,
+    };
+  });
+
+  // PATCH /api/competitions/:id — partial update; 200 with the post-update row.
+  app.patch<{ Params: { id: string } }>('/api/competitions/:id', async (req, reply) => {
+    const { id } = req.params;
+    const parsed = CompetitionPatchInput.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return reply.code(400).send(issuesToErrors(parsed.error.issues));
+    }
+    const existing = app.fartolDb.db
+      .select()
+      .from(competitions)
+      .where(eq(competitions.id, id))
+      .get();
+    if (!existing) return reply.code(404).send({ error: 'competition not found' });
+
+    // Map snake_case wire fields → camelCase Drizzle column accessors. Use
+    // the Competition row type so the receiptTemplate enum stays narrow.
+    const patch: Partial<Competition> = {};
+    if (parsed.data.name !== undefined) patch.name = parsed.data.name;
+    if (parsed.data.date !== undefined) patch.date = parsed.data.date;
+    if (parsed.data.receipt_template !== undefined)
+      patch.receiptTemplate = parsed.data.receipt_template;
+    if (parsed.data.auto_print !== undefined) patch.autoPrint = parsed.data.auto_print;
+
+    // Empty-body PATCH is a no-op 200 (idempotent). Skip the UPDATE so we
+    // don't issue a SET-less SQL statement.
+    if (Object.keys(patch).length > 0) {
+      app.fartolDb.db.update(competitions).set(patch).where(eq(competitions.id, id)).run();
+    }
+
+    const updated = app.fartolDb.db
+      .select()
+      .from(competitions)
+      .where(eq(competitions.id, id))
+      .get();
+    // updated cannot be null — we just confirmed existence above and there is
+    // no DELETE in plan 04 — but TS doesn't know that.
+    if (!updated) return reply.code(404).send({ error: 'competition not found' });
+    return reply.code(200).send(competitionRowToDTO(updated));
+  });
+}
