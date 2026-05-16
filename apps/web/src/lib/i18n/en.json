@@ -5,6 +5,7 @@
   "nav.readout": "Readout",
   "nav.results": "Results",
   "nav.export": "Export",
+  "nav.hyrbrickor": "Hired cards",
   "nav.settings": "Settings",
 
   "home.title": "Competitions",
@@ -86,6 +87,16 @@
   "readout.hyrbricka.returned": "Returned",
   "readout.hyrbricka.dismiss": "Dismiss",
   "readout.hyrbricka.returnedConfirmed": "Card marked as returned",
+
+  "hyrbrickor.title": "Active hired cards",
+  "hyrbrickor.empty": "No open hired cards",
+  "hyrbrickor.openSection": "Open",
+  "hyrbrickor.returnedSection": "Returned",
+  "hyrbrickor.markedAt": "Hired at {{time}}",
+  "hyrbrickor.returnedAt": "Returned at {{time}}",
+  "hyrbrickor.returnedBtn": "Returned",
+  "hyrbrickor.loading": "Loading hired cards…",
+  "hyrbrickor.loadError": "Could not load hired cards",
 
   "res.title": "Live results",
   "res.all": "All",

@@ -5,6 +5,7 @@
   "nav.readout": "Avläsning",
   "nav.results": "Resultat",
   "nav.export": "Export",
+  "nav.hyrbrickor": "Hyrbrickor",
   "nav.settings": "Inställningar",
 
   "home.title": "Tävlingar",
@@ -86,6 +87,16 @@
   "readout.hyrbricka.returned": "Returnerad",
   "readout.hyrbricka.dismiss": "Ignorera",
   "readout.hyrbricka.returnedConfirmed": "Brickan markerad som återlämnad",
+
+  "hyrbrickor.title": "Aktiva hyrbrickor",
+  "hyrbrickor.empty": "Inga öppna hyrbrickor",
+  "hyrbrickor.openSection": "Öppna",
+  "hyrbrickor.returnedSection": "Återlämnade",
+  "hyrbrickor.markedAt": "Hyrd kl. {{time}}",
+  "hyrbrickor.returnedAt": "Återlämnad kl. {{time}}",
+  "hyrbrickor.returnedBtn": "Returnerad",
+  "hyrbrickor.loading": "Hämtar hyrbrickor…",
+  "hyrbrickor.loadError": "Kunde inte hämta hyrbrickor",
 
   "res.title": "Liveresultat",
   "res.all": "Alla",

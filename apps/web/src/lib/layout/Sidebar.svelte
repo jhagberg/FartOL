@@ -65,6 +65,11 @@
     {#snippet badge()}IOF 3.0{/snippet}
   </NavItem>
 
+  <NavItem active={route === 'hyrbrickor'} onclick={() => onNavigate?.('hyrbrickor')}>
+    {#snippet icon()}<span>⚷</span>{/snippet}
+    {t('nav.hyrbrickor')}
+  </NavItem>
+
   <NavItem onclick={() => onOpenSettings?.()}>
     {#snippet icon()}<span>⚙</span>{/snippet}
     {t('nav.settings')}
