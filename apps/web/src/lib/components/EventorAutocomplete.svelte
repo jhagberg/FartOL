@@ -101,7 +101,7 @@
   type="text"
   {id}
   list={listId}
-  data-testid="eventor-name"
+  data-testid="walkup-name"
   {placeholder}
   {value}
   oninput={onInput}

@@ -85,6 +85,22 @@
   }
   let name = $state(initialName());
   let club = $state(initialClub());
+  // When eventorHint arrives asynchronously after mount (the parent
+  // ReadoutView fetches the lookup in an $effect), reflect the cached
+  // values into the form state as long as the operator hasn't already
+  // typed something. This makes the late-arriving hit "win" over the
+  // empty initial state without clobbering operator edits.
+  $effect(() => {
+    if (eventorHint && eventorHint.hit) {
+      if (name.trim() === '') {
+        name = `${eventorHint.family_name}, ${eventorHint.given_name}`;
+      }
+      if (club.trim() === '' && eventorHint.club_name) {
+        club = eventorHint.club_name;
+      }
+      if (eventorFillNote === null) eventorFillNote = t('walk.eventor.fill');
+    }
+  });
   let classId = $state('');
   // The initial cardNumber prop is the URL's ?walkup=<n> coercion; we copy
   // it once into local state so the operator can edit (UI-SPEC §"Walk-up

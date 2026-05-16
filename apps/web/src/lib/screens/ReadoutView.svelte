@@ -69,7 +69,9 @@
     printReceipt as apiPrintReceipt,
     setActiveCompetition,
     getBridgeStatus,
+    lookupEventorBySiCard,
   } from '$lib/api/client.ts';
+  import type { EventorLookupHit } from '@fartol/shared-types';
   import LatestReadCard from '$lib/components/LatestReadCard.svelte';
   import PunchGrid from '$lib/components/PunchGrid.svelte';
   import SplitsTable from '$lib/components/SplitsTable.svelte';
@@ -132,6 +134,41 @@
     if (!Number.isInteger(n) || n <= 0) return null;
     const row = history.find((r) => r.card_number === n && r.unmatched);
     return row?.card_holder_hint ?? null;
+  });
+
+  // Phase 2.0 Plan 02-02 — fetch the Eventor cache lookup whenever the
+  // walkup card changes so the modal can pre-fill name + klubb. Stored
+  // as an EventorLookupHit (null when miss/network-down) so the modal's
+  // eventorHint prop can be passed without further reshaping.
+  let eventorHint: EventorLookupHit | null = $state(null);
+  let _lastLookedUpCard: number | null = $state(null);
+  $effect(() => {
+    // Re-evaluate when walkupCard changes.
+    const card = walkupCard;
+    if (card === null) {
+      eventorHint = null;
+      _lastLookedUpCard = null;
+      return;
+    }
+    const n = Number(card);
+    if (!Number.isInteger(n) || n <= 0) {
+      eventorHint = null;
+      return;
+    }
+    if (_lastLookedUpCard === n) return;
+    _lastLookedUpCard = n;
+    void (async () => {
+      try {
+        const r = await lookupEventorBySiCard(n);
+        if (r.hit) {
+          eventorHint = r;
+        } else {
+          eventorHint = null;
+        }
+      } catch {
+        eventorHint = null;
+      }
+    })();
   });
 
   // C-M4 consent-confirmation toast state (plan 14). Set when a card_read
@@ -675,6 +712,7 @@
       {competitionId}
       {classes}
       cardHolderHint={walkupHint}
+      {eventorHint}
     />
   {/if}
 
