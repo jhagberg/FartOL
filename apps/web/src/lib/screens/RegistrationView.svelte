@@ -33,15 +33,22 @@
   import { t } from '$lib/i18n/index.ts';
   import { cardQueue, type QueuedCard } from '$lib/stores/cardQueue.svelte.ts';
   import { createCardSubscription } from '$lib/services/cardSubscription.ts';
+  import { getCompetition, setActiveCompetition } from '$lib/api/client.ts';
   import WalkupModal from '$lib/screens/WalkupModal.svelte';
   import type { ClassDTO } from '@fartol/shared-types';
 
   interface Props {
     competitionId: string;
-    classes: ClassDTO[];
+    /** Pre-loaded classes from the +page.ts data loader. When the
+     * route's load function returns early (or is skipped), the empty-
+     * default lets RegistrationView fetch them via getCompetition on
+     * mount — same pattern Phase 1 ReadoutView uses (fetches its own
+     * data; the route shell is thin). */
+    classes?: ClassDTO[];
   }
 
-  let { competitionId, classes }: Props = $props();
+  let { competitionId, classes = [] }: Props = $props();
+  let resolvedClasses: ClassDTO[] = $state(classes);
 
   // --- state ----------------------------------------------------------------
   /** Card currently mounted in the WalkupModal. Distinct from
@@ -62,6 +69,28 @@
     if (currentCard === null && cardQueue.count > 0) {
       currentCard = cardQueue.pop();
     }
+    // Fetch competition + classes when the route shell didn't pre-load
+    // them (mirrors the Phase 1 ReadoutView pattern — thin shell, the
+    // view fetches its own data). Also claim active-competition so the
+    // bridge routes card_reads to this competition's readout channel
+    // (same as ReadoutView's mountReadout).
+    if (resolvedClasses.length === 0) {
+      void (async () => {
+        try {
+          const res = await getCompetition(competitionId);
+          resolvedClasses = res.classes;
+        } catch {
+          // Soft fail — the WalkupModal will still mount with an empty
+          // class list; operator sees no Bana options and the line halts
+          // (correct behavior — no silent registration without a class).
+        }
+      })();
+    }
+    // Claim active competition so card_reads route here. Soft-fail so a
+    // server hiccup doesn't break the page mount.
+    void setActiveCompetition(competitionId).catch(() => {
+      /* soft fail */
+    });
     subscription = createCardSubscription({
       competitionId,
       // No classifyCard — every card_read on this screen enqueues
@@ -140,7 +169,7 @@
     <WalkupModal
       cardNumber={currentCard.cardNumber}
       {competitionId}
-      {classes}
+      classes={resolvedClasses}
       cardHolderHint={currentCard.cardHolderHint}
       onClose={onWalkupClose}
     />
