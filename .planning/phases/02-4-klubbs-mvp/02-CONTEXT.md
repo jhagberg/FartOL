@@ -16,18 +16,30 @@ is Phase-1 surface work and an Eventor pull.
 
 **In scope (Phase 2.0):**
 
-- **Eventor runner-database (löpardatabasen) download** — one-shot fetch
-  of all runners (filtered by district or organisation), cached to a
-  local SQLite table indexed by `si_card_number`. Used **only** for
-  autocomplete; we do NOT import entries from Eventor for this event
-  (almost no one pre-registers on 4-klubbs trainings).
+- **Eventor runner-database download** — nightly fetch of
+  `/api/persons/organisations/637` (Stora Tuna OK, 384 members), cached
+  to SQLite as `eventor_persons(person_id, given_name, family_name,
+  birth_year, sex, org_id, modify_date)`. Used **only** for autocomplete;
+  we do NOT import entries from Eventor for this event (almost no one
+  pre-registers on 4-klubbs trainings).
+  **IMPORTANT scope revision after API smoke-test 2026-05-16** — the STK
+  API key cannot reach `/api/competitors` (403), which is the only
+  endpoint that exposes SI card numbers per person. The MeOS-style
+  "read bricka → look up name" UX is **infeasible** with this key alone.
+  Phase 2.0 uses **name-only autocomplete** (operator types name → cache
+  pre-fills Klubb = "Stora Tuna OK"). SI bricka stays manual. See
+  `.planning/research/eventor-api-smoke.md` for the three options
+  considered and why Option A was chosen.
 - **WalkupModal enhancements** in `apps/web/src/lib/screens/`:
   - Rename "Klass" → **"Bana"** for 4-klubbs (course-only model).
   - Add **`Hyrbricka` checkbox** — stored on the competitor row as
     `hired_card BOOLEAN`.
-  - When SI bricka is read/entered, **look up the runner cache** and
-    pre-fill `name` + `klubb` (already wired for `cardHolderHint` from
-    SI firmware; this adds Eventor as a second source).
+  - When **operator types in the name field**, autocomplete from the
+    Eventor cache (STK members only — see scope note above). Selecting
+    a match pre-fills `klubb` = "Stora Tuna OK". `cardHolderHint` from
+    SI firmware still pre-fills name on bricka read (Phase 1 path,
+    unchanged) — Eventor is the **second** autocomplete source, on
+    typed-name input.
 - **MIP server** (`apps/edge/src/integrations/meos/mip.ts`) — Fastify
   route that MeOS polls. Serves `<MIPData>` containing:
   - `<entry>` for every walk-up registration (sync direktanmälningar
@@ -176,9 +188,15 @@ Total committed: **~3.5d**. Wednesday morning is the buffer / dry-run.
 
 ## Open questions (resolve in `/gsd-discuss-phase 2`)
 
-- Eventor download endpoint shape — list-by-district vs
-  list-by-organisation. Confirmed at execution start with an
-  interactive curl.
+- ~~Eventor download endpoint shape~~ — **resolved 2026-05-16 by smoke
+  test.** `GET /api/persons/organisations/637` returns 384 STK members.
+  `/api/competitors` (would have had SI cards) is 403 with this key.
+  See `.planning/research/eventor-api-smoke.md`.
+- **NEW open question** — should we ask the other 3 4-klubbs partner
+  clubs for their API keys before Wednesday (Option B in the smoke-test
+  doc) to extend autocomplete coverage from ~25% → ~100%? Or accept the
+  STK-only Option A for 2.0 and revisit for 2.1? Coordination risk vs
+  UX value — decide before Plan 1 starts.
 - MIP authentication — MeOS supports a plain-text `pwd` header. For
   4-klubbs (closed club LAN) we probably skip it; for Phase 2.1
   (sanctioned event with bigger LAN attack surface) we add it.
