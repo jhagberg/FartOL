@@ -1,0 +1,51 @@
+name: Demo feedback
+description: Tell us what worked, what was missing, and what felt wrong in the public demo.
+title: "[demo] "
+labels: ["demo-feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Tack för att du testar FartOL. Skriv gärna på svenska eller engelska.
+        Demon kör helt i webbläsaren — ingen hårdvara och ingen backend.
+  - type: dropdown
+    id: role
+    attributes:
+      label: Vem är du?
+      description: Hjälper oss att tolka feedbacken.
+      options:
+        - Operatör / arrangör
+        - Deltagare / orienterare
+        - Förälder
+        - Utvecklare / nyfiken
+        - Annat
+    validations:
+      required: false
+  - type: textarea
+    id: what-worked
+    attributes:
+      label: Vad funkade?
+      placeholder: "T.ex. flödet för att starta en träning, kvittomallarna, walk-up..."
+    validations:
+      required: false
+  - type: textarea
+    id: what-missing
+    attributes:
+      label: Vad saknades eller var fel?
+      placeholder: "Beskriv så konkret du kan. Skärmdumpar uppskattas men krävs inte."
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Webbläsare och enhet
+      placeholder: "Chrome 130 / MacBook Air · Firefox / Pixel 7"
+    validations:
+      required: false
+  - type: textarea
+    id: extra
+    attributes:
+      label: Övrigt
+      placeholder: "Idéer, jämförelser med MeOS/OLA, krav från ert förbund..."
+    validations:
+      required: false
