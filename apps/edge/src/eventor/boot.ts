@@ -1,0 +1,148 @@
+// Authored for fartol. Not ported from upstream.
+//
+// scheduleEventorBoot — the staleness-gated, fire-and-forget Eventor
+// cache refresher (Plan 02-01 task 4). Mirrors the BackupHandle shape
+// from backup/daily.ts so admin/route binding is uniform.
+//
+//   scheduleEventorBoot(handle, opts) → { runNow, stop }
+//
+// Behavior of runNow() — implements D-EV-1 / D-EV-2 / D-EV-3:
+//
+//   1. If opts.apiKey is undefined/empty → log info "Eventor: nyckel
+//      saknas (EVENTOR_API_KEY) — falling back to firmware hint" and
+//      return { skipped: true, reason: 'no_key' }. NEVER call downloadFn.
+//   2. Else read the config row `eventor_cache_refreshed_at_ms`. If it
+//      exists AND `now - parseInt(value) < staleThresholdMs` (default
+//      7 days) → log info "Eventor: cache N dagar gammal — skipping
+//      refresh" and return { skipped: true, reason: 'fresh' }.
+//   3. If the marker is missing → reason is 'empty' (same downstream
+//      code path as 'fresh' but distinguishable in logs).
+//   4. Call downloadFn({ apiKey }). On rejection → log warn "Eventor:
+//      refresh failed" and return { skipped: true, reason:
+//      'network_error', error } WITHOUT THROWING (D-EV-3).
+//   5. On resolve, call ingestFn(handle, paths, nowFn()); log the row
+//      counts; return { skipped: false, competitors, clubs }.
+//
+// stop() is a no-op for this implementation — D-EV-1 explicitly rejected
+// cron, so there is no setTimeout chain to cancel. The method is kept in
+// the API for parity with BackupHandle so the admin route binding doesn't
+// need a type-guard.
+//
+// Locked by:
+// - .planning/phases/02-4-klubbs-mvp/02-01-PLAN.md task 4
+// - .planning/phases/02-4-klubbs-mvp/02-CONTEXT.md D-EV-1 / D-EV-2 / D-EV-3
+// - .planning/phases/02-4-klubbs-mvp/02-PATTERNS.md §2
+
+import { eq } from 'drizzle-orm';
+import type { FastifyBaseLogger } from 'fastify';
+
+import type { DbHandle } from '../db/index.ts';
+import { config as configTable } from '../db/schema.ts';
+import { downloadEventorPayloads } from './download.ts';
+import { ingestEventorCache } from './cache.ts';
+
+export interface EventorBootOpts {
+  /** Eventor API key (from process.env.EVENTOR_API_KEY). Undefined means
+   * the bridge runs without Eventor — boot.ts logs and skips. */
+  apiKey: string | undefined;
+  /** Fastify logger — info for normal staleness checks, warn for the
+   * D-EV-3 network-failure path. */
+  logger: FastifyBaseLogger;
+  /** PATTERNS S-2 — tests inject a mock download / ingest so the
+   * staleness gate can be exercised deterministically. */
+  downloadFn?: typeof downloadEventorPayloads;
+  ingestFn?: typeof ingestEventorCache;
+  /** Staleness window in ms; default 7 days (D-EV-2). */
+  staleThresholdMs?: number;
+  /** Clock injection so tests can drive the gate. */
+  nowFn?: () => number;
+}
+
+export type EventorBootResult =
+  | {
+      skipped: false;
+      competitors: number;
+      clubs: number;
+    }
+  | {
+      skipped: true;
+      reason: 'fresh' | 'empty' | 'no_key' | 'network_error';
+      /** Only present when reason='network_error'. */
+      error?: unknown;
+    };
+
+export interface EventorHandle {
+  runNow: () => Promise<EventorBootResult>;
+  stop: () => void;
+}
+
+const DEFAULT_STALE_MS = 7 * 86_400_000;
+const CONFIG_MARKER_KEY = 'eventor_cache_refreshed_at_ms';
+
+export function scheduleEventorBoot(handle: DbHandle, opts: EventorBootOpts): EventorHandle {
+  const downloadFn = opts.downloadFn ?? downloadEventorPayloads;
+  const ingestFn = opts.ingestFn ?? ingestEventorCache;
+  const staleThresholdMs = opts.staleThresholdMs ?? DEFAULT_STALE_MS;
+  const nowFn = opts.nowFn ?? Date.now;
+
+  async function runNow(): Promise<EventorBootResult> {
+    // (1) No API key — log + skip BEFORE any DB read or HTTP call.
+    if (!opts.apiKey || opts.apiKey.length === 0) {
+      opts.logger.info('Eventor: nyckel saknas (EVENTOR_API_KEY) — falling back to firmware hint');
+      return { skipped: true, reason: 'no_key' };
+    }
+
+    // (2) Staleness gate — read the config marker.
+    const now = nowFn();
+    const markerRow = handle.db
+      .select({ value: configTable.value })
+      .from(configTable)
+      .where(eq(configTable.key, CONFIG_MARKER_KEY))
+      .get();
+
+    if (markerRow) {
+      const markerMs = Number.parseInt(markerRow.value, 10);
+      if (Number.isFinite(markerMs) && now - markerMs < staleThresholdMs) {
+        const ageDays = Math.floor((now - markerMs) / 86_400_000);
+        opts.logger.info(`Eventor: cache ${ageDays} dagar gammal — skipping refresh`);
+        return { skipped: true, reason: 'fresh' };
+      }
+    }
+    // If marker is missing we still proceed to refresh, with reason
+    // 'empty' reserved for logging (downstream behavior is identical to
+    // stale). The skipped-vs-not status is encoded in result.skipped.
+
+    // (3) Download — wrap in try/catch so a network failure DEGRADES
+    //     gracefully (D-EV-3 warn-and-run with prior cache).
+    let paths;
+    try {
+      paths = await downloadFn({ apiKey: opts.apiKey });
+    } catch (err) {
+      opts.logger.warn({ err }, 'Eventor: refresh failed');
+      return { skipped: true, reason: 'network_error', error: err };
+    }
+
+    // (4) Ingest — same defensive wrapper. A failed ingest leaves the
+    //     prior snapshot intact (cache.ts is transactional).
+    try {
+      const result = await ingestFn(handle, paths.competitorsPath, paths.clubsPath, nowFn());
+      opts.logger.info(
+        `Eventor: refresh ok — ${result.competitors} competitors, ${result.clubs} clubs`
+      );
+      return {
+        skipped: false,
+        competitors: result.competitors,
+        clubs: result.clubs,
+      };
+    } catch (err) {
+      opts.logger.warn({ err }, 'Eventor: ingest failed');
+      return { skipped: true, reason: 'network_error', error: err };
+    }
+  }
+
+  function stop(): void {
+    // D-EV-1 explicitly rejected cron — no timer to cancel. Parity stub.
+  }
+
+  return { runNow, stop };
+}
