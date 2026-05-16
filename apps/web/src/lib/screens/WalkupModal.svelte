@@ -55,6 +55,13 @@
      * per RESEARCH §"Plan 2 nuance". When null OR `hit: false`, the
      * cardHolderHint fallback applies. */
     eventorHint?: EventorLookupHit | null;
+    /** Phase 2.0 Plan 02-02b — parent-driven close callback. When
+     * supplied (RegistrationView, plan 02-02b task 3), `close()` calls
+     * this INSTEAD of `goto(/readout)` so the parent can drive
+     * auto-advance to the next queued card without a router round-trip.
+     * When null (Phase 1 /readout path), close() falls back to the
+     * existing `goto(/competition/<id>/readout)` URL-strip behavior. */
+    onClose?: (() => void) | null;
   }
 
   let {
@@ -63,6 +70,7 @@
     classes,
     cardHolderHint = null,
     eventorHint = null,
+    onClose = null,
   }: Props = $props();
 
   // --- form state -----------------------------------------------------------
@@ -136,6 +144,14 @@
   let cardTakenExistingId = $state<string | null>(null);
 
   function close(): void {
+    // Phase 2.0 Plan 02-02b: when the parent supplies onClose (the
+    // registration desk drives auto-advance), invoke it instead of
+    // round-tripping through the router. The Phase 1 /readout path
+    // leaves onClose null and falls through to the URL-strip goto.
+    if (onClose !== null) {
+      onClose();
+      return;
+    }
     void goto(`/competition/${competitionId}/readout`);
   }
 

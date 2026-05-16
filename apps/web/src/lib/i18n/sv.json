@@ -111,6 +111,12 @@
   "res.starters": "startande",
   "res.finished": "i mål",
 
+  "registration.title": "Registreringsdisk",
+  "registration.welcome": "Skanna SI-brickan eller skriv numret nedan",
+  "registration.empty": "Inga brickor i kö — vänta på nästa beep",
+  "registration.queuedBadge": "{{count}} i kö",
+  "registration.dedupeToast": "Brickan finns redan i kön (#{{card}})",
+
   "walk.title": "Walk-up registrering",
   "walk.desc": "Okänd bricka avläst. Registrera deltagaren och fortsätt.",
   "walk.name": "Namn",

@@ -111,6 +111,12 @@
   "res.starters": "starters",
   "res.finished": "finished",
 
+  "registration.title": "Registration desk",
+  "registration.welcome": "Scan the SI card or type the number below",
+  "registration.empty": "No cards queued — waiting for the next beep",
+  "registration.queuedBadge": "{{count}} in queue",
+  "registration.dedupeToast": "Card already queued (#{{card}})",
+
   "walk.title": "Walk-up registration",
   "walk.desc": "Unknown card read. Register the competitor and continue.",
   "walk.name": "Name",
