@@ -16,30 +16,32 @@ is Phase-1 surface work and an Eventor pull.
 
 **In scope (Phase 2.0):**
 
-- **Eventor runner-database download** — nightly fetch of
-  `/api/persons/organisations/637` (Stora Tuna OK, 384 members), cached
-  to SQLite as `eventor_persons(person_id, given_name, family_name,
-  birth_year, sex, org_id, modify_date)`. Used **only** for autocomplete;
-  we do NOT import entries from Eventor for this event (almost no one
-  pre-registers on 4-klubbs trainings).
-  **IMPORTANT scope revision after API smoke-test 2026-05-16** — the STK
-  API key cannot reach `/api/competitors` (403), which is the only
-  endpoint that exposes SI card numbers per person. The MeOS-style
-  "read bricka → look up name" UX is **infeasible** with this key alone.
-  Phase 2.0 uses **name-only autocomplete** (operator types name → cache
-  pre-fills Klubb = "Stora Tuna OK"). SI bricka stays manual. See
-  `.planning/research/eventor-api-smoke.md` for the three options
-  considered and why Option A was chosen.
+- **Eventor national runner DB download** — nightly fetch of
+  `/api/export/cachedcompetitors?includePreselectedClasses=false&zip=true&version=3.0`
+  (9.4 MB zipped, 86 MB XML, **252 919 competitors, 96 918 with SI cards**)
+  plus `/api/export/clubs?version=3.0` (1.3 MB XML). Parsed streamingly
+  (sax) into SQLite tables `eventor_competitors` (indexed by `si_card`
+  and `(family_name, given_name)`) and `eventor_clubs`. This is the
+  **same endpoint MeOS uses** (verified at `/home/jonas/src/meos/code/
+  TabCompetition.cpp:3107-3108`), and it's OPEN to club-level API keys
+  despite the live `/api/competitors` endpoint being 403. Used **only**
+  for walk-up autocomplete; we do NOT import entries from Eventor for
+  this event (almost no one pre-registers on 4-klubbs trainings).
+  **Privacy footnote**: 252 k names + birth years + SI cards is materially
+  more PII than Phase 1 carried — Plan 1 should write a new ADR-0009
+  covering the trade-off and mitigations (local-only, no phone/email,
+  clear-cache admin endpoint, nightly refresh respects Eventor ToS).
 - **WalkupModal enhancements** in `apps/web/src/lib/screens/`:
   - Rename "Klass" → **"Bana"** for 4-klubbs (course-only model).
   - Add **`Hyrbricka` checkbox** — stored on the competitor row as
     `hired_card BOOLEAN`.
-  - When **operator types in the name field**, autocomplete from the
-    Eventor cache (STK members only — see scope note above). Selecting
-    a match pre-fills `klubb` = "Stora Tuna OK". `cardHolderHint` from
-    SI firmware still pre-fills name on bricka read (Phase 1 path,
-    unchanged) — Eventor is the **second** autocomplete source, on
-    typed-name input.
+  - When **SI bricka is read/entered**, look up `eventor_competitors`
+    by `si_card`. If hit → pre-fill `name` + `klubb` (resolved via
+    `eventor_clubs.name`). If miss → fall back to the Phase 1
+    `cardHolderHint` from SI firmware. This is the MeOS-style flow.
+  - When **operator types in the name field**, prefix-match
+    autocomplete on the `(family_name, given_name)` index → 96 918
+    SI-card-carrying runners + the rest typed manually still work.
 - **MIP server** (`apps/edge/src/integrations/meos/mip.ts`) — Fastify
   route that MeOS polls. Serves `<MIPData>` containing:
   - `<entry>` for every walk-up registration (sync direktanmälningar
@@ -188,15 +190,14 @@ Total committed: **~3.5d**. Wednesday morning is the buffer / dry-run.
 
 ## Open questions (resolve in `/gsd-discuss-phase 2`)
 
-- ~~Eventor download endpoint shape~~ — **resolved 2026-05-16 by smoke
-  test.** `GET /api/persons/organisations/637` returns 384 STK members.
-  `/api/competitors` (would have had SI cards) is 403 with this key.
-  See `.planning/research/eventor-api-smoke.md`.
-- **NEW open question** — should we ask the other 3 4-klubbs partner
-  clubs for their API keys before Wednesday (Option B in the smoke-test
-  doc) to extend autocomplete coverage from ~25% → ~100%? Or accept the
-  STK-only Option A for 2.0 and revisit for 2.1? Coordination risk vs
-  UX value — decide before Plan 1 starts.
+- ~~Eventor download endpoint shape~~ — **resolved 2026-05-16 (twice).**
+  First-round guess was `/api/persons/organisations/637` (STK-only, no
+  SI cards). Re-checked against MeOS source: the right endpoint is
+  `/api/export/cachedcompetitors` (national, 252 919 competitors,
+  96 918 SI cards, open to club keys). See revised
+  `.planning/research/eventor-api-smoke.md`.
+- ~~Multi-club key coordination~~ — **resolved 2026-05-16.** No longer
+  needed; the cachedcompetitors export is national.
 - MIP authentication — MeOS supports a plain-text `pwd` header. For
   4-klubbs (closed club LAN) we probably skip it; for Phase 2.1
   (sanctioned event with bigger LAN attack surface) we add it.
