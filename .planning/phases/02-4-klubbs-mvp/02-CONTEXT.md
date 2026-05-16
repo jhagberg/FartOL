@@ -42,6 +42,33 @@ is Phase-1 surface work and an Eventor pull.
   - When **operator types in the name field**, prefix-match
     autocomplete on the `(family_name, given_name)` index → 96 918
     SI-card-carrying runners + the rest typed manually still work.
+- **Registration-desk screen** — new `/competition/<id>/registration`
+  route (NEW IN PHASE 2.0, ADDED 2026-05-16 LATE). Optimised for the
+  pre-race **"line of kids with own + rental bricks"** scenario:
+  - Hosts the same `WalkupModal` overlay but on a clean
+    registration-themed page (NOT on `ReadoutView`, which mixes the
+    operator's role — results-display vs. registration-desk).
+  - **Card-beep queue + auto-advance.** Today (Phase 1, `ReadoutView
+    .svelte:406-414`) a second unknown card beep arriving while the
+    modal is already open is *silently dropped onto the recent-reads
+    history* — operator must hunt for it after saving the first kid.
+    For the kids line, replace this with: queue the second card,
+    show a small "N i kö" badge, and **auto-open** the modal for the
+    next queued card on Save. Defensive: same card beeped twice while
+    queued → ignore-with-toast.
+  - **MeOS-style ergonomics**: with Plan 1 Eventor lookup landing,
+    each known kid is **3-5 sec to register** (modal opens with name +
+    klubb pre-filled, operator only picks Bana + clicks Spara). Without
+    Eventor lookup or for unknown bricks, **8-12 sec**. The auto-advance
+    queue makes the difference between a line that flows and a line
+    that pools.
+  - The bridge reader is the same physical SI master station Phase 1
+    uses; **before the race starts** there are no finish punches to
+    confuse, so single-reader-serves-both is fine. If a finish punch
+    arrives WHILE the registration screen is active (late-comers
+    during the race), the queue swallows it gracefully too — operator
+    sees "okänd bricka" entry and decides whether it's a late
+    registrant or an already-registered runner finishing.
 - **MIP server** (`apps/edge/src/integrations/meos/mip.ts`) — Fastify
   route that MeOS polls. Serves `<MIPData>` containing:
   - `<entry>` for every walk-up registration (sync direktanmälningar
@@ -157,13 +184,14 @@ reason."
 |---|---|---|---|
 | 1 | Eventor löpardatabasen download + SQLite cache | 1d | API key |
 | 2 | WalkupModal: Bana label + Hyrbricka + Eventor name autocomplete | 0.5d | Plan 1 |
+| 2b | **Registration-desk screen + card-beep queue + auto-advance** (ADDED 2026-05-16 late) | 0.5d | Plan 2 |
 | 3 | MIP server: `<entry>` push for direktanmälningar | 1d | Plan 2 |
 | 4 | MOP receiver: ingest MeOS `<cmp>` for state reconciliation | 0.5d | Plan 3 |
 | 5 | Hyrbricka finish-readout toast | 0.25d | Plan 2 |
 | 6 | Parallel-run ops playbook (`docs/ops/parallel-meos-runbook.md`) | 0.25d | Plans 3+4 |
 | 7 | **Stretch** — QR self-signup public route | 1d | Plan 2 |
 
-Total committed: **~3.5d**. Wednesday morning is the buffer / dry-run.
+Total committed: **~4d** (was 3.5d before Plan 2b was added). Wednesday morning is the buffer / dry-run. If 4d feels tight, **Plan 2b is the strongest cut candidate** — without it the Phase 1 single-host walkup flow still works for a kids line at a slower per-kid tempo (operator picks subsequent cards from history).
 
 ## References
 
