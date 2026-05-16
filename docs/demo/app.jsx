@@ -46,7 +46,7 @@ function App() {
     let t = 14*3600 + 32*60 + 11; // 14:32:11 — wall clock at the readout table
     const id = setInterval(() => {
       t += 1;
-      const h = Math.floor(t/3600).toString().padStart(2,'0');
+      const h = (Math.floor(t/3600) % 24).toString().padStart(2,'0');
       const m = Math.floor((t%3600)/60).toString().padStart(2,'0');
       const s = (t%60).toString().padStart(2,'0');
       setClock(`${h}:${m}:${s}`);
@@ -97,8 +97,9 @@ function App() {
   };
 
   const onWalkupSave = ({ name, club, cls, card }) => {
+    const parsedCard = parseInt(card, 10);
     const completed = {
-      cardNumber: parseInt(card) || 9128344,
+      cardNumber: Number.isNaN(parsedCard) ? 9128344 : parsedCard,
       name, club: club || '—', cls,
       readTime: clock,
       startTime: '14:02:00',

@@ -168,9 +168,21 @@ function useTweaks(defaults) {
     const edits = typeof keyOrEdits === 'object' && keyOrEdits !== null
       ? keyOrEdits : { [keyOrEdits]: val };
     setValues((prev) => ({ ...prev, ...edits }));
-    window.parent.postMessage({ type: '__edit_mode_set_keys', edits }, '*');
+    // postMessage is only meaningful when running inside the Claude Design
+    // editor host (it persists tweak settings to the on-disk EDITMODE block).
+    // In the public demo there is no host, so skip the call — and never
+    // postMessage with '*' as target origin, which would leak edits to any
+    // page that embeds the demo in an iframe.
+    if (window.parent && window.parent !== window) {
+      try {
+        const targetOrigin = document.referrer
+          ? new URL(document.referrer).origin
+          : window.location.origin;
+        window.parent.postMessage({ type: '__edit_mode_set_keys', edits }, targetOrigin);
+      } catch { /* malformed referrer — skip the cross-origin message */ }
+    }
     // Same-window signal so in-page listeners (deck-stage rail thumbnails)
-    // can react — the parent message only reaches the host, not peers.
+    // can react.
     window.dispatchEvent(new CustomEvent('tweakchange', { detail: edits }));
   }, []);
   return [values, setTweak];

@@ -1147,7 +1147,7 @@ function WalkupModal({ t, cardNumber, classes, onCancel, onSave }) {
           <div style={{display: 'grid', gap: 16}}>
             <div className="field">
               <label>{t('walk.card')}</label>
-              <input className="input mono" value={card} onChange={e => setCard(e.target.value)} />
+              <input className="input mono" value={card} onChange={e => setCard(e.target.value)} inputMode="numeric" pattern="[0-9]*" />
             </div>
             <div className="field">
               <label>{t('walk.name')} *</label>

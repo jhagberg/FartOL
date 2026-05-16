@@ -138,7 +138,7 @@ function ExportView({ t }) {
         <div style={{display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center'}}>
           <a className="btn primary lg"
             href={canDownload ? '#download' : undefined}
-            onClick={e => { if (!canDownload) { e.preventDefault(); return; } e.preventDefault(); /* mock */ }}
+            onClick={e => { e.preventDefault(); /* mock: #download is not a real anchor */ }}
             style={!canDownload ? {opacity: 0.5, pointerEvents: 'none'} : null}>
             {t('exp.download')}
           </a>
