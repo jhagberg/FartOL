@@ -30,15 +30,16 @@
 -->
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { createCompetitor } from '$lib/api/client.ts';
+  import { createCompetitor, lookupEventorBySiCard } from '$lib/api/client.ts';
   import { t } from '$lib/i18n/index.ts';
   import Button from '$lib/ui/Button.svelte';
   import Field from '$lib/ui/Field.svelte';
   import Input from '$lib/ui/Input.svelte';
   import Select from '$lib/ui/Select.svelte';
   import ClubAutocomplete from '$lib/components/ClubAutocomplete.svelte';
+  import EventorAutocomplete from '$lib/components/EventorAutocomplete.svelte';
   import { ApiError } from '$lib/api/client.ts';
-  import type { ClassDTO } from '@fartol/shared-types';
+  import type { ClassDTO, EventorLookupHit, EventorNameSuggestion } from '@fartol/shared-types';
 
   interface Props {
     cardNumber: number;
@@ -48,16 +49,42 @@
      * the name field so the operator only confirms instead of re-typing.
      * Empty string is treated the same as null. */
     cardHolderHint?: string | null;
+    /** Phase 2.0 Plan 02-02 — optional Eventor-cache pre-fill (the result
+     * of `lookupEventorBySiCard(cardNumber)`). When `hit: true`, the name
+     * AND klubb fields populate from this — wins over `cardHolderHint`
+     * per RESEARCH §"Plan 2 nuance". When null OR `hit: false`, the
+     * cardHolderHint fallback applies. */
+    eventorHint?: EventorLookupHit | null;
   }
 
-  let { cardNumber, competitionId, classes, cardHolderHint = null }: Props = $props();
+  let {
+    cardNumber,
+    competitionId,
+    classes,
+    cardHolderHint = null,
+    eventorHint = null,
+  }: Props = $props();
 
   // --- form state -----------------------------------------------------------
-  // Pre-fill name from the SI card's card_holder field when the firmware
+  // Pre-fill name from Eventor cache when available (wins per Plan 2 nuance),
+  // otherwise from the SI card's card_holder field when the firmware
   // carried one (rental fleet cards usually didn't; personal cards often
   // did). Operator can still edit before submit.
-  let name = $state(cardHolderHint && cardHolderHint.length > 0 ? cardHolderHint : '');
-  let club = $state('');
+  function initialName(): string {
+    if (eventorHint && eventorHint.hit) {
+      return `${eventorHint.family_name}, ${eventorHint.given_name}`;
+    }
+    if (cardHolderHint && cardHolderHint.length > 0) return cardHolderHint;
+    return '';
+  }
+  function initialClub(): string {
+    if (eventorHint && eventorHint.hit && eventorHint.club_name) {
+      return eventorHint.club_name;
+    }
+    return '';
+  }
+  let name = $state(initialName());
+  let club = $state(initialClub());
   let classId = $state('');
   // The initial cardNumber prop is the URL's ?walkup=<n> coercion; we copy
   // it once into local state so the operator can edit (UI-SPEC §"Walk-up
@@ -67,6 +94,22 @@
   const initialCard: number | '' = cardNumber > 0 ? cardNumber : '';
   let cardNumberLocal = $state<number | ''>(initialCard);
   let consent = $state(true);
+
+  // Phase 2.0 D-HB-3 — Hyrbricka checkbox + expandable contact fields.
+  // The contact fields appear only when hiredCard=true; validate() enforces
+  // "at least phone OR email" before save (server is authoritative; UI is
+  // best-effort UX so the operator doesn't round-trip to discover the gate).
+  let hiredCard = $state(false);
+  let contactName = $state('');
+  let contactPhone = $state('');
+  let contactEmail = $state('');
+  let contactNote = $state('');
+
+  // Lightweight info note when the form was pre-filled from the Eventor
+  // cache. Cleared on first edit so it doesn't linger.
+  let eventorFillNote = $state<string | null>(
+    eventorHint && eventorHint.hit ? t('walk.eventor.fill') : null
+  );
 
   // --- ui state -------------------------------------------------------------
   let saving = $state(false);
@@ -80,6 +123,19 @@
     void goto(`/competition/${competitionId}/readout`);
   }
 
+  function onNameChange(next: string): void {
+    name = next;
+    eventorFillNote = null;
+  }
+
+  /** Eventor picker callback — populate the klubb field from the matching
+   * suggestion's club_name. The autocomplete already wrote "Family, Given"
+   * into the input via its own onValue path. */
+  function onEventorPick(s: EventorNameSuggestion): void {
+    if (s.club_name) club = s.club_name;
+    eventorFillNote = t('walk.eventor.fill');
+  }
+
   function validate(): string | null {
     if (name.trim().length < 2) return t('walk.err.name');
     if (!classId) return t('walk.err.classRequired');
@@ -87,6 +143,10 @@
       return t('walk.err.cardRequired');
     }
     if (!consent) return t('walk.err.consent');
+    // D-HB-3 — at least phone OR email required when Hyrbricka set.
+    if (hiredCard && contactPhone.trim() === '' && contactEmail.trim() === '') {
+      return t('walk.err.hyrbrickaContact');
+    }
     return null;
   }
 
@@ -109,6 +169,17 @@
         card_number: cardNumberLocal as number,
         consent: true,
         consent_status: 'explicit',
+        hired_card: hiredCard,
+        ...(hiredCard
+          ? {
+              hired_contact: {
+                name: contactName.trim() === '' ? null : contactName.trim(),
+                phone: contactPhone.trim() === '' ? null : contactPhone.trim(),
+                email: contactEmail.trim() === '' ? null : contactEmail.trim(),
+                note: contactNote.trim() === '' ? null : contactNote.trim(),
+              },
+            }
+          : { hired_contact: null }),
       });
       // Success — back to readout, query param cleared.
       close();
@@ -120,11 +191,45 @@
         } else {
           fieldError = t('err.network');
         }
+      } else if (e instanceof ApiError && e.status === 400) {
+        const body = e.body as { error?: string } | undefined;
+        if (body && body.error === 'hyrbricka_contact_required') {
+          // Server-side authoritative gate; surface its message.
+          fieldError = t('walk.err.hyrbrickaContact');
+        } else {
+          fieldError = (e as Error).message ?? t('err.network');
+        }
       } else {
         fieldError = (e as Error).message ?? t('err.network');
       }
     } finally {
       saving = false;
+    }
+  }
+
+  // Phase 2.0 Plan 02-02 — when the operator changes the bricka number
+  // (rare in walkup; usually inherited from props), debounce a lookup
+  // against the Eventor cache and pre-fill name + club on a hit. Keeps
+  // the existing pre-fill behaviour additive — never overwrites a field
+  // the operator has already typed in.
+  let cardLookupTimer: ReturnType<typeof setTimeout> | null = null;
+  function onCardEdit(): void {
+    if (cardLookupTimer) clearTimeout(cardLookupTimer);
+    cardLookupTimer = setTimeout(() => {
+      void doCardLookup();
+    }, 200);
+  }
+  async function doCardLookup(): Promise<void> {
+    if (typeof cardNumberLocal !== 'number' || cardNumberLocal < 1) return;
+    try {
+      const r = await lookupEventorBySiCard(cardNumberLocal);
+      if (r.hit) {
+        if (name.trim() === '') name = `${r.family_name}, ${r.given_name}`;
+        if (club.trim() === '' && r.club_name) club = r.club_name;
+        eventorFillNote = t('walk.eventor.fill');
+      }
+    } catch {
+      // Soft fail — the form still works without the cache.
     }
   }
 
@@ -174,16 +279,18 @@
       }}
     >
       <Field label={t('walk.name')} htmlFor="walkup-name">
-        <Input
+        <EventorAutocomplete
           id="walkup-name"
-          data-testid="walkup-name"
-          bind:value={name}
+          value={name}
           placeholder={t('walk.name.ph')}
-          minlength={2}
-          required
-          autofocus
+          onValue={onNameChange}
+          onPick={onEventorPick}
         />
       </Field>
+
+      {#if eventorFillNote}
+        <p class="info" data-testid="walkup-eventor-fill">{eventorFillNote}</p>
+      {/if}
 
       <Field label={t('walk.club')} htmlFor="walkup-club">
         <ClubAutocomplete
@@ -194,9 +301,9 @@
         />
       </Field>
 
-      <Field label={t('walk.class')} htmlFor="walkup-class">
+      <Field label={t('walk.bana')} htmlFor="walkup-class">
         <Select id="walkup-class" data-testid="walkup-class" bind:value={classId} required>
-          <option value="" disabled>{t('walk.classPlaceholder')}</option>
+          <option value="" disabled>{t('walk.banaPlaceholder')}</option>
           {#each classes as cls (cls.id)}
             <option value={cls.id}>{cls.name}</option>
           {/each}
@@ -211,6 +318,7 @@
           min={1}
           step={1}
           bind:value={cardNumberLocal}
+          oninput={onCardEdit}
           required
         />
       </Field>
@@ -223,6 +331,51 @@
         />
         <span>{t('walk.consent')}</span>
       </label>
+
+      <!-- Phase 2.0 D-HB-3 — Hyrbricka checkbox + expandable contact fields. -->
+      <label class="consent-row">
+        <input
+          type="checkbox"
+          data-testid="walkup-hired"
+          bind:checked={hiredCard}
+        />
+        <span>{t('walk.hyrbricka')}</span>
+      </label>
+
+      {#if hiredCard}
+        <div class="hired-fields" data-testid="walkup-hired-fields">
+          <Field label={t('walk.hyrbricka.name')} htmlFor="walkup-hc-name">
+            <Input
+              id="walkup-hc-name"
+              data-testid="walkup-hc-name"
+              bind:value={contactName}
+            />
+          </Field>
+          <Field label={t('walk.hyrbricka.phone')} htmlFor="walkup-hc-phone">
+            <Input
+              id="walkup-hc-phone"
+              data-testid="walkup-hc-phone"
+              type="tel"
+              bind:value={contactPhone}
+            />
+          </Field>
+          <Field label={t('walk.hyrbricka.email')} htmlFor="walkup-hc-email">
+            <Input
+              id="walkup-hc-email"
+              data-testid="walkup-hc-email"
+              type="email"
+              bind:value={contactEmail}
+            />
+          </Field>
+          <Field label={t('walk.hyrbricka.note')} htmlFor="walkup-hc-note">
+            <Input
+              id="walkup-hc-note"
+              data-testid="walkup-hc-note"
+              bind:value={contactNote}
+            />
+          </Field>
+        </div>
+      {/if}
 
       {#if fieldError}
         <p class="err" data-testid="walkup-error">{fieldError}</p>
@@ -329,6 +482,20 @@
     margin: 0;
     color: var(--dnf);
     font-size: 13px;
+  }
+  .info {
+    margin: 0;
+    color: var(--fg-muted);
+    font-size: 12px;
+    font-style: italic;
+  }
+  .hired-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg-soft, rgba(0, 0, 0, 0.03));
+    border-radius: var(--radius);
   }
   .banner {
     margin: 0;

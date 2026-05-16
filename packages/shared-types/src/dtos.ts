@@ -320,6 +320,47 @@ export const ClubDTO = z.object({
 export type ClubDTO = z.infer<typeof ClubDTO>;
 
 // ---------------------------------------------------------------------------
+// Phase 2.0 Plan 02-02 — Eventor walk-up autocomplete shapes.
+//
+// GET /api/eventor/lookup?si_card=N → EventorLookupResult (discriminated
+//   on { hit: true | false } so callers can destructure cleanly).
+// GET /api/eventor/lookup?prefix=S → { suggestions: EventorNameSuggestion[] }.
+// GET /api/eventor/status → EventorStatusDTO.
+// ---------------------------------------------------------------------------
+
+export const EventorLookupHit = z.object({
+  hit: z.literal(true),
+  person_id: z.number().int().positive(),
+  family_name: z.string(),
+  given_name: z.string(),
+  club_id: z.number().int().nullable(),
+  club_name: z.string().nullable(),
+});
+export type EventorLookupHit = z.infer<typeof EventorLookupHit>;
+
+export const EventorLookupMiss = z.object({ hit: z.literal(false) });
+export type EventorLookupMiss = z.infer<typeof EventorLookupMiss>;
+
+export type EventorLookupResult = EventorLookupHit | EventorLookupMiss;
+
+export const EventorNameSuggestion = z.object({
+  person_id: z.number().int().positive(),
+  family_name: z.string(),
+  given_name: z.string(),
+  club_name: z.string().nullable(),
+  si_card: z.number().int().nullable(),
+});
+export type EventorNameSuggestion = z.infer<typeof EventorNameSuggestion>;
+
+export const EventorStatusDTO = z.object({
+  state: z.enum(['ready', 'stale', 'offline', 'no_key']),
+  ageDays: z.number().int().nullable(),
+  competitorCount: z.number().int().nonnegative(),
+  fartol_dev: z.boolean(),
+});
+export type EventorStatusDTO = z.infer<typeof EventorStatusDTO>;
+
+// ---------------------------------------------------------------------------
 // Health — plan 01 baseline. Kept here so apps/edge keeps a single import
 // surface for shared schemas + types.
 // ---------------------------------------------------------------------------

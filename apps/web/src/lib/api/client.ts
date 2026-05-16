@@ -29,6 +29,9 @@ import type {
   CourseDTO,
   CourseCreateInput,
   ClubDTO,
+  EventorLookupResult,
+  EventorNameSuggestion,
+  EventorStatusDTO,
   HealthDTO,
 } from '@fartol/shared-types';
 
@@ -458,6 +461,39 @@ export function listClubs(prefix?: string, limit?: number): Promise<{ clubs: Clu
       ? { query: { prefix, ...(limit !== undefined ? { limit } : {}) } }
       : {}),
   });
+}
+
+// ---------------------------------------------------------------------------
+// Eventor walk-up autocomplete (Phase 2.0 Plan 02-02).
+// ---------------------------------------------------------------------------
+
+/** GET /api/eventor/lookup?si_card=N — single-row cache lookup for the
+ * bricka-scan pre-fill flow. Returns { hit: true, ... } | { hit: false }. */
+export function lookupEventorBySiCard(siCard: number): Promise<EventorLookupResult> {
+  return apiFetch<EventorLookupResult>('/api/eventor/lookup', {
+    query: { si_card: siCard },
+  });
+}
+
+/** GET /api/eventor/lookup?prefix=S&limit=K — name-prefix autocomplete
+ * for the operator-types-name flow. Caller MUST enforce minLength 2 on
+ * the prefix (the 252k-row scan blows the autocomplete UX otherwise);
+ * the API tolerates shorter prefixes but UI patterns reject them. */
+export function lookupEventorByPrefix(
+  prefix: string,
+  limit: number = 20
+): Promise<{ suggestions: EventorNameSuggestion[] }> {
+  return apiFetch<{ suggestions: EventorNameSuggestion[] }>('/api/eventor/lookup', {
+    query: { prefix, limit },
+  });
+}
+
+/** GET /api/eventor/status — current cache health for the TweaksPanel
+ * indicator. fartol_dev is server-side-derived from process.env at
+ * request time so the UI's admin-button gate is correct in production
+ * builds (import.meta.env.DEV would be bundler-time and always false). */
+export function getEventorStatus(): Promise<EventorStatusDTO> {
+  return apiFetch<EventorStatusDTO>('/api/eventor/status');
 }
 
 // ---------------------------------------------------------------------------
