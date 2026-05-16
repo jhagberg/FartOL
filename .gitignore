@@ -40,3 +40,6 @@ Thumbs.db
 
 # Scratch space
 tmp/
+
+# Third-party reference material (not for public deploy)
+docs/guide-meos.pdf

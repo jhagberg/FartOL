@@ -343,11 +343,14 @@
       font-family: var(--font-mono); font-size: 12.5px;
     }
     .demo-bullets li {
-      display: flex; gap: 10px; align-items: start;
+      position: relative;
+      padding-left: 18px;
       color: oklch(0.78 0.005 90);
+      line-height: 1.5;
     }
     .demo-bullets li::before {
-      content: '>'; color: var(--orange); font-weight: 700; flex-shrink: 0;
+      content: '>'; color: var(--orange); font-weight: 700;
+      position: absolute; left: 0; top: 0;
     }
     .demo-bullets li b { color: #fff; font-weight: 600; }
 
@@ -446,6 +449,60 @@
       font-family: var(--font-mono); font-size: 18px; font-weight: 700;
       color: oklch(0.42 0.16 75); flex-shrink: 0;
     }
+
+    /* ---------- hero subtitle ---------- */
+    .hero-tagline {
+      font-size: 18px;
+      color: var(--accent-strong);
+      margin: -4px 0 18px;
+      font-weight: 500;
+      font-style: italic;
+      letter-spacing: -0.005em;
+      max-width: 52ch;
+    }
+
+    /* ---------- hero footnote ---------- */
+    .hero-foot {
+      margin: -14px 0 22px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--fg-faint);
+      max-width: 60ch;
+      line-height: 1.5;
+    }
+    .hero-foot b { color: var(--fg-muted); font-weight: 600; }
+
+    /* ---------- steps ---------- */
+    .steps {
+      display: grid;
+      gap: 10px;
+      counter-reset: step;
+    }
+    .step {
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      gap: 16px;
+      padding: 14px 20px;
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      align-items: center;
+    }
+    .step::before {
+      counter-increment: step;
+      content: counter(step);
+      font-family: var(--font-mono);
+      font-size: 15px; font-weight: 700;
+      color: var(--accent-strong);
+      background: var(--accent-soft);
+      border-radius: 50%;
+      width: 36px; height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step h4 { margin: 0 0 2px; font-size: 16px; font-weight: 600; letter-spacing: -0.005em; }
+    .step p { margin: 0; color: var(--fg-muted); font-size: 14.5px; line-height: 1.5; }
   </style>
 </head>
 <body>
@@ -464,6 +521,7 @@
         FartOL
       </a>
       <nav id="topnav">
+        <a href="#hur">Hur</a>
         <a href="#vision">Vision</a>
         <a href="#diff">Design</a>
         <a href="#roadmap">Roadmap</a>
@@ -485,8 +543,12 @@
       <div>
         <span class="eyebrow">● Phase 1 · single-laptop training MVP · 2026-05-15</span>
         <h1>Tidtagning för orientering, byggd för <span class="accent">klubben och skogen</span>.</h1>
+        <p class="hero-tagline">Full fart från start till mål — eller slipp skit i resultatlistan.</p>
         <p class="lede">
-          FartOL är ett tävlingssystem som funkar i webbläsaren på Linux, Mac, Windows och Android. Varje SI-stämpling sparas som en idempotent händelse i en lokal logg, och resultaten räknas fram. Schemat är att först köra klubbträning med tjugo startande, sen sanktionerad tävling, sen O-Ringen.
+          FartOL är ett tävlingssystem som funkar i webbläsaren på Linux, Mac, Windows och Android. Varje SI-stämpling sparas som en händelse i en lokal logg<sup>*</sup>, så resultaten kan räknas fram (och räknas om) när som helst. Planen är att börja på en klubbträning, växa till en sanktionerad tävling och en dag landa på O-Ringen.
+        </p>
+        <p class="hero-foot">
+          <b>*Tekniskt:</b> append-only event log med idempotenta händelser — samma stämpling kan skickas in tio gånger utan att räknas dubbelt.
         </p>
         <div class="hero-ctas">
           <a href="demo/index.html" class="btn primary">Öppna klickbar demo <span class="arrow">→</span></a>
@@ -500,7 +562,7 @@
       <!-- Mini-mock of the readout view -->
       <div class="hero-mock" aria-hidden="true">
         <div class="mock-head">
-          <span><span class="dot"></span><b>Senaste avläsning</b> · live</span>
+          <span><span class="dot"></span><b>Så här ser en avläsning ut</b></span>
           <span style="color: var(--fg-muted);">14:32:11</span>
         </div>
         <div class="row"><span class="label">Bricka</span><span><b style="color: var(--accent-strong); font-size: 18px;">2078451</b></span></div>
@@ -524,6 +586,62 @@
     </div>
   </section>
 
+  <!-- ---------- HOW IT WORKS ---------- -->
+  <section id="hur">
+    <div class="wrap-narrow">
+      <div class="sec-head">
+        <div class="sec-eyebrow">Så funkar det</div>
+        <h2>Så kör du en tävling med FartOL.</h2>
+        <p>Sju steg från banfil till liveresultat. Samma flöde finns klickbart i demon.</p>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div>
+            <h4>Importera banorna</h4>
+            <p>Exportera från Condes som IOF XML 3.0 och dra in filen. Funkar lika bra för Purple Pen, OCAD eller OE — alla banprogram som kan spara IOF XML. Klasserna skapas automatiskt.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div>
+            <h4>Lägg upp deltagarna</h4>
+            <p>Startlista i förväg från Eventor eller IOF XML — eller walk-up på plats.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div>
+            <h4>Koppla in SI-läsaren</h4>
+            <p>BSM7 eller BSM8 i USB-porten. Edge-bridgen hittar den.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div>
+            <h4>Stämpla i mål</h4>
+            <p>Varje pinne läses, resultaten räknas fram live från händelseloggen.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div>
+            <h4>Skriv ut kvitto</h4>
+            <p>Sex mallar att välja på, inklusive ”Skogis” för barnen.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div>
+            <h4>Visa liveresultat</h4>
+            <p>Per klass, i helskärm för publiken eller på en skärm i målfållan.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div>
+            <h4>Exportera</h4>
+            <p>IOF XML 3.0 till Eventor när tävlingsdagen är slut.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ---------- VISION ---------- -->
   <section id="vision" class="tinted">
     <div class="wrap-narrow">
@@ -538,8 +656,7 @@
       <div class="callout" style="margin-top: 8px;">
         <span class="callout-icon">!</span>
         <div>
-          <b>Var det står:</b> Phase 0 (hårdvarubevis) klar, taggad <code>v0.0.1-handshake</code>.
-          Phase 1 (single-laptop training MVP) — alla 18 planer i mål. Redo för en riktig onsdagsträning hos Stora Tuna OK. Den här sidan är Phase 1.5.
+          <b>Var det står:</b> Vi är i fas 1.5 — publik demo och landningssida. Nästa steg är en riktig onsdagsträning hos Stora Tuna OK.
         </div>
       </div>
     </div>
@@ -603,7 +720,7 @@
           </div>
         </div>
         <ul class="demo-bullets">
-          <li>3-klicks tävlingsguide · <b>importera Purple Pen .xml</b></li>
+          <li>3-klicks tävlingsguide · <b>importera IOF XML (Condes, Purple Pen, OCAD)</b></li>
           <li>Live-avläsning · <b>simulera SI-kort</b> · auto-print-toggle</li>
           <li>Walk-up med samtyckesruta <b>(REQ-PRIV-001)</b></li>
           <li>Redigera deltagare · bryt · <b>återkalla brytning</b></li>
@@ -874,8 +991,7 @@
   <footer>
     <div class="wrap footer-inner">
       <div>
-        <b>FartOL</b> · arbetsnamn · AGPL-3.0 · <code style="font-size: 12px;">packages/sportident</code> är MIT<br>
-        <span style="color: var(--fg-faint); font-size: 12px;">Full fart från start till mål eller slipp skit i resultatlistan.</span>
+        <b>FartOL</b> · arbetsnamn · AGPL-3.0 · <code style="font-size: 12px;">packages/sportident</code> är MIT
       </div>
       <div class="links">
         <a href="https://github.com/jhagberg/FartOL" target="_blank" rel="noopener">GitHub</a>
