@@ -111,14 +111,24 @@ function doIngest(
       })
       .run();
     competitorsCreated++;
+  }
 
-    if (e.club !== null && e.club.length > 0) {
-      handle.db
-        .insert(clubs)
-        .values({ name: e.club, lastSeenAtMs: nowMs })
-        .onConflictDoUpdate({ target: clubs.name, set: { lastSeenAtMs: nowMs } })
-        .run();
-    }
+  // Bulk-upsert distinct club names ONCE after the competitor loop instead
+  // of per-row inside it (PR #3 review — Gemini medium). For an EntryList
+  // with N competitors sharing K distinct clubs, this drops K writes
+  // worst-case versus N writes per import. Save is small at Phase 1 / 2
+  // scale (~100ms at most) but the cost is also small (~3 lines) so worth
+  // it for clarity.
+  const distinctClubs = new Set<string>();
+  for (const e of data.competitors) {
+    if (e.club !== null && e.club.length > 0) distinctClubs.add(e.club);
+  }
+  for (const clubName of distinctClubs) {
+    handle.db
+      .insert(clubs)
+      .values({ name: clubName, lastSeenAtMs: nowMs })
+      .onConflictDoUpdate({ target: clubs.name, set: { lastSeenAtMs: nowMs } })
+      .run();
   }
 
   // If EVERY competitor in the EntryList was rejected because its class
