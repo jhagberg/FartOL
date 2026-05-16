@@ -50,8 +50,8 @@
   import { t } from '$lib/i18n/index.ts';
   import { tweaks } from '$lib/stores/tweaks.svelte.ts';
   import { bridgeStatus } from '$lib/stores/bridgeStatus.svelte.ts';
-  import { WsClient } from '$lib/ws/client.ts';
-  import { readoutChannel, resultsChannel, type WsEnvelope } from '@fartol/shared-types';
+  import { resultsChannel } from '@fartol/shared-types';
+  import { createCardSubscription } from '$lib/services/cardSubscription.ts';
   import type {
     CompetitionDTO,
     ClassDTO,
@@ -120,7 +120,7 @@
   let toastMessage: string | null = $state(null);
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
 
-  let wsClient: WsClient | null = null;
+  let subscription: ReturnType<typeof createCardSubscription> | null = null;
 
   // Walk-up overlay open flag — reactive from the URL. Plan 14 mounts a
   // modal when this is non-null; for plan 13 we expose the same signal
@@ -310,7 +310,7 @@
   });
 
   onDestroy(() => {
-    if (wsClient) wsClient.close();
+    if (subscription) subscription.disconnect();
     if (flashTimer) clearTimeout(flashTimer);
     if (walkupTimer) clearTimeout(walkupTimer);
     if (toastTimer) clearTimeout(toastTimer);
@@ -364,15 +364,86 @@
   }
 
   function connectWs(): void {
-    if (typeof window === 'undefined') return;
-    const wsUrl =
-      window.location.protocol === 'https:'
-        ? `wss://${window.location.host}/ws`
-        : `ws://${window.location.host}/ws`;
-    wsClient = new WsClient(wsUrl, handleWs);
-    wsClient.preSubscribe(readoutChannel(competitionId));
-    wsClient.preSubscribe(resultsChannel(competitionId));
-    wsClient.connect();
+    // The shared cardSubscription service owns the WsClient + replay
+    // unwrap + dispatch loop (extracted by 02-02b-PLAN.md task 2).
+    // /readout supplies classifyCard so the existing
+    // silent-drop-when-modal-open semantics keep working; every other
+    // envelope (manual_dnf, card_bound, results_update, meos_merge,
+    // hired_card_returned) flows through onOtherEnvelope to the same
+    // dispatch logic Phase 1 inlined.
+    subscription = createCardSubscription({
+      competitionId,
+      onCardRead: (cardNumber, _hint, _classification) => {
+        // The classifyCard resolver already refetched /readout +
+        // /competitors; the projection is now authoritative for the
+        // post-read side effects (walkup redirect, consent toast,
+        // hyrbricka toast). The classification value is informational —
+        // triggerCardReadSideEffects re-checks history[0].unmatched
+        // (the existing C-M3 site) to decide the walkup branch.
+        triggerCardReadSideEffects(cardNumber);
+      },
+      classifyCard: async (cardNumber) => {
+        // Refetch BOTH endpoints so history[0].unmatched + competitor
+        // consent_status reflect the post-read state. This is the
+        // same Promise.all that the Phase 1 inline `onCardRead` ran.
+        await Promise.all([refetchReadout(), refetchCompetitors()]);
+        const top = history[0];
+        const isUnmatched = top !== undefined && top.card_number === cardNumber && top.unmatched;
+        const cardHolderHint = isUnmatched ? top?.card_holder_hint ?? null : null;
+        return { isUnmatched, cardHolderHint };
+      },
+      onConnectionChange: (state) => {
+        bridgeStatus.set(state);
+      },
+      onOtherEnvelope: (eventType, payload) => {
+        switch (eventType) {
+          case 'manual_dnf':
+          case 'un_dnf':
+          case 'results_update':
+            void refetchReadout();
+            break;
+          case 'card_bound':
+            void refetchCompetitors();
+            void refetchReadout();
+            break;
+          case 'meos_merge': {
+            // Phase 2.0 plan 02-04 (D-MOP-3): MOP receiver auto-merged
+            // N MeOS-only competitors into our competitors table;
+            // surface a Swedish toast so the operator sees the
+            // recovery happened. No re-fetch — the next card_read
+            // flow already re-queries competitors when needed
+            // (PATTERNS S-4 + RESEARCH "Plan 5 nuance").
+            const count = (payload as { count?: number } | null)?.count;
+            if (typeof count === 'number' && count > 0) {
+              toast(t('ro.meosMerge', { count }));
+            }
+            break;
+          }
+          case 'hired_card_returned': {
+            // Phase 2.0 plan 02-05: another operator marked this card
+            // returned (typically via the admin "Aktiva hyrbrickor"
+            // view). Add it to our dismissal Set so future card_reads
+            // for this card don't re-pop the toast. Same Set
+            // replacement pattern as onHyrbrickaReturn — Assumption A8.
+            const cn = (payload as { card_number?: number } | null)?.card_number;
+            if (typeof cn === 'number' && Number.isInteger(cn) && cn > 0) {
+              returnedHiredCardNumbers = new Set([...returnedHiredCardNumbers, cn]);
+              // If the toast is currently open for this same card,
+              // dismiss it — the cross-operator return obviates our
+              // own pending action.
+              if (pendingHyrbrickaToast && pendingHyrbrickaToast.cardNumber === cn) {
+                pendingHyrbrickaToast = null;
+              }
+            }
+            break;
+          }
+          default:
+            break;
+        }
+      },
+      extraChannels: [resultsChannel(competitionId)],
+    });
+    subscription.connect();
   }
 
   async function refetchReadout(): Promise<void> {
@@ -395,86 +466,11 @@
   }
 
   // --- WS envelope dispatch -------------------------------------------------
-
-  function handleWs(env: WsEnvelope): void {
-    // Replay envelopes wrap the live event payload one layer deeper:
-    // { type: 'replay', payload: { event_type, ...fields } }. Live
-    // broadcasts have type === event_type. Unwrap and re-dispatch so
-    // both paths share the same downstream logic.
-    if (env.type === 'replay') {
-      const inner = env.payload as { event_type?: string } | null;
-      if (!inner || typeof inner.event_type !== 'string') return;
-      handleLiveEvent(inner.event_type, inner);
-      return;
-    }
-    handleLiveEvent(env.type, env.payload);
-  }
-
-  function handleLiveEvent(eventType: string, payload: unknown): void {
-    switch (eventType) {
-      case 'card_read':
-        onCardRead(payload as { card_number: number; card_type: string });
-        break;
-      case 'manual_dnf':
-      case 'un_dnf':
-      case 'results_update':
-        void refetchReadout();
-        break;
-      case 'card_bound':
-        void refetchCompetitors();
-        void refetchReadout();
-        break;
-      case 'connection_changed': {
-        const state = (payload as { state: string }).state;
-        if (state === 'open' || state === 'opening' || state === 'closed' || state === 'error') {
-          bridgeStatus.set(state);
-        }
-        break;
-      }
-      case 'meos_merge': {
-        // Phase 2.0 plan 02-04 (D-MOP-3): MOP receiver auto-merged N MeOS-
-        // only competitors into our competitors table; surface a Swedish
-        // toast so the operator sees the recovery happened. No re-fetch —
-        // the next card_read flow already re-queries competitors when
-        // needed (PATTERNS S-4 + RESEARCH "Plan 5 nuance").
-        const count = (payload as { count?: number } | null)?.count;
-        if (typeof count === 'number' && count > 0) {
-          toast(t('ro.meosMerge', { count }));
-        }
-        break;
-      }
-      case 'hired_card_returned': {
-        // Phase 2.0 plan 02-05: another operator marked this card returned
-        // (typically via the admin "Aktiva hyrbrickor" view). Add it to
-        // our dismissal Set so future card_reads for this card don't
-        // re-pop the toast. Same Set replacement pattern as
-        // onHyrbrickaReturn — Assumption A8.
-        const cn = (payload as { card_number?: number } | null)?.card_number;
-        if (typeof cn === 'number' && Number.isInteger(cn) && cn > 0) {
-          returnedHiredCardNumbers = new Set([...returnedHiredCardNumbers, cn]);
-          // If the toast is currently open for this same card, dismiss it
-          // — the cross-operator return obviates our own pending action.
-          if (pendingHyrbrickaToast && pendingHyrbrickaToast.cardNumber === cn) {
-            pendingHyrbrickaToast = null;
-          }
-        }
-        break;
-      }
-      default:
-        break;
-    }
-  }
-
-  function onCardRead(payload: { card_number: number; card_type: string }): void {
-    // The server-side broadcast carries the envelope but the readout-row
-    // status + competitor binding live in the projection. Refetch /readout
-    // AND /competitors for the authoritative shape — keeps card_number,
-    // status, AND consent_status in sync (C-M4 toast reads consent_status
-    // from the competitor row, not the readout history).
-    void Promise.all([refetchReadout(), refetchCompetitors()]).then(() =>
-      triggerCardReadSideEffects(payload.card_number)
-    );
-  }
+  //
+  // WS connect + replay-unwrap + dispatch loop live in cardSubscription
+  // (extracted by 02-02b-PLAN.md task 2). The per-event side effects
+  // below (triggerCardReadSideEffects + the consent/hyrbricka logic)
+  // stay in-screen because they read screen-local state.
 
   function triggerCardReadSideEffects(cardNumber: number): void {
     pinnedKey = null;
