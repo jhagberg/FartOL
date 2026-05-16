@@ -83,7 +83,7 @@ window.STRINGS = {
     'ro.pending.desc': 'Brickor som lästs men inte matchats mot startlistan. Registrera deltagaren för att fortsätta.',
 
     'consent.title': 'Bekräfta samtycke',
-    'consent.body': '{name} ({className}) finns i startlistan men har inte bekräftat samtycke ännu. Bekräfta att samtycke har inhämtats?',
+    'consent.body': '{name} ({className}) finns i startlistan men har inte bekräftat samtycke ännu. Bekräfta att deltagaren har lämnat samtycke?',
     'consent.confirm': 'Bekräfta',
     'consent.dismiss': 'Avfärda',
 
@@ -123,9 +123,9 @@ window.STRINGS = {
     'walk.club.ph': 'Frivilligt — t.ex. StorTuna OK',
     'walk.class': 'Klass',
     'walk.card': 'Bricknummer',
-    'walk.consent': 'Samtycke har inhämtats från deltagaren (REQ-PRIV-001)',
+    'walk.consent': 'Deltagaren har lämnat samtycke (REQ-PRIV-001)',
     'walk.consent.hint': 'GDPR — bekräfta muntligt med deltagaren innan du sparar.',
-    'walk.err.consent': 'Samtycke krävs innan brickan kan bindas.',
+    'walk.err.consent': 'Bekräfta samtycke innan du binder brickan.',
     'walk.cancel': 'Avbryt',
     'walk.save': 'Spara och bind',
 
