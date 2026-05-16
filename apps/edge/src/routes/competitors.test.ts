@@ -756,3 +756,199 @@ describe('clubs autocomplete (GET /api/clubs)', () => {
     assert.equal(body.clubs.length, 2);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Phase 2.0 Plan 02-02 task 2 — hired_card extension to POST /api/competitors.
+//
+// - hired_card omitted / false behaves IDENTICALLY to Phase 1 (regression
+//   coverage is the existing tests 1-9 above).
+// - hired_card=true + valid hired_contact (at least phone OR email) →
+//   competitor + hired_cards row both inserted in one transaction.
+// - hired_card=true + missing both phone AND email → 400
+//   hyrbricka_contact_required with NO competitor row inserted
+//   (pre-flight runs BEFORE the transaction per PATTERNS S-5).
+// - hired_card=true + card_taken (409) does NOT insert a hired_cards row.
+// - Re-rental of the same card (after delete) uses .onConflictDoUpdate
+//   on the compound PK [competitionId, cardNumber] (Pitfall 10).
+// ---------------------------------------------------------------------------
+
+import { hiredCards } from '../db/schema.ts';
+
+describe('Phase 2.0 — hired_card extension (Plan 02-02)', () => {
+  let ctx: Ctx;
+
+  beforeEach(async () => {
+    ctx = await boot();
+  });
+
+  afterEach(async () => {
+    await ctx.app.close();
+    ctx.handle.close();
+  });
+
+  test('test HB1: POST without hired_card (or hired_card=false) does NOT insert a hired_cards row', async () => {
+    const { competitionId, classId } = await seedCompetitionAndClass(ctx.app);
+    const res = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/competitors',
+      payload: {
+        competition_id: competitionId,
+        name: 'No-rental',
+        club: null,
+        class_id: classId,
+        card_number: 88888,
+        consent: true,
+        hired_card: false,
+      },
+    });
+    assert.equal(res.statusCode, 201);
+    const rows = ctx.handle.db.select().from(hiredCards).all();
+    assert.equal(rows.length, 0, 'no hired_cards row when hired_card=false');
+  });
+
+  test('test HB2: hired_card=true + phone-only contact → 201 AND a hired_cards row exists', async () => {
+    const { competitionId, classId } = await seedCompetitionAndClass(ctx.app);
+    const res = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/competitors',
+      payload: {
+        competition_id: competitionId,
+        name: 'Foo',
+        club: null,
+        class_id: classId,
+        card_number: 88888,
+        consent: true,
+        hired_card: true,
+        hired_contact: {
+          name: 'Foo',
+          phone: '0701234567',
+          email: null,
+          note: null,
+        },
+      },
+    });
+    assert.equal(res.statusCode, 201, `body: ${res.body}`);
+    const rows = ctx.handle.db.select().from(hiredCards).all();
+    assert.equal(rows.length, 1);
+    const row = rows[0];
+    assert.ok(row);
+    assert.equal(row.competitionId, competitionId);
+    assert.equal(row.cardNumber, 88888);
+    assert.equal(row.contactPhone, '0701234567');
+    assert.equal(row.contactEmail, null);
+    assert.equal(row.returnedAtMs, null);
+    assert.ok(row.markedAtMs > 0);
+  });
+
+  test('test HB3: hired_card=true + both phone AND email empty → 400 hyrbricka_contact_required, NO competitor row', async () => {
+    const { competitionId, classId } = await seedCompetitionAndClass(ctx.app);
+    const res = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/competitors',
+      payload: {
+        competition_id: competitionId,
+        name: 'Empty Contact',
+        club: null,
+        class_id: classId,
+        card_number: 88889,
+        consent: true,
+        hired_card: true,
+        hired_contact: { name: null, phone: null, email: null, note: null },
+      },
+    });
+    assert.equal(res.statusCode, 400);
+    const body = res.json() as { error: string };
+    assert.equal(body.error, 'hyrbricka_contact_required');
+    // No competitor row written (pre-flight before transaction).
+    const compRows = ctx.handle.db.select().from(competitors).all();
+    assert.equal(compRows.length, 0);
+    // No hired_cards row.
+    const hrRows = ctx.handle.db.select().from(hiredCards).all();
+    assert.equal(hrRows.length, 0);
+  });
+
+  test('test HB3b: hired_card=true + hired_contact omitted entirely → 400 hyrbricka_contact_required', async () => {
+    const { competitionId, classId } = await seedCompetitionAndClass(ctx.app);
+    const res = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/competitors',
+      payload: {
+        competition_id: competitionId,
+        name: 'Empty Contact',
+        club: null,
+        class_id: classId,
+        card_number: 88891,
+        consent: true,
+        hired_card: true,
+        // hired_contact omitted
+      },
+    });
+    assert.equal(res.statusCode, 400);
+    const body = res.json() as { error: string };
+    assert.equal(body.error, 'hyrbricka_contact_required');
+  });
+
+  test('test HB4: hired_card=true with email-only also satisfies the gate', async () => {
+    const { competitionId, classId } = await seedCompetitionAndClass(ctx.app);
+    const res = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/competitors',
+      payload: {
+        competition_id: competitionId,
+        name: 'Email Only',
+        club: null,
+        class_id: classId,
+        card_number: 88890,
+        consent: true,
+        hired_card: true,
+        hired_contact: {
+          name: null,
+          phone: null,
+          email: 'foo@example.com',
+          note: 'spare card',
+        },
+      },
+    });
+    assert.equal(res.statusCode, 201);
+    const row = ctx.handle.db.select().from(hiredCards).get();
+    assert.ok(row);
+    assert.equal(row.contactEmail, 'foo@example.com');
+    assert.equal(row.note, 'spare card');
+  });
+
+  test('test HB5: 409 card-collision on hired POST does NOT leave a hired_cards row', async () => {
+    const { competitionId, classId } = await seedCompetitionAndClass(ctx.app);
+    // First competitor claims card 88888 with NO hired flag.
+    const first = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/competitors',
+      payload: {
+        competition_id: competitionId,
+        name: 'Owner',
+        class_id: classId,
+        card_number: 88888,
+        consent: true,
+      },
+    });
+    assert.equal(first.statusCode, 201);
+
+    // Second POST tries to claim the same card AS a hired rental → 409 from
+    // the pre-flight card_taken check; hired_cards must be empty.
+    const second = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/competitors',
+      payload: {
+        competition_id: competitionId,
+        name: 'Renter',
+        class_id: classId,
+        card_number: 88888,
+        consent: true,
+        hired_card: true,
+        hired_contact: { name: 'Renter', phone: '0709999999', email: null, note: null },
+      },
+    });
+    assert.equal(second.statusCode, 409);
+    const rows = ctx.handle.db.select().from(hiredCards).all();
+    assert.equal(rows.length, 0, '409 must not leave a stray hired_cards row');
+  });
+});
