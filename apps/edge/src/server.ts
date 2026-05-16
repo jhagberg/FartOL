@@ -58,6 +58,7 @@ import registerPrintRoute from './routes/print.ts';
 import registerExportRoutes from './routes/export.ts';
 import registerAdminRoutes from './routes/admin.ts';
 import registerEventorRoutes from './routes/eventor.ts';
+import registerHiredCardsRoutes from './routes/hiredCards.ts';
 import registerMipRoute from './integrations/meos/mip.ts';
 import registerMopRoute from './integrations/meos/mop.ts';
 import wsPlugin from './ws/index.ts';
@@ -232,6 +233,10 @@ export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyIn
     await app.register(registerPrintRoute);
     await app.register(registerExportRoutes);
     await app.register(registerAdminRoutes);
+    // Phase 2.0 Plan 02-05 — Hyrbricka REST surface (GET list + PATCH
+    // return). Mounted under /api/competitions/:id/hired-cards/* — same
+    // namespace as the rest of the competition-scoped routes.
+    await app.register(registerHiredCardsRoutes);
     // Phase 2.0 Plan 02-03 — MIP server (GET /mip). Mounted at the ROOT,
     // not /api/*, because MeOS hard-codes its poll URL and won't add a
     // prefix. D-MIP-1: no auth (closed club LAN).

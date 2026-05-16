@@ -51,6 +51,10 @@ export {
   EventorLookupMiss,
   EventorNameSuggestion,
   EventorStatusDTO,
+  HiredCardRow,
+  HiredCardsListResponse,
+  HiredCardReturnResponse,
+  HiredCardOpen,
   HealthDTO,
 } from './dtos.ts';
 export type { EventorLookupResult } from './dtos.ts';

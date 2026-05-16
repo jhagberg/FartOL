@@ -39,9 +39,9 @@
 // - REQ-EVT-CMP-005 (auto-attach card → competitor)
 
 import type { FastifyInstance } from 'fastify';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, isNull } from 'drizzle-orm';
 
-import { events, competitors as competitorsTable, config } from '../db/schema.ts';
+import { events, competitors as competitorsTable, config, hiredCards } from '../db/schema.ts';
 import type { PunchStatus } from '../projection/types.ts';
 import type { EventPayload } from '../db/schema.ts';
 
@@ -74,6 +74,18 @@ interface HistoryRow {
    * often have it set. Never persisted to competitors.name — the
    * operator confirms or edits the suggestion before binding. */
   card_holder_hint: string | null;
+  /** Phase 2.0 Plan 02-05 — non-null when the card_number for this row
+   * has an open hired_cards entry (returned_at_ms IS NULL) in this
+   * competition. Drives the Hyrbricka finish-readout toast on the web
+   * client. Explicit null (not absent) so the SPA can branch on
+   * `hired_card_open !== null` without `in` checks. Single source of
+   * truth — no per-card extra fetch (RESEARCH §"Pattern 6"). */
+  hired_card_open: {
+    contact_name: string | null;
+    contact_phone: string | null;
+    contact_email: string | null;
+    note: string | null;
+  } | null;
 }
 
 /** Pull a displayable name out of the SI card's firmware-side
@@ -139,6 +151,34 @@ export default async function registerReadoutRoute(app: FastifyInstance): Promis
       let projection = app.projectionStore.get(id);
       if (projection === null) projection = app.projectionStore.recomputeNow(id);
 
+      // Phase 2.0 Plan 02-05 — build a card_number → open hired_cards row
+      // map for this competition so each history row's hired_card_open
+      // field comes from a single round-trip rather than a per-card
+      // sub-query. The fleet size is small (tens of rentals at 4-klubbs
+      // scale) so the in-memory map is cheap.
+      const openHiredRows = app.fartolDb.db
+        .select()
+        .from(hiredCards)
+        .where(and(eq(hiredCards.competitionId, id), isNull(hiredCards.returnedAtMs)))
+        .all();
+      const openHiredByCard = new Map<
+        number,
+        {
+          contact_name: string | null;
+          contact_phone: string | null;
+          contact_email: string | null;
+          note: string | null;
+        }
+      >();
+      for (const r of openHiredRows) {
+        openHiredByCard.set(r.cardNumber, {
+          contact_name: r.contactName,
+          contact_phone: r.contactPhone,
+          contact_email: r.contactEmail,
+          note: r.note,
+        });
+      }
+
       const history: HistoryRow[] = cardReadRows.map((e) => {
         const payload = e.payload as Extract<EventPayload, { event_type: 'card_read' }>;
         const competitor = byCard.get(payload.card_number);
@@ -156,6 +196,10 @@ export default async function registerReadoutRoute(app: FastifyInstance): Promis
           // hint for walk-up flow. Only emit when there's no competitor
           // binding — for matched cards we already have the real name.
           card_holder_hint: competitor ? null : extractCardHolderHint(payload.card_holder),
+          // Phase 2.0 Plan 02-05 — single source of truth for the
+          // Hyrbricka toast. Explicit null when the card has no open
+          // rental so the SPA can branch without `in` checks.
+          hired_card_open: openHiredByCard.get(payload.card_number) ?? null,
           punches: payload.punches.map((p) => ({
             code: p.code,
             seconds_in_half_day: p.seconds_in_half_day,

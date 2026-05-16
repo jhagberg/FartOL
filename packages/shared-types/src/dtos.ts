@@ -361,6 +361,59 @@ export const EventorStatusDTO = z.object({
 export type EventorStatusDTO = z.infer<typeof EventorStatusDTO>;
 
 // ---------------------------------------------------------------------------
+// Phase 2.0 Plan 02-05 — Hyrbricka (hired card) REST shapes.
+//
+// GET   /api/competitions/:id/hired-cards
+//   → { open: HiredCardRow[], returned: HiredCardRow[] }
+//   Backs the admin "Aktiva hyrbrickor" view; ReadoutView reads
+//   hired_card_open from /readout instead (single source of truth).
+//
+// PATCH /api/competitions/:id/hired-cards/:cardNumber/return
+//   → 200 { ok: true, returned_at_ms: number, already_returned?: boolean }
+//   → 404 { error: 'not_found' }
+//   Idempotent: second PATCH preserves the original timestamp.
+// ---------------------------------------------------------------------------
+
+export const HiredCardRow = z.object({
+  competition_id: UUID,
+  card_number: POSITIVE_INT,
+  marked_at_ms: z.number().int().nonnegative(),
+  returned_at_ms: z.number().int().nonnegative().nullable(),
+  /** PII per REQ-PRIV-002 — scrubbed by privacy/retention.ts after 30 days. */
+  contact_name: z.string().nullable(),
+  /** PII per REQ-PRIV-002. */
+  contact_phone: z.string().nullable(),
+  /** PII per REQ-PRIV-002. */
+  contact_email: z.string().nullable(),
+  /** PII per REQ-PRIV-002 — free-form operator note. */
+  note: z.string().nullable(),
+});
+export type HiredCardRow = z.infer<typeof HiredCardRow>;
+
+export const HiredCardsListResponse = z.object({
+  open: z.array(HiredCardRow),
+  returned: z.array(HiredCardRow),
+});
+export type HiredCardsListResponse = z.infer<typeof HiredCardsListResponse>;
+
+export const HiredCardReturnResponse = z.object({
+  ok: z.literal(true),
+  returned_at_ms: z.number().int().nonnegative(),
+  already_returned: z.boolean().optional(),
+});
+export type HiredCardReturnResponse = z.infer<typeof HiredCardReturnResponse>;
+
+/** Per-row payload on the readout history when a card has an open
+ * hired_cards entry. Drives the Hyrbricka finish-readout toast. */
+export const HiredCardOpen = z.object({
+  contact_name: z.string().nullable(),
+  contact_phone: z.string().nullable(),
+  contact_email: z.string().nullable(),
+  note: z.string().nullable(),
+});
+export type HiredCardOpen = z.infer<typeof HiredCardOpen>;
+
+// ---------------------------------------------------------------------------
 // Health — plan 01 baseline. Kept here so apps/edge keeps a single import
 // surface for shared schemas + types.
 // ---------------------------------------------------------------------------
