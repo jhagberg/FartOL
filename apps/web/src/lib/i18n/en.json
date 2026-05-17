@@ -240,6 +240,9 @@
   "settings.integrations.key.LIVERESULTAT_API_KEY": "Liveresultat API key",
 
   "err.network": "Network error — please retry",
+  "err.networkPersistent.title": "Disconnected",
+  "err.networkPersistent.body": "The save failed twice. Check the wifi signal and tap Retry — the form is preserved.",
+  "err.networkPersistent.retry": "Retry",
   "err.import.invalid": "File format not supported",
   "err.print.offline": "Printer is offline",
   "err.ws.disconnected": "Readout disconnected — trying to reconnect…",

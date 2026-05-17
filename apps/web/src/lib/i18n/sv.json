@@ -240,6 +240,9 @@
   "settings.integrations.key.LIVERESULTAT_API_KEY": "Liveresultat API-nyckel",
 
   "err.network": "Nätverksfel — försök igen",
+  "err.networkPersistent.title": "Frånkopplad",
+  "err.networkPersistent.body": "Sparandet misslyckades två gånger. Kontrollera wifi-signalen och tryck Försök igen — formuläret är kvar.",
+  "err.networkPersistent.retry": "Försök igen",
   "err.import.invalid": "Filformat stöds inte",
   "err.print.offline": "Skrivaren är offline",
   "err.ws.disconnected": "Avläsning frånkopplad — försöker återansluta…",

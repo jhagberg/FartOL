@@ -142,6 +142,11 @@
   /** Banner on 409 — captures the existing competitor so the operator can
    * trigger a replace-card flow on the SAME row. */
   let cardTakenExistingId = $state<string | null>(null);
+  /** Level-A mobile resilience (2026-05-17): raw network failures get a
+   * dedicated prominent banner with a "Försök igen" CTA, separate from
+   * the small fieldError surface so a volunteer on a phone notices
+   * immediately when the save didn't land. The form stays populated. */
+  let networkError = $state(false);
 
   function close(): void {
     // Phase 2.0 Plan 02-02b: when the parent supplies onClose (the
@@ -185,6 +190,7 @@
   async function onSave(): Promise<void> {
     fieldError = null;
     cardTakenExistingId = null;
+    networkError = false;
     const err = validate();
     if (err !== null) {
       fieldError = err;
@@ -231,8 +237,14 @@
         } else {
           fieldError = (e as Error).message ?? t('err.network');
         }
-      } else {
+      } else if (e instanceof ApiError) {
+        // Other ApiError (5xx etc.) — server responded, surface the message.
         fieldError = (e as Error).message ?? t('err.network');
+      } else {
+        // Not an ApiError → raw fetch failure even after the client's
+        // built-in 1-shot retry. The form stays populated; the operator
+        // gets the prominent banner with an explicit Försök-igen CTA.
+        networkError = true;
       }
     } finally {
       saving = false;
@@ -419,6 +431,13 @@
         </p>
       {/if}
 
+      {#if networkError}
+        <div class="net-err" role="alert" data-testid="walkup-network-error">
+          <strong class="net-err-title">{t('err.networkPersistent.title')}</strong>
+          <p class="net-err-body">{t('err.networkPersistent.body')}</p>
+        </div>
+      {/if}
+
       <footer class="foot">
         <Button
           variant="ghost"
@@ -438,6 +457,15 @@
             data-testid="walkup-correct-card"
           >
             {t('walk.err.replaceCard')}
+          </Button>
+        {:else if networkError}
+          <Button
+            variant="primary"
+            type="submit"
+            disabled={saving}
+            data-testid="walkup-network-retry"
+          >
+            {t('err.networkPersistent.retry')}
           </Button>
         {:else}
           <Button
@@ -536,6 +564,29 @@
     padding: 10px 12px;
     border-radius: var(--radius);
     font-size: 13px;
+  }
+  /* Level-A mobile resilience banner — visually heavier than .banner so a
+     volunteer on a phone notices it across the room. Survives until the
+     next Save attempt clears `networkError`. */
+  .net-err {
+    margin: 4px 0 0;
+    background: var(--dnf);
+    color: #fff;
+    padding: 12px 14px;
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .net-err-title {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .net-err-body {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.35;
   }
   .foot {
     display: flex;

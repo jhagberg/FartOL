@@ -252,9 +252,26 @@ export function getCompetitor(
 }
 
 /** Walk-up create + plan-10 replace-card share this entry point; the
- * `replace_card_for_competitor_id` field switches mode server-side. */
-export function createCompetitor(body: CompetitorCreateInput): Promise<CompetitorDTO> {
-  return apiFetch<CompetitorDTO>('/api/competitors', { method: 'POST', body });
+ * `replace_card_for_competitor_id` field switches mode server-side.
+ *
+ * Level-A mobile resilience (2026-05-17): on a raw network failure
+ * (TypeError from fetch — wifi dropped, DNS hiccup, AP roam) do ONE
+ * automatic retry with a 1500 ms back-off. We never retry on an ApiError
+ * (the server got it and responded — 4xx is deterministic, 5xx is a real
+ * bug). The form survives the failure either way; this just absorbs the
+ * common case where the operator wouldn't otherwise notice the blip.
+ *
+ * Durable outbox + server-side idempotency is the Level-B follow-up at
+ * `.planning/todos/pending/2026-05-17-mobile-registration-outbox-idempotency.md`. */
+export async function createCompetitor(body: CompetitorCreateInput): Promise<CompetitorDTO> {
+  try {
+    return await apiFetch<CompetitorDTO>('/api/competitors', { method: 'POST', body });
+  } catch (e) {
+    if (e instanceof ApiError) throw e;
+    // Raw fetch failure — wait briefly then retry once.
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    return apiFetch<CompetitorDTO>('/api/competitors', { method: 'POST', body });
+  }
 }
 
 /** Edit name / club / class / card on an existing competitor row. Distinct
