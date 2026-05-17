@@ -79,10 +79,11 @@ export function lookupBySiCard(handle: DbHandle, siCard: number): EventorLookupR
   };
 }
 
-/** Name-prefix autocomplete. `prefix` is matched case-sensitively against
- * the leading characters of `family_name`. Limit is trusted; caller clamps
- * to [1, 50] (see routes/eventor.ts Zod schema). Returns rows ordered by
- * family_name ASC, given_name ASC for a stable picker UX. */
+/** Legacy: name-prefix autocomplete via `family_name LIKE prefix%`. Kept
+ * for back-compat with existing /api/eventor/lookup?prefix= callers
+ * (WalkupModal's EventorAutocomplete). Prefer `searchCompetitorsByName`
+ * for new code — it folds diacritics and matches across family + given +
+ * club in any word order via FTS5. */
 export function lookupByNamePrefix(
   handle: DbHandle,
   prefix: string,
@@ -112,6 +113,119 @@ export function lookupByNamePrefix(
     given_name: r.given_name,
     club_name: r.club_name ?? null,
     si_card: r.si_card,
+  }));
+}
+
+export interface EventorClubSuggestion {
+  club_id: number;
+  name: string;
+  short_name: string | null;
+  media_name: string | null;
+}
+
+interface FtsCompetitorRow {
+  person_id: number;
+  family_name: string;
+  given_name: string;
+  club_name: string | null;
+  si_card: number | null;
+}
+
+interface FtsClubRow {
+  club_id: number;
+  name: string;
+  short_name: string | null;
+  media_name: string | null;
+}
+
+/** Build an FTS5 MATCH expression from a free-text operator query. We
+ * split on whitespace, sanitise every token to safe FTS5 alnum (strips
+ * the special chars FTS5 treats as operators: `* " ( ) : -`), and
+ * append `*` to each remaining non-empty token so "jonas hag" matches
+ * "jonas*" AND "hag*". The implicit FTS5 AND between bare tokens means
+ * word order is irrelevant — "hag jonas" and "jonas hag" match the
+ * same rows. Returns null when sanitisation leaves no usable tokens
+ * (caller treats it as zero hits without ever hitting SQLite). */
+function buildFtsMatch(rawQuery: string): string | null {
+  const tokens = rawQuery
+    .split(/\s+/)
+    .map((t) => t.replace(/[^\p{L}\p{N}]+/gu, ''))
+    .filter((t) => t.length > 0);
+  if (tokens.length === 0) return null;
+  return tokens.map((t) => `${t}*`).join(' ');
+}
+
+/** FTS5-backed name + club search. Folds diacritics (mårsell ↔ marsell),
+ * matches across family + given + club_name, word-order-free. Returns up
+ * to `limit` matches ordered by FTS5 rank (BM25-ish relevance — exact
+ * token hits rank above prefix hits). Falls back to an empty array on
+ * an empty / sanitised-empty query. */
+export function searchCompetitorsByName(
+  handle: DbHandle,
+  query: string,
+  limit: number
+): EventorNameSuggestion[] {
+  const match = buildFtsMatch(query);
+  if (match === null) return [];
+
+  const sqliteRows = handle.sqlite
+    .prepare<[string, number], FtsCompetitorRow>(
+      `SELECT
+         c.person_id,
+         c.family_name,
+         c.given_name,
+         k.name AS club_name,
+         c.si_card
+       FROM eventor_competitors_fts f
+       JOIN eventor_competitors c ON c.person_id = f.rowid
+       LEFT JOIN eventor_clubs k ON k.club_id = c.club_id
+       WHERE eventor_competitors_fts MATCH ?
+       ORDER BY rank
+       LIMIT ?`
+    )
+    .all(match, limit);
+
+  return sqliteRows.map((r) => ({
+    person_id: r.person_id,
+    family_name: r.family_name,
+    given_name: r.given_name,
+    club_name: r.club_name ?? null,
+    si_card: r.si_card,
+  }));
+}
+
+/** FTS5-backed club search across the federation's eventor_clubs cache.
+ * Matches across name + short_name + media_name so the operator can type
+ * "stk" (short), "stora tuna" (name), or "stortuna" (no-space variant)
+ * and find the same row. */
+export function searchClubsByName(
+  handle: DbHandle,
+  query: string,
+  limit: number
+): EventorClubSuggestion[] {
+  const match = buildFtsMatch(query);
+  if (match === null) return [];
+
+  const sqliteRows = handle.sqlite
+    .prepare<[string, number], FtsClubRow>(
+      `SELECT
+         c.club_id,
+         c.name,
+         c.short_name,
+         c.media_name
+       FROM eventor_clubs_fts f
+       JOIN eventor_clubs c ON c.club_id = f.rowid
+       WHERE eventor_clubs_fts MATCH ?
+       ORDER BY rank
+       LIMIT ?`
+    )
+    .all(match, limit);
+
+  return sqliteRows.map((r) => ({
+    club_id: r.club_id,
+    name: r.name,
+    short_name: r.short_name,
+    media_name: r.media_name,
   }));
 }
 

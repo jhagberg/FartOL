@@ -23,7 +23,13 @@ import { fileURLToPath } from 'node:url';
 
 import { openDatabase, type DbHandle } from '../db/index.ts';
 import { ingestEventorCache } from './cache.ts';
-import { lookupBySiCard, lookupByNamePrefix, type EventorLookupHit } from './lookup.ts';
+import {
+  lookupBySiCard,
+  lookupByNamePrefix,
+  searchCompetitorsByName,
+  searchClubsByName,
+  type EventorLookupHit,
+} from './lookup.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIX_DIR = path.join(__dirname, '__fixtures__');
@@ -78,6 +84,85 @@ describe('eventor lookup module', () => {
     await withSeededDb((handle) => {
       const rows = lookupByNamePrefix(handle, '', 20);
       assert.deepEqual(rows, []);
+    });
+  });
+});
+
+describe('eventor lookup FTS5 — searchCompetitorsByName', () => {
+  test('matches given name as a leading prefix (Jonas → Hagberg, Jonas)', async () => {
+    await withSeededDb((handle) => {
+      const rows = searchCompetitorsByName(handle, 'jonas', 20);
+      const hit = rows.find((r) => r.family_name === 'Hagberg');
+      assert.ok(hit, 'expected Hagberg row matching given_name prefix');
+      assert.equal(hit.given_name, 'Jonas');
+    });
+  });
+
+  test('matches across given AND family in either word order (jonas hag, hag jonas)', async () => {
+    await withSeededDb((handle) => {
+      const a = searchCompetitorsByName(handle, 'jonas hag', 20);
+      const b = searchCompetitorsByName(handle, 'hag jonas', 20);
+      assert.ok(a.find((r) => r.family_name === 'Hagberg' && r.given_name === 'Jonas'));
+      assert.ok(b.find((r) => r.family_name === 'Hagberg' && r.given_name === 'Jonas'));
+    });
+  });
+
+  test('folds diacritics (ostberg → Östberg, par → Pär)', async () => {
+    await withSeededDb((handle) => {
+      const a = searchCompetitorsByName(handle, 'ostberg', 20);
+      assert.ok(a.find((r) => r.family_name === 'Östberg'));
+      const b = searchCompetitorsByName(handle, 'par', 20);
+      assert.ok(b.find((r) => r.given_name === 'Pär'));
+    });
+  });
+
+  test('returns [] for whitespace-only / sanitised-empty query', async () => {
+    await withSeededDb((handle) => {
+      assert.deepEqual(searchCompetitorsByName(handle, '', 20), []);
+      assert.deepEqual(searchCompetitorsByName(handle, '   ', 20), []);
+      assert.deepEqual(searchCompetitorsByName(handle, '* ( )', 20), []);
+    });
+  });
+
+  test('limit clamps the result count', async () => {
+    await withSeededDb((handle) => {
+      // All 3 fixture competitors share club_name 'Stora Tuna OK' — the
+      // FTS5 club_name column matches every row for the 'stora' token.
+      // limit=2 must clamp the 3-match set down to 2.
+      const rows = searchCompetitorsByName(handle, 'stora', 2);
+      assert.equal(rows.length, 2);
+    });
+  });
+});
+
+describe('eventor lookup FTS5 — searchClubsByName', () => {
+  test('matches by short_name (STK → Stora Tuna OK)', async () => {
+    await withSeededDb((handle) => {
+      const rows = searchClubsByName(handle, 'stk', 10);
+      assert.ok(rows.find((r) => r.name === 'Stora Tuna OK'));
+    });
+  });
+
+  test('matches by full name token (tuna → Stora Tuna OK)', async () => {
+    await withSeededDb((handle) => {
+      const rows = searchClubsByName(handle, 'tuna', 10);
+      assert.ok(rows.find((r) => r.name === 'Stora Tuna OK'));
+    });
+  });
+
+  test('matches across both word splits (stora tuna AND tuna stora)', async () => {
+    await withSeededDb((handle) => {
+      const a = searchClubsByName(handle, 'stora tuna', 10);
+      const b = searchClubsByName(handle, 'tuna stora', 10);
+      assert.ok(a.find((r) => r.name === 'Stora Tuna OK'));
+      assert.ok(b.find((r) => r.name === 'Stora Tuna OK'));
+    });
+  });
+
+  test('returns [] for empty / sanitised-empty query', async () => {
+    await withSeededDb((handle) => {
+      assert.deepEqual(searchClubsByName(handle, '', 10), []);
+      assert.deepEqual(searchClubsByName(handle, '   ', 10), []);
     });
   });
 });

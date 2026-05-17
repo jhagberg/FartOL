@@ -33,6 +33,7 @@
   import Icon from '$lib/ui/Icon.svelte';
   import Modal from '$lib/ui/Modal.svelte';
   import EditCompetitorModal from '$lib/components/EditCompetitorModal.svelte';
+  import AddRunnerSheet from '$lib/components/AddRunnerSheet.svelte';
   import ImportRunnersView from './ImportRunnersView.svelte';
 
   interface Props {
@@ -56,6 +57,10 @@
   // Edit modal state
   let editTarget = $state<CompetitorDTO | null>(null);
   let editOpen = $derived(editTarget !== null);
+
+  // Add-runner sheet (manual add — distinct from Importera which is the
+  // bulk Eventor/file path).
+  let addOpen = $state(false);
 
   // Import sheet — auto-opens when URL has ?import=1.
   const importParamOpen = $derived(page.url.searchParams.get('import') === '1');
@@ -149,6 +154,17 @@
   function onEditSaved(updated: CompetitorDTO): void {
     competitors = competitors.map((c) => (c.id === updated.id ? updated : c));
   }
+
+  function openAdd(): void {
+    addOpen = true;
+  }
+  function closeAdd(): void {
+    addOpen = false;
+  }
+  function onAddSaved(created: CompetitorDTO): void {
+    competitors = [...competitors, created];
+    addOpen = false;
+  }
 </script>
 
 <section class="runners" data-testid="runners-view">
@@ -166,6 +182,12 @@
         <span class="btn-row">
           <Icon name="download" size={16} />
           {t('runners.cta.import')}
+        </span>
+      </Button>
+      <Button variant="ghost" onclick={openAdd} data-testid="runners-add-btn">
+        <span class="btn-row">
+          <Icon name="plus" size={16} />
+          {t('runners.cta.addManual')}
         </span>
       </Button>
     </div>
@@ -307,6 +329,15 @@
   {classes}
   onClose={closeEdit}
   onSaved={onEditSaved}
+/>
+
+<!-- Manual add sheet — smart Eventor search + manual fields + Klubblös. -->
+<AddRunnerSheet
+  open={addOpen}
+  {competitionId}
+  {classes}
+  onClose={closeAdd}
+  onSaved={onAddSaved}
 />
 
 <!-- Import sheet — wraps the existing ImportRunnersView so the operator

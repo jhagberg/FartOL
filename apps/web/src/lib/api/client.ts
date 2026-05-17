@@ -31,6 +31,7 @@ import type {
   ClubDTO,
   EventorLookupResult,
   EventorNameSuggestion,
+  EventorClubSuggestion,
   EventorStatusDTO,
   HiredCardsListResponse,
   HiredCardReturnResponse,
@@ -504,6 +505,32 @@ export function lookupEventorByPrefix(
 ): Promise<{ suggestions: EventorNameSuggestion[] }> {
   return apiFetch<{ suggestions: EventorNameSuggestion[] }>('/api/eventor/lookup', {
     query: { prefix, limit },
+  });
+}
+
+/** FTS5-backed competitor search. Folds diacritics, matches across
+ * family + given + club_name in any word order. Use this for new code
+ * (the Lägg-till sheet) — `lookupEventorByPrefix` stays for back-compat
+ * with WalkupModal. */
+export function searchEventorCompetitors(
+  q: string,
+  limit: number = 20
+): Promise<{ suggestions: EventorNameSuggestion[] }> {
+  return apiFetch<{ suggestions: EventorNameSuggestion[] }>('/api/eventor/lookup', {
+    query: { q, limit },
+  });
+}
+
+/** GET /api/eventor/clubs?q= — federation-club search backed by FTS5.
+ * Matches name + short_name + media_name in any word order with
+ * diacritic folding, so "stk" / "stora tuna" / "stortuna" all hit
+ * Stora Tuna OK. */
+export function searchEventorClubs(
+  q: string,
+  limit: number = 20
+): Promise<{ suggestions: EventorClubSuggestion[] }> {
+  return apiFetch<{ suggestions: EventorClubSuggestion[] }>('/api/eventor/clubs', {
+    query: { q, limit },
   });
 }
 

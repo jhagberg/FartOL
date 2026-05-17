@@ -352,6 +352,18 @@ export const EventorNameSuggestion = z.object({
 });
 export type EventorNameSuggestion = z.infer<typeof EventorNameSuggestion>;
 
+/** Federation-club autocomplete row served by GET /api/eventor/clubs?q=.
+ * Backed by the eventor_clubs_fts FTS5 mirror — matches across name +
+ * short_name + media_name with diacritic folding so "stk", "stora tuna",
+ * and "stortuna" all resolve to the same row. */
+export const EventorClubSuggestion = z.object({
+  club_id: z.number().int().positive(),
+  name: z.string(),
+  short_name: z.string().nullable(),
+  media_name: z.string().nullable(),
+});
+export type EventorClubSuggestion = z.infer<typeof EventorClubSuggestion>;
+
 export const EventorStatusDTO = z.object({
   state: z.enum(['ready', 'stale', 'offline', 'no_key']),
   ageDays: z.number().int().nullable(),

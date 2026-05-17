@@ -50,6 +50,7 @@ export {
   EventorLookupHit,
   EventorLookupMiss,
   EventorNameSuggestion,
+  EventorClubSuggestion,
   EventorStatusDTO,
   HiredCardRow,
   HiredCardsListResponse,

@@ -35,7 +35,12 @@ import type { FastifyInstance } from 'fastify';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { lookupBySiCard, lookupByNamePrefix } from '../eventor/lookup.ts';
+import {
+  lookupBySiCard,
+  lookupByNamePrefix,
+  searchCompetitorsByName,
+  searchClubsByName,
+} from '../eventor/lookup.ts';
 import { listEventorEvents } from '../eventor/events.ts';
 import { eventorCompetitors, config as configTable } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
@@ -46,6 +51,15 @@ const LookupQuery = z.object({
   // z.coerce because query strings arrive as strings.
   si_card: z.coerce.number().int().positive().optional(),
   prefix: z.string().min(1).max(120).optional(),
+  // `q` is the FTS5-backed fuzzy alternative to `prefix`. Diacritic-folded,
+  // word-order-free, matches across family + given + club_name. Use this
+  // for new code; `prefix` stays for back-compat with WalkupModal.
+  q: z.string().min(1).max(120).optional(),
+  limit: z.coerce.number().int().positive().max(50).optional(),
+});
+
+const ClubsQuery = z.object({
+  q: z.string().min(1).max(120),
   limit: z.coerce.number().int().positive().max(50).optional(),
 });
 
@@ -62,30 +76,53 @@ const CACHE_MARKER_KEY = 'eventor_cache_refreshed_at_ms';
 const STALE_THRESHOLD_MS = 7 * 86_400_000;
 
 export default async function registerEventorRoutes(app: FastifyInstance): Promise<void> {
-  app.get<{ Querystring: { si_card?: string; prefix?: string; limit?: string } }>(
+  app.get<{ Querystring: { si_card?: string; prefix?: string; q?: string; limit?: string } }>(
     '/api/eventor/lookup',
     async (req, reply) => {
       const parsed = LookupQuery.safeParse(req.query);
       if (!parsed.success) {
         return reply.code(400).send(issuesToErrors(parsed.error.issues));
       }
-      const { si_card, prefix, limit } = parsed.data;
+      const { si_card, prefix, q, limit } = parsed.data;
 
-      // Mutual-exclusion gate.
-      if (si_card !== undefined && prefix !== undefined) {
+      // Mutual-exclusion gate — exactly one of si_card / prefix / q must
+      // be supplied. We keep the old `conflicting_query` / `missing_query`
+      // error codes for back-compat with WalkupModal.
+      const supplied = [si_card !== undefined, prefix !== undefined, q !== undefined].filter(
+        Boolean
+      ).length;
+      if (supplied > 1) {
         return reply.code(400).send({ error: 'conflicting_query' });
       }
-      if (si_card === undefined && prefix === undefined) {
+      if (supplied === 0) {
         return reply.code(400).send({ error: 'missing_query' });
       }
 
       if (si_card !== undefined) {
-        const result = lookupBySiCard(app.fartolDb, si_card);
-        return result;
+        return lookupBySiCard(app.fartolDb, si_card);
       }
-
-      // prefix branch (TS narrows after the missing_query guard above).
+      if (q !== undefined) {
+        const suggestions = searchCompetitorsByName(app.fartolDb, q, limit ?? 20);
+        return { suggestions };
+      }
       const suggestions = lookupByNamePrefix(app.fartolDb, prefix as string, limit ?? 20);
+      return { suggestions };
+    }
+  );
+
+  // GET /api/eventor/clubs?q=stk&limit=20 — FTS5-backed federation club
+  // search. Matches across name + short_name + media_name; diacritic-
+  // folded and word-order-free. Used by SmartClubSearch in the Lägg-till
+  // sheet so an operator typing "stk" finds "Stora Tuna OK" without
+  // having to know the canonical full name.
+  app.get<{ Querystring: { q?: string; limit?: string } }>(
+    '/api/eventor/clubs',
+    async (req, reply) => {
+      const parsed = ClubsQuery.safeParse(req.query);
+      if (!parsed.success) {
+        return reply.code(400).send(issuesToErrors(parsed.error.issues));
+      }
+      const suggestions = searchClubsByName(app.fartolDb, parsed.data.q, parsed.data.limit ?? 20);
       return { suggestions };
     }
   );
