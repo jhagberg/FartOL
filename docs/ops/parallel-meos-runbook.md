@@ -281,9 +281,13 @@ This is the single most-common cause of MIP entries silently failing:
     and the FartOL laptop has internet during this T-2h window. The
     bridge degrades gracefully — walkup will fall back to the SI-firmware
     `cardHolderHint`. **Never blocks the bridge** (D-EV-3, REQ-OPS-001).
-  - **nyckel saknas**: the API key is missing. Add it to `~/.env.fartol`
-    in the working directory (the gitignored secret file at commit
-    `7ec8866`) then restart the bridge.
+  - **nyckel saknas**: the API key is missing. Either (a) edit
+    `~/.env.fartol` in your home directory (same path used in the setup
+    section above), `source ~/.env.fartol`, and restart `fartol`, or
+    (b) open `http://localhost:3000/installningar` and paste the key
+    into the **EVENTOR_API_KEY** row + Spara — Phase 2.0 plan 02-07
+    wired the per-call `resolveSecret` lookup so the next "Uppdatera
+    Eventor" click picks it up WITHOUT a restart (code-review F-001).
 
 ### 9. Run the bench smoke
 
