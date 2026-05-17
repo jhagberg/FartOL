@@ -75,7 +75,7 @@ describe('scheduleEventorBoot: staleness gate (D-EV-2)', () => {
       let dlCalled = false;
       const { logger } = makeLogger();
       const boot = scheduleEventorBoot(handle, {
-        apiKey: 'KEY',
+        apiKey: () => 'KEY',
         logger,
         nowFn: () => now,
         downloadFn: async () => {
@@ -106,7 +106,7 @@ describe('scheduleEventorBoot: staleness gate (D-EV-2)', () => {
       let ingestCalls = 0;
       const { logger } = makeLogger();
       const boot = scheduleEventorBoot(handle, {
-        apiKey: 'KEY',
+        apiKey: () => 'KEY',
         logger,
         nowFn: () => now,
         downloadFn: async () => {
@@ -141,7 +141,7 @@ describe('scheduleEventorBoot: staleness gate (D-EV-2)', () => {
       let dlCalls = 0;
       const { logger } = makeLogger();
       const boot = scheduleEventorBoot(handle, {
-        apiKey: 'KEY',
+        apiKey: () => 'KEY',
         logger,
         nowFn: () => now,
         downloadFn: async () => {
@@ -170,7 +170,7 @@ describe('scheduleEventorBoot: degraded modes (D-EV-3)', () => {
       const now = 1_700_000_000_000;
       const { logger, calls } = makeLogger();
       const boot = scheduleEventorBoot(handle, {
-        apiKey: 'KEY',
+        apiKey: () => 'KEY',
         logger,
         nowFn: () => now,
         downloadFn: async () => {
@@ -201,7 +201,7 @@ describe('scheduleEventorBoot: degraded modes (D-EV-3)', () => {
       let dlCalled = false;
       const { logger } = makeLogger();
       const boot = scheduleEventorBoot(handle, {
-        apiKey: undefined,
+        apiKey: () => undefined,
         logger,
         nowFn: () => 0,
         downloadFn: async () => {
@@ -227,4 +227,53 @@ describe('scheduleEventorBoot: degraded modes (D-EV-3)', () => {
 // Sanity: SEVEN_DAYS_MS constant matches the boot.ts default.
 test('seven-day staleness window sanity', () => {
   assert.equal(SEVEN_DAYS_MS, 7 * 24 * 60 * 60 * 1000);
+});
+
+// Code-review F-001 regression — the canonical settings-UI workflow:
+// boot with no key, save a key (mutable resolver state mirrors the
+// effect of PUT /api/settings/integrations), then runNow() AGAIN and
+// expect the new key to be honored without a restart. Before the fix,
+// the captured opts.apiKey value would have stayed undefined and
+// runNow returned reason='no_key' forever.
+test('apiKey resolver — settings UI write picked up on next runNow without restart', async () => {
+  const handle = openDatabase(':memory:');
+  try {
+    const now = 1_700_000_000_000;
+    let currentKey: string | undefined = undefined; // boot with no key
+    let dlCalls = 0;
+    const { logger } = makeLogger();
+    const boot = scheduleEventorBoot(handle, {
+      apiKey: () => currentKey,
+      logger,
+      nowFn: () => now,
+      downloadFn: async () => {
+        dlCalls++;
+        return { competitorsPath: '/c', clubsPath: '/k' };
+      },
+      ingestFn: async () => ({ competitors: 1, clubs: 1, nulledClubs: 0 }),
+    });
+    try {
+      // (a) First boot — no key set → no_key short-circuit.
+      const before = await boot.runNow();
+      assert.equal(before.skipped, true);
+      assert.equal(before.reason, 'no_key');
+      assert.equal(dlCalls, 0, 'downloadFn must NOT run when no key');
+
+      // (b) Operator opens /installningar, pastes a key, hits Spara.
+      // The PUT route lands in config; resolveSecret will surface it
+      // on the next call. We mutate currentKey directly to mirror that.
+      currentKey = 'FROM-SETTINGS-UI';
+
+      // (c) Operator clicks "Uppdatera Eventor" → admin route calls
+      // boot.runNow() AGAIN. F-001 fix: this MUST honor the new key
+      // without a restart.
+      const after = await boot.runNow();
+      assert.equal(after.skipped, false, 'after settings save, refresh MUST proceed');
+      assert.equal(dlCalls, 1, 'downloadFn must run once after settings save');
+    } finally {
+      boot.stop();
+    }
+  } finally {
+    handle.close();
+  }
 });

@@ -8,9 +8,13 @@
 //
 // Behavior of runNow() — implements D-EV-1 / D-EV-2 / D-EV-3:
 //
-//   1. If opts.apiKey is undefined/empty → log info "Eventor: nyckel
-//      saknas (EVENTOR_API_KEY) — falling back to firmware hint" and
+//   1. Call opts.apiKey() to resolve the key at refresh time (NOT boot
+//      time — see code-review F-001). If the resolver returns
+//      undefined/empty → log info "Eventor: nyckel saknas
+//      (EVENTOR_API_KEY) — falling back to firmware hint" and
 //      return { skipped: true, reason: 'no_key' }. NEVER call downloadFn.
+//      The per-call resolution is what lets the settings UI's "Spara +
+//      Uppdatera Eventor" workflow succeed without a bridge restart.
 //   2. Else read the config row `eventor_cache_refreshed_at_ms`. If it
 //      exists AND `now - parseInt(value) < staleThresholdMs` (default
 //      7 days) → log info "Eventor: cache N dagar gammal — skipping
@@ -42,9 +46,12 @@ import { downloadEventorPayloads } from './download.ts';
 import { ingestEventorCache } from './cache.ts';
 
 export interface EventorBootOpts {
-  /** Eventor API key (from process.env.EVENTOR_API_KEY). Undefined means
-   * the bridge runs without Eventor — boot.ts logs and skips. */
-  apiKey: string | undefined;
+  /** Eventor API key resolver. Called fresh on every runNow() so that
+   * keys written via the settings UI (PUT /api/settings/integrations →
+   * config table) are picked up without a bridge restart. Returns
+   * undefined/empty when the bridge runs without Eventor — boot.ts logs
+   * and skips. See code-review F-001. */
+  apiKey: () => string | undefined;
   /** Fastify logger — info for normal staleness checks, warn for the
    * D-EV-3 network-failure path. */
   logger: FastifyBaseLogger;
@@ -90,8 +97,12 @@ export function scheduleEventorBoot(handle: DbHandle, opts: EventorBootOpts): Ev
   const nowFn = opts.nowFn ?? Date.now;
 
   async function runNow(): Promise<EventorBootResult> {
-    // (1) No API key — log + skip BEFORE any DB read or HTTP call.
-    if (!opts.apiKey || opts.apiKey.length === 0) {
+    // (1) Resolve the API key fresh on every call (code-review F-001 —
+    // settings UI writes land in the config table; we need to pick them
+    // up without a restart). No API key → log + skip BEFORE any DB read
+    // or HTTP call.
+    const apiKey = opts.apiKey();
+    if (!apiKey || apiKey.length === 0) {
       opts.logger.info('Eventor: nyckel saknas (EVENTOR_API_KEY) — falling back to firmware hint');
       return { skipped: true, reason: 'no_key' };
     }
@@ -120,7 +131,7 @@ export function scheduleEventorBoot(handle: DbHandle, opts: EventorBootOpts): Ev
     //     gracefully (D-EV-3 warn-and-run with prior cache).
     let paths;
     try {
-      paths = await downloadFn({ apiKey: opts.apiKey });
+      paths = await downloadFn({ apiKey });
     } catch (err) {
       opts.logger.warn({ err }, 'Eventor: refresh failed');
       return { skipped: true, reason: 'network_error', error: err };

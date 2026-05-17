@@ -528,12 +528,12 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
   //
   // Plan 02-07 task 2 — env→config→absent precedence. The UI write
   // path (PUT /api/settings/integrations) lands the key in the config
-  // table; the next boot picks it up via resolveSecret without
-  // requiring an ~/.env.fartol edit. process.env still wins so
+  // table; resolveSecret is called fresh on every runNow() (code-review
+  // F-001) so saving a key in the settings UI then clicking "Uppdatera
+  // Eventor" works WITHOUT a bridge restart. process.env still wins so
   // headless / CI installs keep working unchanged.
-  const eventorApiKey = resolveSecret(handle, 'EVENTOR_API_KEY');
   const eventor = scheduleEventorBoot(handle, {
-    apiKey: eventorApiKey,
+    apiKey: () => resolveSecret(handle, 'EVENTOR_API_KEY'),
     logger: app.log,
   });
   app.fartolEventor = eventor;
