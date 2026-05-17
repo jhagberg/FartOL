@@ -11,18 +11,21 @@
 //      — NO fetch call. This is the D-EV-3 short-circuit; the boot
 //      scheduler converts the throw into a logged warning so a missing
 //      key never blocks bridge startup.
-//   2. Construct the exact MeOS-mirroring URL for the cachedcompetitors
-//      endpoint:
+//   2. Construct the documented `cachedcompetitors` URL exactly as
+//      specified by the SOFT API guide (.reference/Guide_Eventor_-_Hamta_
+//      data_via_API.pdf) / https://eventor.orientering.se/api/documentation:
 //         {baseUrl}export/cachedcompetitors?includePreselectedClasses=false&zip=true&version=3.0
-//      (Landmine: MeOS source TabCompetition.cpp:3107-3108 uses this
-//       suffix verbatim; any deviation breaks the same key compatibility.)
+//      (Landmine: this exact suffix string is load-bearing — Eventor
+//       buckets cached responses per-URL, so deviation costs us shared
+//       cache benefits with any other client at the same club using the
+//       same API key.)
 //   3. Construct the clubs endpoint:
 //         {baseUrl}export/clubs?version=3.0
 //   4. Both requests carry the `ApiKey: <opts.apiKey>` header.
 //   5. Response bodies are PKZIP archives (Content-Type: application/zip,
 //      magic 50 4b 03 04), NOT gzip streams — `zip=true` in the URL is the
-//      MeOS-mirrored archive-container flag, not an HTTP-level compression
-//      hint. The archive contains a single XML entry; yauzl streams the
+//      Eventor-defined archive-container flag (per the SOFT API guide),
+//      not an HTTP-level compression hint. The archive contains a single XML entry; yauzl streams the
 //      entry to a tempfile under opts.tmpDir (default os.tmpdir()) without
 //      buffering the full 90 MB uncompressed body. The returned paths are
 //      absolute; the caller is responsible for cleanup once
@@ -41,7 +44,6 @@
 // Locked by:
 // - .planning/phases/02-4-klubbs-mvp/02-01-PLAN.md task 3
 // - .planning/phases/02-4-klubbs-mvp/02-RESEARCH.md §Landmines
-//   ("MeOS Eventor download uses eventorBase + iofExportVersion")
 // - .planning/research/eventor-api-smoke.md §"Download pipeline"
 
 import { createGunzip } from 'node:zlib';
@@ -80,7 +82,10 @@ export interface EventorDownloadResult {
 const DEFAULT_BASE_URL = 'https://eventor.orientering.se/api/';
 const DEFAULT_TIMEOUT_MS = 60_000;
 
-/** Exact suffix MeOS hard-codes — see TabCompetition.cpp:3107-3108. */
+/** Exact suffix the SOFT API documentation specifies for the
+ * cachedcompetitors download. Load-bearing: Eventor caches per-URL, so
+ * deviation costs us shared cache benefits with any other client at the
+ * same club using the same API key. */
 const COMPETITORS_SUFFIX =
   'export/cachedcompetitors?includePreselectedClasses=false&zip=true&version=3.0';
 const CLUBS_SUFFIX = 'export/clubs?version=3.0';

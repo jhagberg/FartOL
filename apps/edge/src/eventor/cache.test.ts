@@ -8,9 +8,9 @@
 //       writes temp files containing the gunzipped XML.
 //     * throws "missing api key" if apiKey is undefined BEFORE making
 //       any HTTP call (D-EV-3 fail-fast).
-//     * constructs the exact MeOS-mirroring URL
+//     * constructs the documented cachedcompetitors URL
 //       `…/export/cachedcompetitors?includePreselectedClasses=false&zip=true&version=3.0`
-//       and sends `ApiKey: <key>` header.
+//       (per the SOFT API guide) and sends `ApiKey: <key>` header.
 //
 //   - ingestEventorCache:
 //     * inserts 3 fixture competitors + 3 fixture clubs into the schema
@@ -88,7 +88,7 @@ describe('downloadEventorPayloads — URL + header + tempfile shape', () => {
     assert.equal(called, false, 'fetch must NOT be called when apiKey missing');
   });
 
-  test('constructs exact MeOS-mirror URL and sends ApiKey header', async () => {
+  test('constructs the documented cachedcompetitors URL and sends ApiKey header', async () => {
     const compGz = gzipSync(readFileSync(COMPETITORS_XML));
     const clubsGz = gzipSync(readFileSync(CLUBS_XML));
     const { impl, calls } = makeMockFetch(compGz, clubsGz);
