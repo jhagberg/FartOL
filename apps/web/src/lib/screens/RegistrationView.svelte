@@ -197,6 +197,28 @@
       toastMessage = null;
     }, 3000);
   }
+
+  // --- manual card entry (phone path: no SI reader, volunteer types the
+  //     ID printed on the card). Goes through handleIncomingCard so the
+  //     queue + dedupe + Eventor-prefill all reuse the existing flow.
+  //     Also useful as a fallback on the desk laptop when a card won't
+  //     beep (broken contacts, dirty connector). -----------------------
+  let manualCard = $state('');
+  let manualError = $state<string | null>(null);
+
+  function onManualSubmit(e: SubmitEvent): void {
+    e.preventDefault();
+    manualError = null;
+    const trimmed = manualCard.trim();
+    if (trimmed === '') return;
+    const n = Number(trimmed);
+    if (!Number.isInteger(n) || n < 1 || !/^\d+$/.test(trimmed)) {
+      manualError = t('registration.manualEntry.invalid');
+      return;
+    }
+    handleIncomingCard(n, null);
+    manualCard = '';
+  }
 </script>
 
 <div class="registration" data-testid="registration-view">
@@ -209,6 +231,31 @@
       </span>
     {/if}
   </header>
+
+  <form class="manual-row" onsubmit={onManualSubmit} data-testid="reg-manual-form">
+    <input
+      class="manual-input"
+      type="tel"
+      inputmode="numeric"
+      pattern="\d*"
+      autocomplete="off"
+      bind:value={manualCard}
+      placeholder={t('registration.manualEntry.placeholder')}
+      aria-label={t('registration.manualEntry.placeholder')}
+      data-testid="reg-manual-input"
+    />
+    <button
+      class="manual-btn"
+      type="submit"
+      disabled={manualCard.trim() === ''}
+      data-testid="reg-manual-submit"
+    >
+      {t('registration.manualEntry.submit')}
+    </button>
+  </form>
+  {#if manualError !== null}
+    <p class="manual-err" role="alert" data-testid="reg-manual-error">{manualError}</p>
+  {/if}
 
   {#if currentCard === null}
     <p class="empty" data-testid="reg-empty">{t('registration.empty')}</p>
@@ -284,6 +331,52 @@
     border: 1px dashed var(--border);
     border-radius: var(--radius-lg);
     font-size: 15px;
+  }
+  /* Manual card entry — phone path (no SI reader). Desktop also keeps
+     it visible as a fallback for "card won't beep". */
+  .manual-row {
+    display: flex;
+    gap: var(--space-sm);
+    align-items: stretch;
+  }
+  .manual-input {
+    flex: 1;
+    height: var(--hit);
+    min-height: var(--hit);
+    padding: 0 var(--space-sm);
+    background: var(--bg-elev);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    font-size: var(--fs-body);
+    font-family: var(--font-mono);
+    color: var(--fg);
+  }
+  .manual-input:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: -1px;
+    border-color: var(--accent);
+  }
+  .manual-btn {
+    height: var(--hit);
+    min-height: var(--hit);
+    padding: 0 var(--space-md);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    background: var(--accent);
+    color: var(--accent-fg);
+    font-size: var(--fs-label);
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .manual-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .manual-err {
+    margin: -4px 0 0;
+    color: var(--dnf);
+    font-size: 13px;
   }
   .toast {
     position: fixed;

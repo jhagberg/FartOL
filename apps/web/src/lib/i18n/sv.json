@@ -113,9 +113,12 @@
 
   "registration.title": "Registreringsdisk",
   "registration.welcome": "Skanna SI-brickan eller skriv numret nedan",
-  "registration.empty": "Inga brickor i kö — vänta på nästa beep",
+  "registration.empty": "Inga brickor i kö — skanna en bricka eller skriv numret",
   "registration.queuedBadge": "{{count}} i kö",
   "registration.dedupeToast": "Brickan finns redan i kön (#{{card}})",
+  "registration.manualEntry.placeholder": "Bricknummer",
+  "registration.manualEntry.submit": "Lägg till",
+  "registration.manualEntry.invalid": "Ogiltigt bricknummer — endast siffror, minst 1.",
 
   "walk.title": "Walk-up registrering",
   "walk.desc": "Okänd bricka avläst. Registrera deltagaren och fortsätt.",

@@ -46,14 +46,16 @@
 </script>
 
 <div class="app">
-  <Sidebar
-    {route}
-    {onNavigate}
-    {onOpenSettings}
-    {stationStatus}
-    {stationSerial}
-    {readoutBadge}
-  />
+  <div class="sidebar-slot">
+    <Sidebar
+      {route}
+      {onNavigate}
+      {onOpenSettings}
+      {stationStatus}
+      {stationSerial}
+      {readoutBadge}
+    />
+  </div>
   <main class="main">
     <TopBar {crumb} {wsStatus} />
     <div class="content">
@@ -70,6 +72,9 @@
     width: 100vw;
     overflow: hidden;
   }
+  .sidebar-slot {
+    display: contents;
+  }
   .main {
     overflow: auto;
     display: flex;
@@ -79,5 +84,21 @@
     padding: var(--space-lg);
     flex: 1;
     overflow: auto;
+  }
+
+  /* Mobile collapse — volunteers run /registration on phones (no SI reader,
+     manual card entry) and don't need nav. TopBar still shows ws status.
+     Breakpoint matches the iPad-portrait boundary; bigger tablets keep the
+     desk-laptop layout. */
+  @media (max-width: 720px) {
+    .app {
+      grid-template-columns: 1fr;
+    }
+    .sidebar-slot {
+      display: none;
+    }
+    .content {
+      padding: var(--space-md);
+    }
   }
 </style>

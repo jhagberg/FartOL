@@ -113,9 +113,12 @@
 
   "registration.title": "Registration desk",
   "registration.welcome": "Scan the SI card or type the number below",
-  "registration.empty": "No cards queued — waiting for the next beep",
+  "registration.empty": "No cards queued — scan a card or type the number",
   "registration.queuedBadge": "{{count}} in queue",
   "registration.dedupeToast": "Card already queued (#{{card}})",
+  "registration.manualEntry.placeholder": "Card number",
+  "registration.manualEntry.submit": "Add",
+  "registration.manualEntry.invalid": "Invalid card number — digits only, at least 1.",
 
   "walk.title": "Walk-up registration",
   "walk.desc": "Unknown card read. Register the competitor and continue.",
