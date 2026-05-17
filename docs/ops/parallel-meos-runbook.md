@@ -95,8 +95,12 @@ echo 'export PATH="$(npm prefix -g)/bin:$PATH"' >> ~/.bashrc
 mkdir -p ~/.local/share/fartol ~/.local/share/fartol/backups
 ```
 
-The runbook uses `~/.local/share/fartol/4-klubbs.db` as the SQLite
-file path throughout. If you prefer a different layout
+The runbook uses **one persistent DB** at
+`~/.local/share/fartol/fartol.db` across every event the laptop runs.
+The schema is multi-competition (every table has a `competition_id`
+FK and the active-competition pointer in the `config` table switches
+between them), so cross-event Eventor cache reuse and retention
+scrubber state carry forward. If you prefer a different layout
 (e.g. `/var/lib/fartol/` for a server-style install), substitute
 the path in every `--db-path` invocation below — the bridge doesn't
 care, but you'll need `sudo mkdir -p /var/lib/fartol && sudo chown
@@ -104,18 +108,23 @@ $USER /var/lib/fartol` first because `/var/lib/` is root-owned.
 
 **Set up the Eventor key** (D-EV-1 prerequisite; the bridge boots
 without it but Eventor pre-fill silently degrades to the firmware
-hint). Create `.eventor-env` in your home directory or the working
-directory where you'll launch `fartol`:
+hint). Create `~/.env.fartol` in your home directory. The same file
+will hold future integration keys (Livelox, Liveresultat) — one
+file, one source of truth for all fartol secrets:
 
 ```
-echo 'EVENTOR_API_KEY=<paste-stora-tuna-ok-key-here>' > ~/.eventor-env
-chmod 600 ~/.eventor-env
+cat > ~/.env.fartol <<'EOF'
+EVENTOR_API_KEY=<paste-stora-tuna-ok-key-here>
+# LIVELOX_API_KEY=...        # future
+# LIVERESULTAT_API_KEY=...   # future
+EOF
+chmod 600 ~/.env.fartol
 ```
 
-The key is the Stora Tuna OK Eventor API key; the file is gitignored
-and never logged. To use it, `source ~/.eventor-env` before each
-`fartol ...` invocation OR add `export $(cat ~/.eventor-env | xargs)`
-to your shell rc.
+The file is gitignored (matches the global `.env*` rule) and never
+logged. To use it, `source ~/.env.fartol` before each `fartol ...`
+invocation OR add `set -a; source ~/.env.fartol; set +a` to your
+shell rc so the keys export automatically into every shell.
 
 ### 1. Power up the FartOL laptop
 
@@ -143,10 +152,10 @@ have the UUID, restart with `--competition-id <uuid>` (Step 3.6) so
 MIP/MOP know which competition the wire belongs to.
 
 ```
-source ~/.eventor-env  # exports EVENTOR_API_KEY for the child process
+source ~/.env.fartol  # exports EVENTOR_API_KEY for the child process
 FARTOL_DEV=1 fartol \
   --port 3000 --bind-host 0.0.0.0 --allow-lan \
-  --db-path ~/.local/share/fartol/4-klubbs.db \
+  --db-path ~/.local/share/fartol/fartol.db \
   --backup-dir ~/.local/share/fartol/backups
 ```
 
@@ -202,10 +211,10 @@ self-documenting:
 
 ```
 # Ctrl-C the previous fartol, then:
-source ~/.eventor-env
+source ~/.env.fartol
 FARTOL_DEV=1 fartol \
   --port 3000 --bind-host 0.0.0.0 --allow-lan \
-  --db-path ~/.local/share/fartol/4-klubbs.db \
+  --db-path ~/.local/share/fartol/fartol.db \
   --backup-dir ~/.local/share/fartol/backups \
   --competition-id <paste-uuid-from-step-3.5>
 ```
@@ -268,11 +277,11 @@ This is the single most-common cause of MIP entries silently failing:
   - **stale**: press **Uppdatera** (FARTOL_DEV mode only) to force a
     fresh download. The button is only visible when the bridge was
     booted with `FARTOL_DEV=1`.
-  - **offline**: confirm the EVENTOR_API_KEY is set in `.eventor-env`,
+  - **offline**: confirm the EVENTOR_API_KEY is set in `~/.env.fartol`,
     and the FartOL laptop has internet during this T-2h window. The
     bridge degrades gracefully — walkup will fall back to the SI-firmware
     `cardHolderHint`. **Never blocks the bridge** (D-EV-3, REQ-OPS-001).
-  - **nyckel saknas**: the API key is missing. Add it to `.eventor-env`
+  - **nyckel saknas**: the API key is missing. Add it to `~/.env.fartol`
     in the working directory (the gitignored secret file at commit
     `7ec8866`) then restart the bridge.
 
@@ -283,7 +292,7 @@ directory:
 
 ```
 FARTOL_PORT=3000 \
-FARTOL_DB=~/.local/share/fartol/4-klubbs.db \
+FARTOL_DB=~/.local/share/fartol/fartol.db \
 FARTOL_HOST=127.0.0.1 \
 FARTOL_SKIP_BOOT=1 \
 bash apps/edge/scripts/bench-smoke-phase2.sh
@@ -460,7 +469,7 @@ Symptoms: Step 9 above does NOT print `6/6 passed`.
      pre-v2.0 MOP payload.
    - **Eventor status missing** → key not set; see Step 8.
    - **Hyrbricka round-trip fails** → check the SQLite migration ran:
-     `sqlite3 ~/.local/share/fartol/4-klubbs.db ".schema hired_cards"`
+     `sqlite3 ~/.local/share/fartol/fartol.db ".schema hired_cards"`
      should include `marked_at_ms`.
 3. **If you can't fix the smoke before the event start**, the safe
    fallback is **MeOS-only operation** — turn off FartOL's `0.0.0.0`
@@ -556,11 +565,11 @@ Quick-reference for stressed-operator lookups during the event.
 journalctl -u fartol -f
 
 # Confirm the bench smoke is green
-FARTOL_SKIP_BOOT=1 FARTOL_PORT=3000 FARTOL_DB=~/.local/share/fartol/4-klubbs.db \
+FARTOL_SKIP_BOOT=1 FARTOL_PORT=3000 FARTOL_DB=~/.local/share/fartol/fartol.db \
   bash apps/edge/scripts/bench-smoke-phase2.sh
 
 # Inspect open rentals from the shell
-sqlite3 ~/.local/share/fartol/4-klubbs.db \
+sqlite3 ~/.local/share/fartol/fartol.db \
   "SELECT card_number, contact_name, contact_phone FROM hired_cards
    WHERE competition_id = '<id>' AND returned_at_ms IS NULL;"
 
