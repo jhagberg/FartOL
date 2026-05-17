@@ -29,7 +29,7 @@
     (Registration-desk section + D-LIM-1)
 -->
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, untrack } from 'svelte';
   import { t } from '$lib/i18n/index.ts';
   import { cardQueue, type QueuedCard } from '$lib/stores/cardQueue.svelte.ts';
   import { createCardSubscription } from '$lib/services/cardSubscription.ts';
@@ -52,7 +52,7 @@
   }
 
   let { competitionId, classes = [] }: Props = $props();
-  let resolvedClasses: ClassDTO[] = $state(classes);
+  let resolvedClasses: ClassDTO[] = $state(untrack(() => classes));
 
   // --- state ----------------------------------------------------------------
   /** Card currently mounted in the WalkupModal. Distinct from

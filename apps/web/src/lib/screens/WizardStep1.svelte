@@ -38,6 +38,7 @@
   <p class="muted">{t('wiz.step1.desc')}</p>
   <div class="field">
     <label for="wiz-name">{t('wiz.name')}</label>
+    <!-- svelte-ignore a11y_autofocus -->
     <input
       id="wiz-name"
       class="input"

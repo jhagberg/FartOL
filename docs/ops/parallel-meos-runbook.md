@@ -63,8 +63,13 @@ laptop, do both **once**:
 
 ```
 bash scripts/build-fartol.sh
-npm install -g dist/fartol-*.tgz
+npm install -g ./dist/fartol-[0-9]*.tgz
 ```
+
+The `[0-9]*` pattern picks the stable `fartol-<version>.tgz` alias and
+skips the pnpm-default `fartol-edge-<version>.tgz` that ships alongside;
+the leading `./` keeps npm from interpreting the path as a GitHub
+shorthand (`<user>/<repo>`).
 
 `scripts/build-fartol.sh` runs `pnpm -r typecheck`, `pnpm -r test`,
 builds `apps/web` (SvelteKit SPA), bundles it next to `apps/edge`'s

@@ -36,7 +36,14 @@
 
 {#if open}
   <div class="modal-scrim" role="presentation" onclick={onScrimClick}>
-    <div class="modal" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()}>
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      tabindex={-1}
+      onclick={(e) => e.stopPropagation()}
+    >
       {#if head}
         <header class="modal-head">{@render head()}</header>
       {/if}

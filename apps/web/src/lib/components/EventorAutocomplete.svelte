@@ -39,7 +39,7 @@
 
   let suggestions: EventorNameSuggestion[] = $state([]);
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-  const listId = `${id}-list`;
+  const listId = $derived(`${id}-list`);
 
   /** Build the display value for a suggestion row. The value attribute
    * is what populates the input on selection, so we keep "Family, Given"

@@ -25,7 +25,7 @@
 
   let suggestions: string[] = $state([]);
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-  const listId = `${id}-list`;
+  const listId = $derived(`${id}-list`);
 
   function scheduleFetch(prefix: string): void {
     if (debounceTimer) clearTimeout(debounceTimer);

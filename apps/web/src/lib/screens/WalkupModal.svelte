@@ -29,6 +29,7 @@
   - REQ-PRIV-001 (explicit consent literal)
 -->
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { goto } from '$app/navigation';
   import { createCompetitor, lookupEventorBySiCard } from '$lib/api/client.ts';
   import { t } from '$lib/i18n/index.ts';
@@ -115,7 +116,7 @@
   // modal" — Bricka editable to correct misread). Wrapped in a function-
   // form initializer so svelte-check doesn't flag the prop reference as
   // captured-at-init (warning state_referenced_locally).
-  const initialCard: number | '' = cardNumber > 0 ? cardNumber : '';
+  const initialCard: number | '' = untrack(() => (cardNumber > 0 ? cardNumber : ''));
   let cardNumberLocal = $state<number | ''>(initialCard);
   let consent = $state(true);
 
@@ -132,7 +133,7 @@
   // Lightweight info note when the form was pre-filled from the Eventor
   // cache. Cleared on first edit so it doesn't linger.
   let eventorFillNote = $state<string | null>(
-    eventorHint && eventorHint.hit ? t('walk.eventor.fill') : null
+    untrack(() => (eventorHint && eventorHint.hit ? t('walk.eventor.fill') : null))
   );
 
   // --- ui state -------------------------------------------------------------
@@ -301,12 +302,14 @@
 </script>
 
 <div class="walkup-scrim" role="presentation" data-testid="walkup-overlay" onclick={close}>
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div
     class="walkup-modal"
     role="dialog"
     aria-modal="true"
     aria-labelledby="walkup-title"
     data-testid="walkup-modal"
+    tabindex={-1}
     onclick={(e) => e.stopPropagation()}
   >
     <header class="head">
