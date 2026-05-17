@@ -9,11 +9,18 @@
 //   - competitors.name (PII per REQ-PRIV-002) → 'Anonymiserad'
 //   - competitors.club (PII per REQ-PRIV-002) → NULL
 //   - competitors.scrubbed_at_ms (audit trail) → now()
+//   - hired_cards.contact_name (PII per REQ-PRIV-002, D-HB-1) → NULL
+//   - hired_cards.contact_phone (PII per REQ-PRIV-002, D-HB-1) → NULL
+//   - hired_cards.contact_email (PII per REQ-PRIV-002, D-HB-1) → NULL
+//   - hired_cards.note (may contain PII per D-HB-3) → NULL
 //
 // What is PRESERVED (RESEARCH A7 + research.md §6):
 //   - competitors.card_number — hardware identifier, NOT PII
 //   - competitors.consent_status + consent_at_ms — audit trail; consent
 //     metadata persists for legal-basis traceability
+//   - hired_cards.card_number — hardware identifier, NOT PII
+//   - hired_cards.marked_at_ms — audit trail (when rental was created)
+//   - hired_cards.returned_at_ms — audit trail (when rental closed)
 //   - events.payload — append-only by REQ-EVT-002. card_bound payloads
 //     reference competitor_id only, never the name string, so most events
 //     don't leak PII post-scrub. card_read payloads carry card_holder
@@ -36,13 +43,16 @@
 // - .planning/phases/01-single-laptop-training-mvp/01-17-PLAN.md task 2
 // - .planning/phases/01-single-laptop-training-mvp/01-RESEARCH.md §A7
 //   (SCRUB interpretation, card_number kept)
+// - .planning/phases/02-4-klubbs-mvp/02-06-PLAN.md task 1 (D-HB-1 extension)
+// - .planning/phases/02-4-klubbs-mvp/02-CONTEXT.md D-HB-1 / D-HB-3
+//   (hired_cards.contact_* added to scrub list; note may carry PII)
 // - .planning/research/architecture.md §6 (PII vs hardware-ID distinction)
 // - REQ-PRIV-002 (30-day retention for contact information)
 // - PATTERNS S-2 (testClock injection)
 
 import { sql, and, isNull } from 'drizzle-orm';
 
-import { competitors } from '../db/schema.ts';
+import { competitors, hiredCards } from '../db/schema.ts';
 import type { DbHandle } from '../db/index.ts';
 
 export interface RetentionOpts {
@@ -117,7 +127,32 @@ export function scheduleDailyRetention(
         )
       )
       .run();
-    return { scrubbed_count: result.changes, cutoff_date: cutoffDate };
+
+    // Plan 02-06 D-HB-1 — hired_cards.contact_* scrub extension. Same cutoff
+    // as competitors; same "skip already-clean rows" idempotency guard
+    // (achieved via the contact_* IS NOT NULL clause rather than a
+    // scrubbed_at_ms column, because the audit trail we want to preserve
+    // on hired_cards is marked_at_ms / returned_at_ms — adding another
+    // timestamp would be redundant).
+    const hiredResult = handle.db
+      .update(hiredCards)
+      .set({
+        contactName: null,
+        contactPhone: null,
+        contactEmail: null,
+        note: null,
+      })
+      .where(
+        sql`competition_id IN (SELECT id FROM competitions WHERE date < ${cutoffDate})
+            AND (contact_name IS NOT NULL OR contact_phone IS NOT NULL
+                 OR contact_email IS NOT NULL OR note IS NOT NULL)`
+      )
+      .run();
+
+    return {
+      scrubbed_count: result.changes + hiredResult.changes,
+      cutoff_date: cutoffDate,
+    };
   }
 
   /** Retry the failed job after 1h. WR-001 — the previous version called

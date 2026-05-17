@@ -355,13 +355,21 @@ describe('scheduleDailyRetention', () => {
       mock.timers.tick(30 * 60 * 1000);
       // Drain microtasks so the catch handler installs the retry timer.
       for (let i = 0; i < 5; i++) await new Promise<void>((r) => setImmediate(r));
+      // First attempt: the thrower stub fires once on the competitors UPDATE
+      // and throws — runOnce aborts before reaching the hired_cards UPDATE.
       assert.equal(updateCalls, 1, 'first attempt fired at midnight');
 
       // Advance 1h. The retry must invoke runOnce again (not skip a day).
+      // Post-Plan-02-06: a successful runOnce makes TWO update calls
+      // (competitors + hired_cards), so the cumulative counter is 1 + 2 = 3.
       currentNow += 60 * 60 * 1000;
       mock.timers.tick(60 * 60 * 1000);
       for (let i = 0; i < 5; i++) await new Promise<void>((r) => setImmediate(r));
-      assert.equal(updateCalls, 2, 'retry ran runOnce after 1h, not after 24h');
+      assert.equal(
+        updateCalls,
+        3,
+        'retry ran runOnce after 1h (calls competitors + hired_cards UPDATEs); not after 24h'
+      );
 
       // The second attempt actually scrubbed the seeded row.
       const row = ctx.handle.db
