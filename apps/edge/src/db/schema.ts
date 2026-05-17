@@ -391,9 +391,11 @@ export const eventorCompetitors = sqliteTable(
     modifyDateMs: integer('modify_date_ms').notNull(),
   },
   (t) => [
-    // Partial UNIQUE index on si_card — the walk-up lookup path. Sub-ms by
-    // card. NULL si_card is allowed multiply (most runners lack one).
-    uniqueIndex('idx_eventor_si_card')
+    // Partial (non-unique) index on si_card — the walk-up lookup path. Sub-ms
+    // by card. NULL si_card is allowed multiply. Card NUMBER duplicates are
+    // also tolerated because real Eventor data has them (family-shared
+    // cards, replacement cards, rental pool). See plan 02-09.
+    index('idx_eventor_si_card_lookup')
       .on(t.siCard)
       .where(sql`${t.siCard} IS NOT NULL`),
     // Plain index for the name-prefix autocomplete path (operator types

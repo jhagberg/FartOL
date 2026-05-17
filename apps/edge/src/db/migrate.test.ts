@@ -47,8 +47,8 @@ describe('migrator: idempotency + cold-start coverage', () => {
       assert.ok(initialCount);
       assert.equal(
         initialCount.count,
-        3,
-        `expected 3 migrations applied (0000+0001+0002), got ${initialCount.count}`
+        4,
+        `expected 4 migrations applied (0000+0001+0002+0003), got ${initialCount.count}`
       );
 
       // Call again — should be a no-op.
@@ -57,13 +57,13 @@ describe('migrator: idempotency + cold-start coverage', () => {
         .prepare<unknown[], CountRow>('SELECT count(*) as count FROM __drizzle_migrations')
         .get();
       assert.ok(after);
-      assert.equal(after.count, 3, 'count must not change on second run');
+      assert.equal(after.count, 4, 'count must not change on second run');
     } finally {
       handle.close();
     }
   });
 
-  test('test 2 (C-H1): 0000 + 0001 + 0002 applied with distinct hashes; triggers present', () => {
+  test('test 2 (C-H1): 0000 + 0001 + 0002 + 0003 applied with distinct hashes; triggers present', () => {
     const handle = openDatabase(':memory:');
     try {
       const rows = handle.sqlite
@@ -72,10 +72,10 @@ describe('migrator: idempotency + cold-start coverage', () => {
           MigrationRow
         >('SELECT id, hash FROM __drizzle_migrations ORDER BY id ASC')
         .all();
-      assert.equal(rows.length, 3, `expected 3 migrations, got ${rows.length}`);
+      assert.equal(rows.length, 4, `expected 4 migrations, got ${rows.length}`);
       // All hashes pairwise distinct.
       const hashes = new Set(rows.map((r) => r.hash));
-      assert.equal(hashes.size, 3, 'migration hashes must all be distinct');
+      assert.equal(hashes.size, 4, 'migration hashes must all be distinct');
 
       // Idempotent re-application.
       runMigrations(handle.sqlite);
@@ -85,7 +85,7 @@ describe('migrator: idempotency + cold-start coverage', () => {
           MigrationRow
         >('SELECT id, hash FROM __drizzle_migrations ORDER BY id ASC')
         .all();
-      assert.equal(after.length, 3, 'still 3 migrations after re-run');
+      assert.equal(after.length, 4, 'still 4 migrations after re-run');
 
       // Two append-only triggers from 0001; 0002 adds none.
       const triggers = handle.sqlite
@@ -109,7 +109,7 @@ describe('migrator: idempotency + cold-start coverage', () => {
       const beforeCount = h1.sqlite
         .prepare<unknown[], CountRow>('SELECT count(*) as count FROM __drizzle_migrations')
         .get();
-      assert.equal(beforeCount?.count, 3);
+      assert.equal(beforeCount?.count, 4);
       h1.close();
 
       const h2 = openDatabase(dbPath);
@@ -119,7 +119,7 @@ describe('migrator: idempotency + cold-start coverage', () => {
           .get();
         assert.equal(
           afterCount?.count,
-          3,
+          4,
           'reopening must NOT replay migrations (idempotent on disk)'
         );
         const triggers = h2.sqlite
@@ -155,6 +155,35 @@ describe('migrator: idempotency + cold-start coverage', () => {
       }
     } finally {
       rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test('test 6 (02-09 task 1): 0003 swaps UNIQUE idx_eventor_si_card for plain idx_eventor_si_card_lookup', () => {
+    interface IndexRow {
+      name: string;
+      unique: number;
+    }
+    const handle = openDatabase(':memory:');
+    try {
+      const indexes = handle.sqlite
+        .prepare<
+          unknown[],
+          IndexRow
+        >("SELECT name, [unique] FROM pragma_index_list('eventor_competitors')")
+        .all();
+      const names = new Set(indexes.map((r) => r.name));
+      assert.ok(
+        names.has('idx_eventor_si_card_lookup'),
+        `expected idx_eventor_si_card_lookup present, got: ${[...names].join(', ')}`
+      );
+      assert.ok(
+        !names.has('idx_eventor_si_card'),
+        `expected old UNIQUE idx_eventor_si_card to be DROPPED, still present in: ${[...names].join(', ')}`
+      );
+      const lookup = indexes.find((r) => r.name === 'idx_eventor_si_card_lookup');
+      assert.equal(lookup?.unique, 0, 'idx_eventor_si_card_lookup must NOT be unique');
+    } finally {
+      handle.close();
     }
   });
 

@@ -383,15 +383,22 @@ describe('schema (phase 2): hired_cards compound PK', () => {
 });
 
 describe('schema (phase 2): eventor_competitors indexes', () => {
-  test('partial unique index on si_card (WHERE si_card IS NOT NULL)', () => {
+  // Plan 02-09 task 1: the UNIQUE was dropped because real federation
+  // data has legitimate duplicate si_cards (family-shared, rental pool,
+  // replacement cards). The index stays partial and on the same column —
+  // lookup performance unchanged — but no longer enforces uniqueness.
+  test('partial non-unique index on si_card (WHERE si_card IS NOT NULL)', () => {
     const handle = openDatabase(':memory:');
     try {
       const indexes = handle.sqlite
         .prepare<unknown[], PragmaIndexListRow>('PRAGMA index_list(eventor_competitors)')
         .all();
-      const idx = indexes.find((i) => i.name === 'idx_eventor_si_card');
-      assert.ok(idx, `idx_eventor_si_card not found in ${JSON.stringify(indexes)}`);
-      assert.equal(idx.partial, 1, 'idx_eventor_si_card must be partial');
+      const idx = indexes.find((i) => i.name === 'idx_eventor_si_card_lookup');
+      assert.ok(idx, `idx_eventor_si_card_lookup not found in ${JSON.stringify(indexes)}`);
+      assert.equal(idx.partial, 1, 'idx_eventor_si_card_lookup must be partial');
+      assert.equal(idx.unique, 0, 'idx_eventor_si_card_lookup must NOT be unique');
+      const old = indexes.find((i) => i.name === 'idx_eventor_si_card');
+      assert.equal(old, undefined, 'old UNIQUE idx_eventor_si_card must be dropped');
     } finally {
       handle.close();
     }
