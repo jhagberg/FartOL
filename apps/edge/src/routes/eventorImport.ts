@@ -27,6 +27,10 @@
 //   - keeps the eventor-direct path independent of the wizard-time
 //     atomic /from-wizard flow
 
+import { promises as fsp } from 'node:fs';
+import path from 'node:path';
+import { tmpdir } from 'node:os';
+
 import type { FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
@@ -102,16 +106,33 @@ export default async function registerEventorImportRoutes(app: FastifyInstance):
           detail: `expected EntryList, got ${parsedXml.kind}`,
         });
       }
+      // XSD validation is defense-in-depth: parseIofXml above already
+      // confirmed the document is an IOF 3.0 EntryList, and ingestEntryList
+      // below re-validates the fields it actually uses. The XSD's strict
+      // <xsd:sequence> ordering rejects Eventor responses whose element
+      // order doesn't match canonical IOF (e.g. Event.StartTime before
+      // Event.Name, observed against eventId=59132 on 2026-05-17). Since
+      // Eventor is the authoritative federation source — not untrusted
+      // user-uploaded XML — we log the discrepancy and dump the body for
+      // post-mortem rather than block the operator. The user-upload path
+      // (routes/import.ts) keeps the strict XSD gate.
       const validation = await validateXml(xml);
       if (!validation.valid) {
-        // Surface in the terminal log too — operators watch the log when the
-        // toast just says "xsd_invalid" and don't know which line/element
-        // the Eventor body tripped over.
+        const dumpPath = path.join(tmpdir(), `fartol-eventor-${eventId}-xsd-${Date.now()}.xml`);
+        try {
+          await fsp.writeFile(dumpPath, xml, 'utf8');
+        } catch {
+          // Disk-full / perm denied — log only, don't fail the import.
+        }
         app.log.warn(
-          { competitionId, eventId, errors: validation.errors.slice(0, 10) },
-          'eventor-import: xsd_invalid'
+          {
+            competitionId,
+            eventId,
+            errors: validation.errors.slice(0, 10),
+            dumpPath,
+          },
+          'eventor-import: xsd_invalid (non-blocking — Eventor source is trusted)'
         );
-        return reply.code(422).send({ error: 'xsd_invalid', errors: validation.errors });
       }
 
       // 5. Ingest + auto-bind any prior-read cards. Same calls as the
