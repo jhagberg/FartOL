@@ -59,8 +59,10 @@ import registerExportRoutes from './routes/export.ts';
 import registerAdminRoutes from './routes/admin.ts';
 import registerEventorRoutes from './routes/eventor.ts';
 import registerHiredCardsRoutes from './routes/hiredCards.ts';
+import registerSettingsRoutes from './routes/settings.ts';
 import registerMipRoute from './integrations/meos/mip.ts';
 import registerMopRoute from './integrations/meos/mop.ts';
+import { LOGGER_REDACT_OPTIONS } from './log/redact.ts';
 import wsPlugin from './ws/index.ts';
 import type { DbHandle } from './db/index.ts';
 import type { PrinterSink } from './print/sink.ts';
@@ -87,8 +89,12 @@ export interface BroadcastSink {
 export type NextLocalSeqFn = (handle: DbHandle, nodeId: string) => number;
 
 export interface BuildServerOpts {
-  /** Pass `false` to silence the Fastify pino logger (tests). Defaults to true. */
-  logger?: boolean;
+  /** Pass `false` to silence the Fastify pino logger (tests). Defaults to true.
+   * Pass an object (pino options shape) to inject a custom stream / level —
+   * settings.test.ts uses this to capture pino chunks for the redaction
+   * assertion. The redact path list is merged in automatically. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  logger?: boolean | Record<string, any>;
   /** Opened SQLite handle (plan 02 openDatabase). When omitted, only the
    * legacy plan-01 routes are wired; the WS plugin + dev routes are
    * skipped. Tests that exercise WS / dev MUST pass a handle. */
@@ -158,8 +164,27 @@ function defaultStaticRoot(): string | undefined {
 }
 
 export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyInstance> {
+  // Wire pino's redact paths into the logger options so PUT
+  // /api/settings/integrations request bodies never leak the `value`
+  // field to stdout. Path list lives in apps/edge/src/log/redact.ts
+  // (Plan 02-07 task 1). When the caller passes `logger: false`
+  // (tests) we keep the silent path. When they pass an object (the
+  // streaming test that captures pino chunks for assertion), we merge
+  // redact on top of their config so the caller's stream still wins.
+  let loggerOpt: BuildServerOpts['logger'] | Record<string, unknown>;
+  if (opts.logger === false) {
+    loggerOpt = false;
+  } else if (typeof opts.logger === 'object' && opts.logger !== null) {
+    loggerOpt = {
+      ...(opts.logger as Record<string, unknown>),
+      redact: LOGGER_REDACT_OPTIONS,
+    };
+  } else {
+    loggerOpt = { redact: LOGGER_REDACT_OPTIONS };
+  }
   const app = fastify({
-    logger: opts.logger ?? true,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    logger: loggerOpt as any,
   });
 
   await app.register(sensible);
@@ -265,6 +290,12 @@ export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyIn
     // return). Mounted under /api/competitions/:id/hired-cards/* — same
     // namespace as the rest of the competition-scoped routes.
     await app.register(registerHiredCardsRoutes);
+    // Phase 2.0 Plan 02-07 — Settings REST surface (GET + PUT
+    // /api/settings/integrations). Operator-facing API-key management
+    // so Windows operators can paste keys via UI without touching
+    // ~/.env.fartol. Boot precedence (env > config > absent) is
+    // enforced by apps/edge/src/config/secrets.ts (Plan 02-07 task 2).
+    await app.register(registerSettingsRoutes);
     // Phase 2.0 Plan 02-03 — MIP server (GET /mip). Mounted at the ROOT,
     // not /api/*, because MeOS hard-codes its poll URL and won't add a
     // prefix. D-MIP-1: no auth (closed club LAN).
