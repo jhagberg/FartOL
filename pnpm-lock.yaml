@@ -86,6 +86,9 @@ importers:
       saxes:
         specifier: 6.0.0
         version: 6.0.0
+      serialport:
+        specifier: ^13.0.0
+        version: 13.0.0
       sharp:
         specifier: ^0.34.0
         version: 0.34.5
