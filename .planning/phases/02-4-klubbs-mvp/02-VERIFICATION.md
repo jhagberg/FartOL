@@ -14,7 +14,7 @@ gaps:
       (apps/edge/src/xml/parse.ts:209-222 → apps/edge/src/ingest/
       courseImport.ts:55-81) extracts classes ONLY from <Event><Class>
       elements. The shipped 4-klubbs file
-      `docs/2026-05-20 4-klubbs_coursedata.xml` has ZERO <Class>
+      `.reference/2026-05-20 4-klubbs_coursedata.xml` has ZERO <Class>
       elements (5 <Course> elements only — verified by grep). After
       import, `data.classes` is empty → `classes_created = 0` → no
       rows in the `classes` table → WalkupModal's Bana picker
@@ -35,7 +35,7 @@ gaps:
         issue: 'ingestCourseData has no fallback class auto-creation when data.classes is empty AND data.courses is non-empty'
       - path: 'apps/edge/src/xml/parse.ts'
         issue: 'normalizeCourseData returns ParsedCourseData.classes = [] for files with no <Class> elements; no synthesis from courses'
-      - path: 'docs/2026-05-20 4-klubbs_coursedata.xml'
+      - path: '.reference/2026-05-20 4-klubbs_coursedata.xml'
         issue: 'Actual event file has 5 Course elements + zero Class elements'
       - path: 'apps/web/src/lib/screens/WalkupModal.svelte'
         issue: 'Bana picker (line 339) iterates `classes`, not `courses` — produces empty <Select> if no classes exist'
@@ -43,7 +43,7 @@ gaps:
         issue: "Step 7 says 'Bana picker should show the same five entries' but no step explains how to create the 5 classes in FartOL"
     missing:
       - 'Either: (a) auto-create-class-per-course path in ingestCourseData when data.classes is empty (preferred — honors CONTEXT decision #1), OR (b) wizard UI step to create classes after CourseData import + runbook curl snippets, OR (c) update WalkupModal to iterate `courses` instead of `classes` (would require a competition-level course-only mode flag).'
-      - 'End-to-end test that imports docs/2026-05-20 4-klubbs_coursedata.xml and confirms the Bana picker shows 5 entries.'
+      - 'End-to-end test that imports .reference/2026-05-20 4-klubbs_coursedata.xml and confirms the Bana picker shows 5 entries.'
 deferred:
   - truth: 'SC#1 — 4-klubbs 2026-05-20 runs end-to-end on FartOL; MeOS alive but never needed.'
     addressed_in: 'Plan 02-06 Task 4 (Wednesday-morning bench checkpoint, ~16:30 CEST, 2026-05-20)'
@@ -206,7 +206,7 @@ SC5 remediation decision).
    asserted "Phase 1's CourseData importer already auto-creates a 1:1
    class-per-course when no ClassList is provided" but this auto-create
    path does NOT exist in the code. The actual 4-klubbs courseData
-   (`docs/2026-05-20 4-klubbs_coursedata.xml`) has zero `<Class>`
+   (`.reference/2026-05-20 4-klubbs_coursedata.xml`) has zero `<Class>`
    elements; the importer therefore creates zero classes; the
    WalkupModal Bana picker iterates `classes` (not `courses`) so it's
    empty; operator can't select a Bana → can't save a walk-up. The

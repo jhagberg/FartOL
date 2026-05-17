@@ -204,7 +204,7 @@ Run these steps approximately 1 hour before the 4-klubbs event:
    "Eventor: cache OK".
 5. Import the 4-klubbs courseData: POST
    /api/competitions/<id>/import with
-   docs/2026-05-20 4-klubbs_coursedata.xml. Verify five classes
+   .reference/2026-05-20 4-klubbs_coursedata.xml. Verify five classes
    (Vit / Grön / Gul / Orange / Violett) appear.
 6. Configure MeOS on the parallel laptop per
    docs/ops/parallel-meos-runbook.md (Tools → Online → MIP+MOP URLs).

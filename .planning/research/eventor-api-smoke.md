@@ -14,22 +14,22 @@ superseded by the Option D below.**
 
 ## What works with the STK key (org 637)
 
-| Endpoint | Status | Bytes | Notes |
-|---|---:|---:|---|
-| `GET /organisation/apiKey` | 200 | 1.3 KB | Returns Stora Tuna OK, OrganisationId 637, parent = Dalarnas OF (8) |
-| `GET /organisation/{id}` | 200 | ~1.3 KB | Any single org's metadata (verified for 8) |
-| `GET /organisations` | 200 | **2.3 MB** | Full national org list; 39 clubs under Dalarnas OF |
-| `GET /persons/organisations/637` | 200 | 163 KB | 384 STK members with PersonId, name, birth-year, sex, role — **no SI cards** |
-| `GET /persons/organisations/637?includeContactDetails=true` | 200 | 207 KB | Adds phone + email per person — PII we do NOT want to cache |
+| Endpoint                                                                                 |  Status |                      Bytes | Notes                                                                                                   |
+| ---------------------------------------------------------------------------------------- | ------: | -------------------------: | ------------------------------------------------------------------------------------------------------- |
+| `GET /organisation/apiKey`                                                               |     200 |                     1.3 KB | Returns Stora Tuna OK, OrganisationId 637, parent = Dalarnas OF (8)                                     |
+| `GET /organisation/{id}`                                                                 |     200 |                    ~1.3 KB | Any single org's metadata (verified for 8)                                                              |
+| `GET /organisations`                                                                     |     200 |                 **2.3 MB** | Full national org list; 39 clubs under Dalarnas OF                                                      |
+| `GET /persons/organisations/637`                                                         |     200 |                     163 KB | 384 STK members with PersonId, name, birth-year, sex, role — **no SI cards**                            |
+| `GET /persons/organisations/637?includeContactDetails=true`                              |     200 |                     207 KB | Adds phone + email per person — PII we do NOT want to cache                                             |
 | **`GET /export/cachedcompetitors?includePreselectedClasses=false&zip=true&version=3.0`** | **200** | **9.4 MB zip → 86 MB XML** | **The national runner DB MeOS uses. 252 919 competitors. 96 918 with SI cards. 5 141 with Emit cards.** |
-| `GET /export/clubs?version=3.0` | 200 | 1.3 MB | National clubs DB with name, short name, parent org, contact info |
+| `GET /export/clubs?version=3.0`                                                          |     200 |                     1.3 MB | National clubs DB with name, short name, parent org, contact info                                       |
 
 ## What's gated (403 with the STK key)
 
-| Endpoint | Status | Why this matters |
-|---|---:|---|
-| `GET /competitors?organisationIds=637` | 403 | The *live, queryable* competitors endpoint. MeOS doesn't use it for the löpardatabasen — it uses the bulk `export/cachedcompetitors` endpoint above which is OPEN to club keys. |
-| `GET /persons/organisations/8` | 403 | Cannot fetch district-level persons across-club. Not blocking — `export/cachedcompetitors` covers every Swedish competitor anyway. |
+| Endpoint                               | Status | Why this matters                                                                                                                                                                |
+| -------------------------------------- | -----: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /competitors?organisationIds=637` |    403 | The _live, queryable_ competitors endpoint. MeOS doesn't use it for the löpardatabasen — it uses the bulk `export/cachedcompetitors` endpoint above which is OPEN to club keys. |
+| `GET /persons/organisations/8`         |    403 | Cannot fetch district-level persons across-club. Not blocking — `export/cachedcompetitors` covers every Swedish competitor anyway.                                              |
 
 ## The MeOS approach — the right pattern for FartOL
 
@@ -82,6 +82,7 @@ required beyond a normal club key.
 ```
 
 Notes on the shape:
+
 - Some competitors have **zero, one, or two** `<ControlCard>` elements (SI
   and/or Emit). Plan 1's parser must handle all three cases.
 - `BirthDate` is always `YYYY-01-01` (year only, padded).
@@ -128,6 +129,7 @@ CREATE TABLE eventor_clubs (
 ```
 
 Approximate row counts at 2026-05-16:
+
 - `eventor_competitors`: **252 919 rows** (~20 MB SQLite once indexed)
 - `eventor_clubs`: ~few thousand rows (~few hundred KB)
 
@@ -153,7 +155,7 @@ Approximate row counts at 2026-05-16:
 **WalkupModal lookup flow (Plan 2):**
 
 - When operator enters bricka → `SELECT family_name, given_name, club_id
-  FROM eventor_competitors WHERE si_card = ?`
+FROM eventor_competitors WHERE si_card = ?`
 - If found: pre-fill `name` and `klubb` (resolve `club_id` via
   `eventor_clubs.name`). Operator can still edit.
 - If not found: keep current Phase 1 path (`cardHolderHint` from SI firmware
@@ -180,26 +182,26 @@ The national runner DB is **252 919 names + birth years + clubs + SI cards**.
 This is materially more PII than Phase 1's local model. Mitigations:
 
 - **Local-only.** The cache table never leaves the laptop. MIP `<entry>`
-  pushes to MeOS only carry the competitors actively registered for *this*
+  pushes to MeOS only carry the competitors actively registered for _this_
   event, not the cache. MOP receiver writes to a separate shadow table.
 - **No phone / email.** `/export/cachedcompetitors` does NOT include contact
   details (verified by grep — no `<Tele>`, no `<Contact>`). Only the
   contact-details-enabled `/persons/organisations/{id}` endpoint exposes
-  phone+email, and Plan 1 deliberately uses the *cachedcompetitors* endpoint
+  phone+email, and Plan 1 deliberately uses the _cachedcompetitors_ endpoint
   to avoid that PII surface.
 - **REQ-PRIV-002 retention.** The append-only event log (ADR-0008) still
   scrubs `card_holder` after 30 days. The Eventor cache is a different
   table outside the append-only domain — it's safe to delete and re-fetch
   any time. Plan 1 should add a "clear cache" admin endpoint analogous to
   Phase 1's retention scrubber.
-- **Eventor ToS** (`docs/Guide_Eventor_-_Hamta_data_via_API.pdf` page 2):
+- **Eventor ToS** (`.reference/Guide_Eventor_-_Hamta_data_via_API.pdf` page 2):
   - **Cache aggressively** — refresh nightly, not on-demand-per-event.
   - **No tight loops** — one nightly fetch is fine; polling every minute
     triggers their throttle.
   - **Key is `värdehandling`** — never share externally. The `.eventor-env`
     file is `.gitignore`'d (commit 7ec8866). If the key ever leaks,
     regenerate under Klubben → Klubbinställningar in Eventor.
-  - **Schema can change** — backward compatibility is the *ambition*, not a
+  - **Schema can change** — backward compatibility is the _ambition_, not a
     guarantee. Parser should tolerate unknown child elements.
 
 An **ADR is warranted** ("ADR-0009: National runner DB cached locally for

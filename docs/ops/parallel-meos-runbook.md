@@ -24,6 +24,35 @@ before any real runner arrives. **Do them T-2h, not T-15min.** The bench
 smoke (Step 9 below) is the only deterministic gate before you let kids
 walk up to the registration desk.
 
+### 0. One-time: install required tools on the FartOL laptop
+
+The bench-smoke script (Step 9) calls `curl`, `jq`, `xmllint`, and
+`sqlite3` to assert the bridge is green. They're not always present on
+a fresh Debian/Ubuntu/Mint install. On the FartOL laptop, run **once**
+(skip if already installed from a prior event):
+
+```
+sudo apt update
+sudo apt install curl jq libxml2-utils sqlite3
+```
+
+Notes:
+
+- `xmllint` ships in the `libxml2-utils` package, not a package named
+  `xmllint`. The bench-smoke preflight names this explicitly if any tool
+  is missing.
+- On Fedora/RHEL: `sudo dnf install curl jq libxml2 sqlite`.
+- On macOS (dev only — production is Linux): `brew install jq libxml2 sqlite` (curl is built-in).
+
+Verify with:
+
+```
+curl --version && jq --version && xmllint --version && sqlite3 --version
+```
+
+All four should print a version line. If any errors, re-run the install
+and recheck before proceeding to Step 1.
+
 ### 1. Power up the FartOL laptop
 
 - Open the laptop, log in.
@@ -104,7 +133,7 @@ This is the single most-common cause of MIP entries silently failing:
 - **Recommendation:** copy-paste the class names between systems rather
   than retype. If you must retype, do it in BOTH systems by reading
   from a single canonical source (the courseData XML
-  `docs/2026-05-20 4-klubbs_coursedata.xml`).
+  `.reference/2026-05-20 4-klubbs_coursedata.xml`).
 
 ### 8. Verify the Eventor cache
 

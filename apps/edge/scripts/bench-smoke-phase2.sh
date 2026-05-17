@@ -61,11 +61,31 @@ record_fail() {
 # ---------------------------------------------------------------------------
 # 1. Pre-flight: required tools on PATH
 # ---------------------------------------------------------------------------
+# Map each binary to the package that ships it so the error message is
+# actionable (operator can copy-paste the install command instead of
+# guessing). Same package set is documented in
+# docs/ops/parallel-meos-runbook.md §Pre-event setup.
+declare -A TOOL_PKG=(
+  [curl]="curl"
+  [jq]="jq"
+  [xmllint]="libxml2-utils"
+  [sqlite3]="sqlite3"
+)
+missing=()
 for tool in curl jq xmllint sqlite3; do
   if ! command -v "$tool" >/dev/null 2>&1; then
-    record_fail "preflight: '$tool' not on PATH"
+    missing+=("$tool (apt package: ${TOOL_PKG[$tool]})")
   fi
 done
+if [ ${#missing[@]} -gt 0 ]; then
+  printf '%b✗ preflight: missing tools:%b\n' "$RED" "$NC" >&2
+  for m in "${missing[@]}"; do
+    printf '    %s\n' "$m" >&2
+  done
+  printf '\n  Install all on Debian/Ubuntu:\n' >&2
+  printf '    sudo apt install curl jq libxml2-utils sqlite3\n\n' >&2
+  exit 1
+fi
 
 # ---------------------------------------------------------------------------
 # 2. Boot bridge (skip if FARTOL_SKIP_BOOT=1 — Task 4 prod-bridge path)

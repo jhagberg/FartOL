@@ -23,7 +23,7 @@ is Phase-1 surface work and an Eventor pull.
   (sax) into SQLite tables `eventor_competitors` (indexed by `si_card`
   and `(family_name, given_name)`) and `eventor_clubs`. This is the
   **same endpoint MeOS uses** (verified at `/home/jonas/src/meos/code/
-  TabCompetition.cpp:3107-3108`), and it's OPEN to club-level API keys
+TabCompetition.cpp:3107-3108`), and it's OPEN to club-level API keys
   despite the live `/api/competitors` endpoint being 403. Used **only**
   for walk-up autocomplete; we do NOT import entries from Eventor for
   this event (almost no one pre-registers on 4-klubbs trainings).
@@ -49,9 +49,9 @@ is Phase-1 surface work and an Eventor pull.
     registration-themed page (NOT on `ReadoutView`, which mixes the
     operator's role — results-display vs. registration-desk).
   - **Card-beep queue + auto-advance.** Today (Phase 1, `ReadoutView
-    .svelte:406-414`) a second unknown card beep arriving while the
-    modal is already open is *silently dropped onto the recent-reads
-    history* — operator must hunt for it after saving the first kid.
+.svelte:406-414`) a second unknown card beep arriving while the
+    modal is already open is _silently dropped onto the recent-reads
+    history_ — operator must hunt for it after saving the first kid.
     For the kids line, replace this with: queue the second card,
     show a small "N i kö" badge, and **auto-open** the modal for the
     next queued card on Save. Defensive: same card beeped twice while
@@ -82,7 +82,7 @@ is Phase-1 surface work and an Eventor pull.
   - We can reconcile state after FartOL restart.
 - **Hyrbricka finish-readout toast** — when finish read returns a
   competitor with `hired_card=true`, ReadoutView shows a prominent
-  Swedish alert: *"⚠️ Hyrbricka — be om att få tillbaka brickan!"*.
+  Swedish alert: _"⚠️ Hyrbricka — be om att få tillbaka brickan!"_.
 - **Parallel-run ops playbook** — short Markdown runbook in
   `docs/ops/parallel-meos-runbook.md` covering: pre-event MeOS+FartOL
   setup, network config (both on same LAN), what each operator does
@@ -136,7 +136,7 @@ orchestrator agent. Each one is a "do not relitigate without strong
 reason."
 
 1. **Course-only model for 4-klubbs.** The provided courseData
-   (`docs/2026-05-20 4-klubbs_coursedata.xml`) has 5 courses by color
+   (`.reference/2026-05-20 4-klubbs_coursedata.xml`) has 5 courses by color
    (Vit 1875m, Grön 1525m, Gul 2425m, Orange 2975m, Violett 3750m) and
    no classes. Phase 1's CourseData importer already auto-creates a 1:1
    class-per-course when no ClassList is provided — we lean on that and
@@ -180,16 +180,16 @@ reason."
 
 ## Suggested plan breakdown (not normative — `gsd-plan-phase` decides)
 
-| # | Plan title | Est. | Depends on |
-|---|---|---|---|
-| 1 | Eventor löpardatabasen download + SQLite cache | 1d | API key |
-| 2 | WalkupModal: Bana label + Hyrbricka + Eventor name autocomplete | 0.5d | Plan 1 |
-| 2b | **Registration-desk screen + card-beep queue + auto-advance** (ADDED 2026-05-16 late) | 0.5d | Plan 2 |
-| 3 | MIP server: `<entry>` push for direktanmälningar | 1d | Plan 2 |
-| 4 | MOP receiver: ingest MeOS `<cmp>` for state reconciliation | 0.5d | Plan 3 |
-| 5 | Hyrbricka finish-readout toast | 0.25d | Plan 2 |
-| 6 | Parallel-run ops playbook (`docs/ops/parallel-meos-runbook.md`) | 0.25d | Plans 3+4 |
-| 7 | **Stretch** — QR self-signup public route | 1d | Plan 2 |
+| #   | Plan title                                                                            | Est.  | Depends on |
+| --- | ------------------------------------------------------------------------------------- | ----- | ---------- |
+| 1   | Eventor löpardatabasen download + SQLite cache                                        | 1d    | API key    |
+| 2   | WalkupModal: Bana label + Hyrbricka + Eventor name autocomplete                       | 0.5d  | Plan 1     |
+| 2b  | **Registration-desk screen + card-beep queue + auto-advance** (ADDED 2026-05-16 late) | 0.5d  | Plan 2     |
+| 3   | MIP server: `<entry>` push for direktanmälningar                                      | 1d    | Plan 2     |
+| 4   | MOP receiver: ingest MeOS `<cmp>` for state reconciliation                            | 0.5d  | Plan 3     |
+| 5   | Hyrbricka finish-readout toast                                                        | 0.25d | Plan 2     |
+| 6   | Parallel-run ops playbook (`docs/ops/parallel-meos-runbook.md`)                       | 0.25d | Plans 3+4  |
+| 7   | **Stretch** — QR self-signup public route                                             | 1d    | Plan 2     |
 
 Total committed: **~4d** (was 3.5d before Plan 2b was added). Wednesday morning is the buffer / dry-run. If 4d feels tight, **Plan 2b is the strongest cut candidate** — without it the Phase 1 single-host walkup flow still works for a kids line at a slower per-kid tempo (operator picks subsequent cards from history).
 
@@ -197,10 +197,10 @@ Total committed: **~4d** (was 3.5d before Plan 2b was added). Wednesday morning 
 
 - `.planning/research/meos-protocols.md` — full research output. MOP/MIP
   XSD locations, sample payloads, cost estimates, staleness flags.
-- `docs/2026-05-20 4-klubbs_coursedata.xml` — the actual courseData for
+- `.reference/2026-05-20 4-klubbs_coursedata.xml` — the actual courseData for
   the event (Condes 10.8.12 export, IOF XML 3.0). Use this verbatim as
   the e2e fixture for 2.0 plans that touch course import.
-- `docs/2026-05-20 4-klubbs.wcd` — Purple Pen / Condes native file
+- `.reference/2026-05-20 4-klubbs.wcd` — Purple Pen / Condes native file
   (sibling of the IOF XML). Not load-bearing; FartOL ingests the XML.
 - `docs/guide-meos.pdf` (in worktree `/home/jonas/src/FartOL-phase-1.5/`)
   — MeOS user manual; the **UX pattern we're matching** for walk-up
@@ -236,7 +236,7 @@ for the full set of round-2 implementation decisions. Summary pointers:
   only competitors into `competitors` with `source='meos'`.
 - ~~Hyrbricka column placement~~ — **resolved D-HB-1.** Junction table
   `hired_cards (competition_id, card_number, marked_at_ms, returned_at_ms,
-  contact_name, contact_phone, contact_email, note)` — strict superset of
+contact_name, contact_phone, contact_email, note)` — strict superset of
   MeOS's flat `hiredCardHash<int>` design (verified at
   `/home/jonas/src/meos/code/oEvent.h:930-934`). Adds contact info MeOS
   lacks for the "hunt down non-returners" use case.
@@ -263,16 +263,16 @@ above, they fully scope Phase 2.0 for `/gsd-plan-phase 2`.
   the admin/tweaks surface. Reason: the bridge isn't always running, so
   cron is the wrong abstraction; on-boot fetch + on-demand mirrors how
   MeOS does it.
-- **D-EV-2:** Staleness threshold = **re-fetch on bridge boot if cache
-  > 7 days old**, otherwise reuse the local copy. Admin button is the
-  override for "I want fresh data right now". Respects Eventor ToS
-  ("members fetched once per day is plenty"; weekly is comfortably
-  inside).
+- **D-EV-2:** Staleness threshold = \*\*re-fetch on bridge boot if cache
+  > 7 days old\*\*, otherwise reuse the local copy. Admin button is the
+  > override for "I want fresh data right now". Respects Eventor ToS
+  > ("members fetched once per day is plenty"; weekly is comfortably
+  > inside).
 - **D-EV-3:** Bridge boots with stale/empty cache and no internet =
   **warn + run with what we have**. If cache exists: use it, surface a
   UI indicator `Eventor: cache N dagar gammal`. If empty: walkup falls
   back to the Phase 1 `cardHolderHint` flow, indicator says `Eventor:
-  offline`. Honors REQ-OPS-001 (no internet required). NEVER blocks
+offline`. Honors REQ-OPS-001 (no internet required). NEVER blocks
   bridge startup on network reachability.
 
 ### MIP server `<entry>` push (Plan 3)
@@ -304,7 +304,7 @@ above, they fully scope Phase 2.0 for `/gsd-plan-phase 2`.
   table). Clean separation of FartOL ground truth from MeOS view;
   reconciliation is an explicit step. Crash-recovery query becomes
   trivial: `WHERE NOT EXISTS (SELECT 1 FROM competitors WHERE
-  card_number = meos_competitors.card_number)`.
+card_number = meos_competitors.card_number)`.
 - **D-MOP-2:** `<MOPComplete>` semantics = **TRUNCATE + INSERT inside
   a single transaction**. Matches MOP spec ("receiver should drop prior
   state and replace it"). Transaction makes partial-parse safe (rollback
@@ -324,15 +324,15 @@ above, they fully scope Phase 2.0 for `/gsd-plan-phase 2`.
 ### Hyrbricka model + UX (Plans 2 + 5)
 
 - **D-HB-1:** Data shape = **junction table `hired_cards
-  (competition_id, card_number PK, marked_at_ms, returned_at_ms
-  NULLABLE, contact_name, contact_phone, contact_email, note)`**.
+(competition_id, card_number PK, marked_at_ms, returned_at_ms
+NULLABLE, contact_name, contact_phone, contact_email, note)`**.
   Card-centric (matches the "zero lost rental cards" inventory framing)
   AND carries contact info MeOS lacks. Strict superset of MeOS's flat
   `oEvent::hiredCardHash` (`set<int>` per event — see
   `/home/jonas/src/meos/code/oEvent.h:930-934` and usage in
   `TabSI.cpp:3272`). Same lookup pattern at finish-readout: `EXISTS
-  (SELECT 1 FROM hired_cards WHERE card_number = ? AND returned_at_ms
-  IS NULL)`. ADD to REQ-PRIV-002 retention scrub list.
+(SELECT 1 FROM hired_cards WHERE card_number = ? AND returned_at_ms
+IS NULL)`. ADD to REQ-PRIV-002 retention scrub list.
 - **D-HB-2:** Return flow = **"Returnerad" button at finish-readout +
   admin "Aktiva hyrbrickor" backstop**. Finish-readout shows the
   Hyrbricka toast with contact info AND a one-tap return button.
@@ -370,7 +370,7 @@ Areas explicitly left to the planner / executor:
   code change.
 - Wording of Swedish toasts (`Eventor: cache N dagar gammal`,
   `⚠️ Hyrbricka — be om att få tillbaka brickan!`, `N löpare hämtade
-  från MeOS`, `Returnerad`) — UI-SPEC can polish before plan execution.
+från MeOS`, `Returnerad`) — UI-SPEC can polish before plan execution.
 - Exact MIP polling response when nothing's new (empty
   `<MIPData lastid="N"/>` is the obvious answer; MeOS spec allows it).
 - Exact UPDATEs to a competitor row that trigger a MIP `<entry>`
@@ -384,6 +384,7 @@ Areas explicitly left to the planner / executor:
 </decisions>
 
 <canonical_refs>
+
 ## Canonical References
 
 **Downstream agents MUST read these before planning or implementing.**
@@ -405,7 +406,7 @@ above for downstream consumption.
 - `/home/jonas/src/meos/code/onlineinput.cpp:985-1100` — MIP
   `<entry>` parser. Verified that `<classname>` string lookup works
   (line 994-996: `entry.getObjectString("classname", clsName); cls =
-  oe.getClass(clsName);`). Locks D-MIP-4 entry shape.
+oe.getClass(clsName);`). Locks D-MIP-4 entry shape.
 - `/home/jonas/src/meos/code/onlineinput.cpp:1065-1073` — MIP card +
   hired parsing. Locks `<card hired="true">12345</card>` wire format.
 - `/home/jonas/src/meos/code/oEvent.h:930-934` — MeOS hired-card API
@@ -422,13 +423,13 @@ above for downstream consumption.
 
 ### Event fixtures (the actual race data)
 
-- `docs/2026-05-20 4-klubbs_coursedata.xml` — Condes 10.8.12 IOF XML
+- `.reference/2026-05-20 4-klubbs_coursedata.xml` — Condes 10.8.12 IOF XML
   3.0 course export for the 4-klubbs event. Use verbatim as the e2e
   fixture for any Plan that touches course import. 5 courses:
   Vit/Grön/Gul/Orange/Violett.
-- `docs/2026-05-20 4-klubbs.wcd` — Purple Pen / Condes native
+- `.reference/2026-05-20 4-klubbs.wcd` — Purple Pen / Condes native
   sibling. Not load-bearing; FartOL ingests the XML.
-- `docs/Guide_Eventor_-_Hamta_data_via_API.pdf` — Eventor API
+- `.reference/Guide_Eventor_-_Hamta_data_via_API.pdf` — Eventor API
   reference (ToS guidance for D-EV-1 cadence; key handling).
 
 ### Phase 1 code being extended
@@ -475,6 +476,7 @@ above for downstream consumption.
 </canonical_refs>
 
 <code_context>
+
 ## Existing Code Insights
 
 ### Reusable Assets
@@ -482,9 +484,9 @@ above for downstream consumption.
 - **`apps/web/src/lib/screens/WalkupModal.svelte`** — Phase 1 walk-up
   modal with `cardHolderHint` SI-firmware autocomplete. Plan 2 adds
   Eventor `si_card` lookup as a second source AND Hyrbricka checkbox
-  + expandable contact fields. The existing `createCompetitor()` API
-  call extends with `hired_card`-context (`hired_card: true` triggers
-  a separate `hired_cards` INSERT in the same transaction on the edge).
+  - expandable contact fields. The existing `createCompetitor()` API
+    call extends with `hired_card`-context (`hired_card: true` triggers
+    a separate `hired_cards` INSERT in the same transaction on the edge).
 - **`apps/web/src/lib/screens/ReadoutView.svelte`** — Phase 1 live
   readout view. Plan 5 mounts a Hyrbricka toast + Returnerad button
   on finish-readout for cards with an open `hired_cards` row.
@@ -525,7 +527,7 @@ above for downstream consumption.
   `hired_cards` on each card_read, decides toast presentation.
 - **`apps/edge/src/integrations/meos/mip.ts`** (NEW) — Fastify route
   `GET /mip?competition=&lastid=&pwd=`. Queries `events WHERE
-  local_seq > ?` and serializes matching `card_bound` events to MIP
+local_seq > ?` and serializes matching `card_bound` events to MIP
   XML. Hooks `hired_cards` for the `<card hired="true">` flag.
 - **`apps/edge/src/integrations/meos/mop.ts`** (NEW) — Fastify route
   `POST /mop` (with optional `POST /mop/zip` for gzipped variant).
@@ -581,6 +583,7 @@ super." This is a real Phase 1 limitation (competitors.cardNumber
 unique within a competition) that today's MeOS shares.
 
 Three solution sketches, each non-trivial:
+
 1. Relax the unique index + projection that figures out which course
    matched a given card_read attempt.
 2. New `competitor_courses (competitor_id, course_id)` junction; one
@@ -600,7 +603,7 @@ that the operator workaround is "register twice with two cards" for
   need it; Phase 2.1 sanctioned competition does.
 - **QR-code self-signup public route** — Phase 2.1 stretch; sibling
   todo `.planning/todos/pending/2026-05-15-parent-self-signup-qr-flow.md`
-  + `.planning/todos/pending/2026-05-15-tailscale-cloudflare-tunnel-for-self-signup.md`.
+  - `.planning/todos/pending/2026-05-15-tailscale-cloudflare-tunnel-for-self-signup.md`.
 - **Eventor entries pull** (REQ-STD-004 read path) — irrelevant for
   4-klubbs; Phase 2.1.
 - **Eventor results push** (REQ-STD-004 write path) — keep manual IOF
@@ -647,5 +650,5 @@ that's speculative (not in the spec we have).
 
 ---
 
-*Phase: 2-4-klubbs-mvp*
-*Context gathered: 2026-05-16 (round 1) + 2026-05-16 evening (round 2)*
+_Phase: 2-4-klubbs-mvp_
+_Context gathered: 2026-05-16 (round 1) + 2026-05-16 evening (round 2)_

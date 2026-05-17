@@ -46,3 +46,11 @@ tmp/
 
 # Third-party reference material (not for public deploy)
 docs/guide-meos.pdf
+
+# Local reference material — competition fixtures (Purple Pen / Condes /
+# IOF XML exports for specific events), upstream PDFs (Eventor API guide,
+# MeOS user manual, IOF spec extracts), and anything else useful as
+# context but that we do NOT want to ship in the public repo. Keep it
+# local; mention specific files in .planning/* or docs/* by path so
+# downstream readers know to ask the maintainer for a copy.
+.reference/

@@ -43,7 +43,7 @@ REQ-OPS-001 "no internet required" invariant.
 - **D-EV-3** — bridge MUST boot with stale/empty cache and no
   internet; refresh failures NEVER block startup.
 - Eventor ToS guidance — "members fetched once per day is plenty"
-  (`docs/Guide_Eventor_-_Hamta_data_via_API.pdf`); weekly refresh is
+  (`.reference/Guide_Eventor_-_Hamta_data_via_API.pdf`); weekly refresh is
   comfortably inside the recommended cadence.
 - **MeOS-as-superset philosophy** — TabCompetition.cpp:3107-3108
   uses this same endpoint; matching MeOS's observable behavior is the

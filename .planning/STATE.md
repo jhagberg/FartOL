@@ -33,7 +33,7 @@ Plan: 0 of TBD (suggested 5–6, see CONTEXT.md)
 to refine the CONTEXT.md decisions and resolve the four open questions listed
 there. Then `/gsd-plan-phase 2`. The MeOS protocol research is already done
 (`.planning/research/meos-protocols.md`), the courseData fixture is in
-`docs/2026-05-20 4-klubbs_coursedata.xml`, and Phase 1 (PR #3) merged
+`.reference/2026-05-20 4-klubbs_coursedata.xml`, and Phase 1 (PR #3) merged
 2026-05-16T16:21Z.
 
 **Blocker:** Eventor API key + Stora Tuna OK organisation ID — Jonas has both;
