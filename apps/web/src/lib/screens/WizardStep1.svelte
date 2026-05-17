@@ -162,6 +162,18 @@
     quickstartError = null;
     onquickstartclear();
   }
+
+  /** "Idag"-knapp — stoppar in dagens datum i ISO-format. Audit follow-
+   * up #7: efter att vi tagit bort den native date-pickern fanns ingen
+   * snabbväg för en frivillig som inte vill memorera datumformatet. */
+  function setToday(): void {
+    const d = new Date();
+    const iso =
+      `${d.getFullYear()}-` +
+      `${String(d.getMonth() + 1).padStart(2, '0')}-` +
+      `${String(d.getDate()).padStart(2, '0')}`;
+    ondatechange(iso);
+  }
 </script>
 
 <div class="step-grid">
@@ -240,19 +252,29 @@
          unusable. Pattern validates client-side; canAdvanceFromStep1
          in the parent wizard already enforces isoDate.test(date) before
          Next, and the server's Zod schema is the authoritative gate. -->
-    <input
-      id="wiz-date"
-      class="input mono"
-      type="text"
-      value={date}
-      placeholder={t('wiz.date.placeholder')}
-      pattern={'\\d{4}-\\d{2}-\\d{2}'}
-      maxlength={10}
-      autocomplete="off"
-      spellcheck="false"
-      oninput={(e) => ondatechange((e.currentTarget as HTMLInputElement).value)}
-      data-testid="wiz-date"
-    />
+    <div class="date-row">
+      <input
+        id="wiz-date"
+        class="input mono"
+        type="text"
+        value={date}
+        placeholder={t('wiz.date.placeholder')}
+        pattern={'\\d{4}-\\d{2}-\\d{2}'}
+        maxlength={10}
+        autocomplete="off"
+        spellcheck="false"
+        oninput={(e) => ondatechange((e.currentTarget as HTMLInputElement).value)}
+        data-testid="wiz-date"
+      />
+      <button
+        type="button"
+        class="today-btn"
+        onclick={setToday}
+        data-testid="wiz-date-today"
+      >
+        {t('wiz.date.today')}
+      </button>
+    </div>
     <small class="muted small">{t('wiz.date.helper')}</small>
   </div>
 </div>
@@ -292,6 +314,36 @@
   .input:focus {
     outline: 2px solid var(--accent);
     outline-offset: -1px;
+    border-color: var(--accent);
+  }
+  /* "Idag"-button next to date input — compensation for losing the
+     native picker. Inline with the input so keyboard tab order stays
+     linear: input → button → next field. */
+  .date-row {
+    display: flex;
+    gap: var(--space-xs);
+    align-items: stretch;
+  }
+  .date-row .input {
+    flex: 1;
+    min-width: 0;
+  }
+  .today-btn {
+    flex-shrink: 0;
+    min-height: var(--hit);
+    padding: 0 var(--space-md);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-strong);
+    background: var(--bg-sunken);
+    color: var(--fg);
+    font-size: var(--fs-label);
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .today-btn:hover,
+  .today-btn:focus-visible {
+    background: var(--bg-elev);
     border-color: var(--accent);
   }
 

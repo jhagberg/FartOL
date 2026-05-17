@@ -33,6 +33,9 @@
     stationStatus?: StationStatus;
     stationSerial?: string;
     readoutBadge?: number | null;
+    /** Forwarded to Sidebar so competition-scoped nav items (Avläsning,
+     * Anmälda, Resultat, Export, Hyrbrickor) can disable when null. */
+    activeCompId?: string | null;
     crumb?: Snippet;
     children?: Snippet;
   }
@@ -45,17 +48,30 @@
     stationStatus = 'offline',
     stationSerial = '—',
     readoutBadge = null,
+    activeCompId = null,
     crumb,
     children,
   }: Props = $props();
 
   let drawerOpen = $state(false);
+  /** Element refs for focus management. When the drawer opens we move
+   * focus to the close button so screen readers + keyboard users land
+   * inside the drawer instead of on the hidden-behind-scrim hamburger.
+   * On close we restore focus to wherever it was. */
+  let hamburgerRef: HTMLButtonElement | null = $state(null);
+  let drawerCloseRef: HTMLButtonElement | null = $state(null);
 
   function openDrawer(): void {
     drawerOpen = true;
+    // Defer until after the {#if} block renders the close button.
+    queueMicrotask(() => drawerCloseRef?.focus());
   }
   function closeDrawer(): void {
     drawerOpen = false;
+    // Return focus to the hamburger so subsequent Tab continues from a
+    // sane spot. queueMicrotask is unnecessary here — the button stays
+    // mounted; we just need to focus it.
+    hamburgerRef?.focus();
   }
 
   /** Wrap nav callbacks so a tap on a drawer item navigates AND closes
@@ -87,6 +103,7 @@
       {stationStatus}
       {stationSerial}
       {readoutBadge}
+      {activeCompId}
     />
   </div>
 
@@ -103,6 +120,7 @@
     <button
       type="button"
       class="drawer-close"
+      bind:this={drawerCloseRef}
       onclick={closeDrawer}
       aria-label={t('nav.close')}
       data-testid="drawer-close"
@@ -111,8 +129,14 @@
     </button>
   {/if}
 
-  <main class="main" id="main">
-    <TopBar {crumb} {wsStatus} onMenu={openDrawer} />
+  <!-- inert when drawer open: prevents Tab leaking back into the readout
+       behind the scrim (WCAG 2.4.3). The hamburger lives inside TopBar
+       which lives inside <main>, so opening the drawer also inert's the
+       trigger — fine, because focus has already moved to the drawer's
+       close button via openDrawer's queueMicrotask. closeDrawer restores
+       focus to hamburgerRef AFTER drawerOpen=false re-enables main. -->
+  <main class="main" id="main" inert={drawerOpen ? true : undefined}>
+    <TopBar {crumb} {wsStatus} onMenu={openDrawer} bind:menuRef={hamburgerRef} />
     <div class="content">
       {@render children?.()}
     </div>
@@ -146,6 +170,9 @@
      hamburger is gated by the same breakpoint. */
   @media (max-width: 720px) {
     .app {
+      /* Single source-of-truth width — used by sidebar-slot AND
+         drawer-close so they stay in sync if we ever bump the size. */
+      --drawer-w: min(280px, 80vw);
       grid-template-columns: 1fr;
     }
     .sidebar-slot {
@@ -154,7 +181,7 @@
       top: 0;
       left: 0;
       bottom: 0;
-      width: min(280px, 80vw);
+      width: var(--drawer-w);
       z-index: 60;
       transform: translateX(-100%);
       transition: transform 220ms ease-out;
@@ -174,7 +201,7 @@
     .drawer-close {
       position: fixed;
       top: 8px;
-      left: calc(min(280px, 80vw) + 12px);
+      left: calc(var(--drawer-w) + 12px);
       z-index: 65;
       width: 44px;
       height: 44px;

@@ -97,6 +97,7 @@
   onOpenSettings={() => (tweaksOpen = true)}
   onNavigate={handleNavigate}
   route={navRoute}
+  {activeCompId}
   stationStatus={toStationStatus(bridgeStatus.value)}
   wsStatus={toWsStatus(bridgeStatus.value)}
 >

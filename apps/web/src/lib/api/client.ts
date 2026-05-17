@@ -547,6 +547,10 @@ export interface EventorImportResult {
   kind: 'EntryList';
   competitors_created: number;
   classes_missing: string[];
+  /** Server count of duplicate-card skips. Surfaced separately from
+   * competitors_created so the operator who re-clicks Importera sees
+   * "X redan importerade" instead of a confusing bare "0 löpare". */
+  competitors_skipped_duplicate: number;
   auto_bound: string[];
 }
 

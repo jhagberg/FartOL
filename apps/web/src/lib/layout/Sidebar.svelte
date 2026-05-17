@@ -24,6 +24,12 @@
     stationStatus?: StationStatus;
     stationSerial?: string;
     readoutBadge?: number | null;
+    /** Competition-scoped items (Avläsning, Anmälda, Resultat, Export,
+     * Hyrbrickor) are disabled when this is null. Without it, clicking
+     * one silently routes to '/' which is a mystery dead-click — the
+     * UX audit caught this on the new "Anmälda" item but the pattern
+     * existed before. Now centrally gated. */
+    activeCompId?: string | null;
   }
 
   let {
@@ -33,7 +39,10 @@
     stationStatus = 'offline',
     stationSerial = '—',
     readoutBadge = null,
+    activeCompId = null,
   }: Props = $props();
+
+  const compScopedDisabled = $derived(activeCompId === null);
 </script>
 
 <aside class="sidebar">
@@ -47,7 +56,11 @@
     {t('nav.competitions')}
   </NavItem>
 
-  <NavItem active={route === 'readout'} onclick={() => onNavigate?.('readout')}>
+  <NavItem
+    active={route === 'readout'}
+    disabled={compScopedDisabled}
+    onclick={() => onNavigate?.('readout')}
+  >
     {#snippet icon()}<Icon name="radio" />{/snippet}
     {t('nav.readout')}
     {#snippet badge()}
@@ -55,23 +68,39 @@
     {/snippet}
   </NavItem>
 
-  <NavItem active={route === 'import'} onclick={() => onNavigate?.('import')}>
-    {#snippet icon()}<Icon name="arrow-up-right" />{/snippet}
+  <NavItem
+    active={route === 'import'}
+    disabled={compScopedDisabled}
+    onclick={() => onNavigate?.('import')}
+  >
+    {#snippet icon()}<Icon name="download" />{/snippet}
     {t('nav.import')}
   </NavItem>
 
-  <NavItem active={route === 'results'} onclick={() => onNavigate?.('results')}>
+  <NavItem
+    active={route === 'results'}
+    disabled={compScopedDisabled}
+    onclick={() => onNavigate?.('results')}
+  >
     {#snippet icon()}<Icon name="list" />{/snippet}
     {t('nav.results')}
   </NavItem>
 
-  <NavItem active={route === 'export'} onclick={() => onNavigate?.('export')}>
+  <NavItem
+    active={route === 'export'}
+    disabled={compScopedDisabled}
+    onclick={() => onNavigate?.('export')}
+  >
     {#snippet icon()}<Icon name="arrow-up-right" />{/snippet}
     {t('nav.export')}
     {#snippet badge()}IOF 3.0{/snippet}
   </NavItem>
 
-  <NavItem active={route === 'hyrbrickor'} onclick={() => onNavigate?.('hyrbrickor')}>
+  <NavItem
+    active={route === 'hyrbrickor'}
+    disabled={compScopedDisabled}
+    onclick={() => onNavigate?.('hyrbrickor')}
+  >
     {#snippet icon()}<Icon name="key" />{/snippet}
     {t('nav.hyrbrickor')}
   </NavItem>

@@ -16,6 +16,7 @@
     | 'radio'
     | 'list'
     | 'arrow-up-right'
+    | 'download'
     | 'key'
     | 'settings'
     | 'check'
@@ -67,6 +68,11 @@
     <!-- export -->
     <path d="M7 17 17 7" />
     <path d="M8 7h9v9" />
+  {:else if name === 'download'}
+    <!-- import / cloud-down — direction matches "pulling INTO fartol" -->
+    <path d="M12 3v12" />
+    <path d="m7 10 5 5 5-5" />
+    <path d="M5 21h14" />
   {:else if name === 'key'}
     <!-- key — hyrbrickor -->
     <circle cx="8" cy="15" r="4" />

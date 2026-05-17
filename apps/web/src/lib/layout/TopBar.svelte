@@ -29,9 +29,19 @@
      * sidebar is permanently visible, so the hamburger is hidden even if
      * onMenu is set. */
     onMenu?: () => void;
+    /** Two-way ref to the hamburger button. AppShell uses this for focus
+     * restoration when the drawer closes — focus returns to the trigger
+     * that opened the drawer (WCAG 2.4.3 + dialog pattern). */
+    menuRef?: HTMLButtonElement | null;
   }
 
-  let { crumb, wsStatus = 'closed', showWs = true, onMenu }: Props = $props();
+  let {
+    crumb,
+    wsStatus = 'closed',
+    showWs = true,
+    onMenu,
+    menuRef = $bindable(null),
+  }: Props = $props();
 
   const variant = $derived(
     wsStatus === 'open' ? 'green' : wsStatus === 'connecting' ? 'amber' : 'red'
@@ -51,6 +61,7 @@
     <button
       type="button"
       class="menu-btn"
+      bind:this={menuRef}
       onclick={onMenu}
       aria-label={t('nav.menu')}
       data-testid="topbar-menu"

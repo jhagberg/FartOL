@@ -48,6 +48,8 @@
   /** ISO date the operator wants to search Eventor on. Defaults to the
    * competition's date when known; otherwise today. */
   let searchDate = $state('');
+  /** Inline date validation error, set on blur and cleared on next edit. */
+  let dateError = $state<string | null>(null);
   let events = $state<EventorEventListItem[]>([]);
   let searching = $state(false);
   let searchError = $state<string | null>(null);
@@ -59,6 +61,10 @@
    * double-tap can't double-POST. Null while no import is in flight. */
   let importingEventId = $state<number | null>(null);
   let importResult = $state<EventorImportResult | null>(null);
+  /** Captured at the moment of a successful import so the success banner
+   * can say "X importerade FRÅN <event-name>" — operator who picked the
+   * wrong row otherwise gets a bare count with no recourse. */
+  let lastImportedEvent = $state<EventorEventListItem | null>(null);
   let importError = $state<string | null>(null);
 
   // --- Upload-XML path ------------------------------------------------------
@@ -89,12 +95,28 @@
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
+  // --- date validation (audit follow-up #6, mirrors RegistrationView's
+  //     blur-validation pattern) ----------------------------------------
+  function validDate(s: string): boolean {
+    return /^\d{4}-\d{2}-\d{2}$/.test(s);
+  }
+  function onDateInput(): void {
+    if (dateError !== null) dateError = null;
+  }
+  function onDateBlur(): void {
+    if (searchDate.trim() === '') {
+      dateError = null;
+      return;
+    }
+    if (!validDate(searchDate)) dateError = t('importRunners.errBadDate');
+  }
+
   async function search(): Promise<void> {
     searchError = null;
     importResult = null;
     importError = null;
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(searchDate)) {
-      searchError = t('importRunners.errBadDate');
+    if (!validDate(searchDate)) {
+      dateError = t('importRunners.errBadDate');
       return;
     }
     searching = true;
@@ -118,14 +140,16 @@
     }
   }
 
-  async function importEvent(eventId: number): Promise<void> {
+  async function importEvent(ev: EventorEventListItem): Promise<void> {
     importError = null;
     importResult = null;
-    importingEventId = eventId;
+    importingEventId = ev.eventId;
     try {
-      const res = await importEntriesFromEventor(competitionId, eventId);
+      const res = await importEntriesFromEventor(competitionId, ev.eventId);
       importResult = res;
+      lastImportedEvent = ev;
     } catch (e) {
+      lastImportedEvent = null;
       if (e instanceof ApiError && e.status === 503) {
         importError = t('importRunners.errNoKey');
       } else if (e instanceof ApiError && e.status === 502) {
@@ -179,31 +203,53 @@
   <!-- Eventor card ---------------------------------------------------- -->
   <section class="card">
     <header class="section-head">
-      <span class="ico" aria-hidden="true"><Icon name="arrow-up-right" size={18} /></span>
+      <span class="ico" aria-hidden="true"><Icon name="download" size={18} /></span>
       <h2>{t('importRunners.eventor.title')}</h2>
     </header>
     <p class="desc muted small">{t('importRunners.eventor.desc')}</p>
 
-    <div class="search-row">
+    <!-- Form wrap: Enter on the date input submits the search instead of
+         being swallowed (audit follow-up #5). preventDefault on submit
+         stops the page reload; the button stays type=submit so screen
+         readers announce the form action correctly. -->
+    <form
+      class="search-row"
+      onsubmit={(e) => {
+        e.preventDefault();
+        void search();
+      }}
+    >
       <Field label={t('importRunners.eventor.dateLabel')} htmlFor="import-date">
         <Input
           id="import-date"
           data-testid="import-date"
           type="text"
           bind:value={searchDate}
+          oninput={onDateInput}
+          onblur={onDateBlur}
           placeholder="ÅÅÅÅ-MM-DD"
           maxlength={10}
+          aria-invalid={dateError !== null}
+          aria-describedby={dateError !== null ? 'import-date-error' : undefined}
         />
       </Field>
       <Button
         variant="primary"
-        onclick={() => void search()}
+        type="submit"
         disabled={searching}
         data-testid="import-search"
       >
-        {searching ? t('importRunners.eventor.searching') : t('importRunners.eventor.search')}
+        <span class="btn-label">
+          {searching ? t('importRunners.eventor.searching') : t('importRunners.eventor.search')}
+        </span>
       </Button>
-    </div>
+    </form>
+
+    {#if dateError}
+      <p id="import-date-error" class="err" role="alert" data-testid="import-date-error">
+        {dateError}
+      </p>
+    {/if}
 
     {#if searchError}
       <p class="err" role="alert" data-testid="import-search-error">{searchError}</p>
@@ -228,7 +274,7 @@
             <Button
               variant="primary"
               size="sm"
-              onclick={() => void importEvent(ev.eventId)}
+              onclick={() => void importEvent(ev)}
               disabled={importingEventId !== null}
               data-testid="import-event-btn"
             >
@@ -245,7 +291,7 @@
   <!-- Upload card ----------------------------------------------------- -->
   <section class="card">
     <header class="section-head">
-      <span class="ico" aria-hidden="true"><Icon name="arrow-up-right" size={18} /></span>
+      <span class="ico" aria-hidden="true"><Icon name="download" size={18} /></span>
       <h2>{t('importRunners.upload.title')}</h2>
     </header>
     <p class="desc muted small">{t('importRunners.upload.desc')}</p>
@@ -280,10 +326,27 @@
   {#if importResult}
     <div class="result ok" role="status" data-testid="import-result">
       <strong>
-        {t('importRunners.success', { count: importResult.competitors_created })}
+        {#if lastImportedEvent}
+          {t('importRunners.successFrom', {
+            count: importResult.competitors_created,
+            name: lastImportedEvent.name,
+            eventId: lastImportedEvent.eventId,
+          })}
+        {:else}
+          {t('importRunners.success', { count: importResult.competitors_created })}
+        {/if}
       </strong>
+      {#if importResult.competitors_skipped_duplicate > 0}
+        <p class="small" data-testid="import-skipped">
+          {t('importRunners.skippedDuplicate', {
+            count: importResult.competitors_skipped_duplicate,
+          })}
+        </p>
+      {/if}
       {#if importResult.auto_bound.length > 0}
-        <p class="small">{t('importRunners.autoBound', { count: importResult.auto_bound.length })}</p>
+        <p class="small">
+          {t('importRunners.autoBound', { count: importResult.auto_bound.length })}
+        </p>
       {/if}
       {#if importResult.classes_missing.length > 0}
         <p class="warn small" data-testid="import-classes-missing">
@@ -391,6 +454,14 @@
     background: var(--bg-sunken);
     border: 1px solid var(--border);
     border-radius: var(--radius);
+    transition: border-color 120ms ease-out, background 120ms ease-out;
+  }
+  /* Row hover/focus-within so the operator sees where each row begins
+     and ends — without this, the row felt like just-a-button. */
+  .event-row:hover,
+  .event-row:focus-within {
+    background: var(--bg-elev);
+    border-color: var(--border-strong);
   }
   .event-meta {
     flex: 1;
@@ -406,6 +477,16 @@
   .upload-row {
     display: flex;
     gap: var(--space-sm);
+  }
+  /* Search button keeps a stable width across the "Sök tävlingar" ↔
+     "Söker…" label swap so the layout doesn't jitter on every search. */
+  .search-row :global(button) {
+    min-width: 9rem;
+  }
+  .btn-label {
+    display: inline-block;
+    text-align: center;
+    width: 100%;
   }
   .hidden-file-input {
     position: absolute;
