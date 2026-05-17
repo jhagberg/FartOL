@@ -1,20 +1,29 @@
 <!--
   Authored for fartol. Not ported from upstream.
 
-  /competition/:id/import — mounts ImportRunnersView, the "where do I
-  add runners?" surface. The view itself owns Eventor search + upload-
-  XML flows; this shell just forwards the competitionId.
+  /competition/:id/import — kept as a deep-linkable URL so the existing
+  wizard goto target + any external bookmarks survive the move. Forwards
+  to /competition/:id/runners?import=1 where the Importera sheet is
+  mounted over the canonical roster screen.
+
+  See ROUTERS-RUNNERS-IMPORT note in RunnersListView for the sheet
+  contract.
 -->
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { page } from '$app/state';
-  import ImportRunnersView from '$lib/screens/ImportRunnersView.svelte';
+  import { goto } from '$app/navigation';
 
   const competitionId = $derived(page.params['id'] ?? '');
+
+  onMount(() => {
+    if (competitionId) {
+      void goto(`/competition/${competitionId}/runners?import=1`, { replaceState: true });
+    }
+  });
 </script>
 
-{#if competitionId}
-  <ImportRunnersView {competitionId} />
-{:else}
+{#if !competitionId}
   <p class="muted">Ingen tävling vald.</p>
 {/if}
 

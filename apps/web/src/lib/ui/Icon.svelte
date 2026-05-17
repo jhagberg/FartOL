@@ -21,7 +21,13 @@
     | 'settings'
     | 'check'
     | 'menu'
-    | 'x';
+    | 'x'
+    | 'users'
+    | 'user-plus'
+    | 'search'
+    | 'plus'
+    | 'edit'
+    | 'chevron-right';
 
   interface Props {
     name: IconName;
@@ -93,5 +99,30 @@
   {:else if name === 'x'}
     <!-- close (drawer dismiss) -->
     <path d="m6 6 12 12M18 6 6 18" />
+  {:else if name === 'users'}
+    <!-- people — Anmälda (registered runners list) -->
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  {:else if name === 'user-plus'}
+    <!-- person + plus — Registrering (walk-up desk) -->
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M19 8v6M22 11h-6" />
+  {:else if name === 'search'}
+    <!-- magnifier — list search -->
+    <circle cx="11" cy="11" r="7" />
+    <path d="m20 20-3.5-3.5" />
+  {:else if name === 'plus'}
+    <!-- add — Importera / Lägg till CTA -->
+    <path d="M12 5v14M5 12h14" />
+  {:else if name === 'edit'}
+    <!-- pencil — Redigera row action -->
+    <path d="M12 20h9" />
+    <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z" />
+  {:else if name === 'chevron-right'}
+    <!-- row-affordance chevron -->
+    <path d="m9 6 6 6-6 6" />
   {/if}
 </svg>

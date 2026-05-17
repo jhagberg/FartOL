@@ -40,9 +40,14 @@
 
   interface Props {
     competitionId: string;
+    /** Hides the local header (title + subtitle) when this view is
+     * embedded inside a parent surface that already provides one — e.g.
+     * the Importera sheet on /runners. Defaults to false so the
+     * standalone /import deep-link still renders the full page chrome. */
+    embedded?: boolean;
   }
 
-  let { competitionId }: Props = $props();
+  let { competitionId, embedded = false }: Props = $props();
 
   // --- Eventor path ---------------------------------------------------------
   /** ISO date the operator wants to search Eventor on. Defaults to the
@@ -214,11 +219,17 @@
   }
 </script>
 
-<section class="import-runners" data-testid="import-runners-view">
-  <header class="head">
-    <h1 class="title">{t('importRunners.title')}</h1>
-    <p class="muted">{t('importRunners.subtitle')}</p>
-  </header>
+<section
+  class="import-runners"
+  class:embedded
+  data-testid="import-runners-view"
+>
+  {#if !embedded}
+    <header class="head">
+      <h1 class="title">{t('importRunners.title')}</h1>
+      <p class="muted">{t('importRunners.subtitle')}</p>
+    </header>
+  {/if}
 
   <!-- Eventor card ---------------------------------------------------- -->
   <section class="card">
@@ -389,6 +400,12 @@
     padding: var(--space-md);
     max-width: 720px;
     min-width: 0;
+  }
+  /* Embedded mode: drop the outer padding/width cap so the sheet host
+     controls the spacing instead. */
+  .import-runners.embedded {
+    padding: var(--space-md);
+    max-width: none;
   }
   .head {
     display: flex;

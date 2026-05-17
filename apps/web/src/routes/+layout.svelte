@@ -35,6 +35,7 @@
     toStationStatus,
     toWsStatus,
   } from '../lib/stores/bridgeStatus.svelte.ts';
+  import { getBridgeStatus } from '../lib/api/client.ts';
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
 
@@ -53,13 +54,17 @@
   });
 
   // Map URL → sidebar route prop so the active item highlights correctly.
+  // /import is a deep-link redirect that lands on /runners with the import
+  // sheet open — highlight the same sidebar item the redirect lands on.
   const navRoute = $derived.by(() => {
     const p = page.url.pathname;
-    if (p === '/' || p === '') return 'home';
+    if (p === '/') return 'home';
     if (p.endsWith('/readout')) return 'readout';
-    if (p.endsWith('/import')) return 'import';
+    if (p.endsWith('/runners') || p.endsWith('/import')) return 'runners';
+    if (p.endsWith('/registration')) return 'registration';
     if (p.endsWith('/results')) return 'results';
     if (p.endsWith('/export')) return 'export';
+    if (p.endsWith('/hyrbrickor')) return 'hyrbrickor';
     return 'home';
   });
 
@@ -74,9 +79,12 @@
       return;
     }
     if (route === 'readout') void goto(`/competition/${activeCompId}/readout`);
-    else if (route === 'import') void goto(`/competition/${activeCompId}/import`);
+    else if (route === 'runners') void goto(`/competition/${activeCompId}/runners`);
+    else if (route === 'registration')
+      void goto(`/competition/${activeCompId}/registration`);
     else if (route === 'results') void goto(`/competition/${activeCompId}/results`);
     else if (route === 'export') void goto(`/competition/${activeCompId}/export`);
+    else if (route === 'hyrbrickor') void goto(`/competition/${activeCompId}/hyrbrickor`);
   }
 
   // Mirror the tweaks store onto <html> attributes whenever any preference
@@ -90,6 +98,49 @@
     void tweaks.font_pair;
     void tweaks.contrast_high;
     applyTweaksToRoot(document.documentElement);
+  });
+
+  // Global SI-bridge connection poll. ReadoutView gets sub-second updates
+  // via its WS connection_changed handler; every OTHER page (e.g. /import,
+  // /settings, /) used to sit at the initial 'closed' value because nothing
+  // wrote to the store. Polling /api/bridge/status every 2s closes that gap
+  // so the sidebar StationCard + topbar PulseDot mirror real hardware state
+  // regardless of route. Pause when the tab is hidden to avoid background
+  // chatter; resume on visibilitychange.
+  $effect(() => {
+    if (typeof document === 'undefined') return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    async function tick(): Promise<void> {
+      if (cancelled) return;
+      try {
+        const bs = await getBridgeStatus();
+        bridgeStatus.set(bs.state);
+      } catch {
+        // Edge unreachable → treat as closed so the StationCard shows the
+        // right visual state and the Reconnect button is offered.
+        bridgeStatus.set('closed');
+      }
+      if (cancelled) return;
+      timer = setTimeout(tick, 2000);
+    }
+    function onVisibility(): void {
+      if (document.hidden) {
+        if (timer) {
+          clearTimeout(timer);
+          timer = null;
+        }
+      } else if (timer === null && !cancelled) {
+        void tick();
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility);
+    void tick();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   });
 </script>
 

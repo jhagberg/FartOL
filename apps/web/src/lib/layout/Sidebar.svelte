@@ -69,12 +69,21 @@
   </NavItem>
 
   <NavItem
-    active={route === 'import'}
+    active={route === 'runners'}
     disabled={compScopedDisabled}
-    onclick={() => onNavigate?.('import')}
+    onclick={() => onNavigate?.('runners')}
   >
-    {#snippet icon()}<Icon name="download" />{/snippet}
-    {t('nav.import')}
+    {#snippet icon()}<Icon name="users" />{/snippet}
+    {t('nav.runners')}
+  </NavItem>
+
+  <NavItem
+    active={route === 'registration'}
+    disabled={compScopedDisabled}
+    onclick={() => onNavigate?.('registration')}
+  >
+    {#snippet icon()}<Icon name="user-plus" />{/snippet}
+    {t('nav.registration')}
   </NavItem>
 
   <NavItem
