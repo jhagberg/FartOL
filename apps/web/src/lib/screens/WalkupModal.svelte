@@ -290,6 +290,7 @@
         competition_id: competitionId,
         club: null,
         card_number: cardNumberLocal as number,
+        hired_card: hiredCard,
         replace_card_for_competitor_id: cardTakenExistingId,
       });
       close();
