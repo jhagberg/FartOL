@@ -499,6 +499,42 @@ export function getEventorStatus(): Promise<EventorStatusDTO> {
 }
 
 // ---------------------------------------------------------------------------
+// Settings — integration API keys (Phase 2.0 Plan 02-07).
+// ---------------------------------------------------------------------------
+
+export type IntegrationSource = 'env' | 'config' | 'absent';
+
+export interface IntegrationStatus {
+  key: string;
+  set: boolean;
+  source: IntegrationSource;
+}
+
+/** GET /api/settings/integrations — list every allowlisted integration
+ * with its current { set, source } status. The `value` field is NEVER
+ * returned by the API (write-only secret, OWASP A02:2021). The UI
+ * masks the row to `••••••••` when set or shows the "Inte
+ * konfigurerad" placeholder when set=false. */
+export function listIntegrations(): Promise<{ integrations: IntegrationStatus[] }> {
+  return apiFetch<{ integrations: IntegrationStatus[] }>('/api/settings/integrations');
+}
+
+/** PUT /api/settings/integrations — upsert the secret. Empty-string
+ * value deletes the row (server treats both null and "" the same).
+ * Server re-resolves env precedence on the response so the caller
+ * knows whether the freshly-written config row will actually take
+ * effect or if process.env still wins. */
+export function setIntegration(
+  key: string,
+  value: string
+): Promise<{ ok: true; key: string; set: boolean; source: IntegrationSource }> {
+  return apiFetch('/api/settings/integrations', {
+    method: 'PUT',
+    body: { key, value },
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Hired cards (Hyrbricka — Phase 2.0 Plan 02-05)
 // ---------------------------------------------------------------------------
 

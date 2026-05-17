@@ -266,6 +266,21 @@
         </div>
       </Field>
 
+      <!-- Plan 02-07 — Settings deep-link. Operators rotate API keys
+           via /installningar instead of editing ~/.env.fartol. The
+           link closes the panel so the route swap is the only
+           visible state change. -->
+      <Field label={t('settings.integrations.title')}>
+        <a
+          href="/installningar"
+          class="settings-link"
+          data-testid="tweaks-manage-keys-link"
+          onclick={() => onClose?.()}
+        >
+          {t('tweaks.settings.manageKeys')}
+        </a>
+      </Field>
+
       <!-- Dev-only Simulate read -->
       {#if devGate}
         <Field label={t('tw.sim')}>
@@ -393,5 +408,18 @@
   }
   .dot-muted {
     background: var(--border-strong);
+  }
+  .settings-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--hit);
+    padding: 0 var(--space-sm);
+    color: var(--accent);
+    text-decoration: none;
+    font-size: var(--fs-label);
+    font-weight: 500;
+  }
+  .settings-link:hover {
+    text-decoration: underline;
   }
 </style>
