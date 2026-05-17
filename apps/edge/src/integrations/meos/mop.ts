@@ -256,6 +256,15 @@ export default async function registerMopRoute(app: FastifyInstance): Promise<vo
         // matching `classes.name` (class-match guard limits us to known
         // classes — RESEARCH Pattern 4 EXISTS clause). Runs INSIDE the
         // transaction so a downstream failure rolls the merge back too.
+        //
+        // F-002 BLOCKER fix: meos_competitors has no competition_id column
+        // (it's a global shadow). Without a temporal filter, switching the
+        // active competition mid-day (morning HD-träning → afternoon 4-
+        // klubbs) would re-merge every stale shadow row whose class name
+        // accidentally matches into the new active competition. The fix is
+        // `mc.last_mop_update_ms = ${nowMs}` so only rows the CURRENT POST
+        // just wrote get merged. This is race-safe because both writes and
+        // the merge SELECT run inside the same sqlite.transaction.
         if (activeCompetitionId !== null) {
           const result = app.fartolDb.db.run(sql`
             INSERT INTO competitors (
@@ -278,6 +287,7 @@ export default async function registerMopRoute(app: FastifyInstance): Promise<vo
               'meos'
             FROM meos_competitors mc
             WHERE mc.card_number IS NOT NULL
+              AND mc.last_mop_update_ms = ${nowMs}
               AND NOT EXISTS (
                 SELECT 1 FROM competitors c2
                 WHERE c2.competition_id = ${activeCompetitionId}

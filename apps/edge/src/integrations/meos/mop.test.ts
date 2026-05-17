@@ -441,6 +441,77 @@ describe('POST /mop — integrations/meos/mop', () => {
     assert.equal(rows[0]?.id, 7777);
   });
 
+  test('test 14 (F-002 regression): auto-merge does NOT re-merge stale shadow rows after active-competition switch', async () => {
+    // F-002 BLOCKER scenario:
+    //   1. Operator runs morning HD-träning (comp A). MeOS POSTs MOPComplete
+    //      with one cmp → shadow rows land + auto-merge inserts into A.
+    //   2. Operator switches active comp to 4-klubbs (comp B) for afternoon.
+    //      B has class 'Vit' (same name as the MeOS class id=1 mapped).
+    //   3. MeOS POSTs an empty-ish MOPDiff (or even any non-Complete POST).
+    //      The OLD shadow row from step 1 must NOT be re-merged into B.
+    const { competitionId: compA } = await seedActiveCompetition(ctx, { className: 'Vit' });
+
+    // Step 1: POST MOPComplete → merges into comp A.
+    const r1 = await postMop(ctx, COMPLETE_XML);
+    assert.equal(r1.status, 200);
+    const compACompetitors = ctx.handle.db
+      .select()
+      .from(competitors)
+      .where(eq(competitors.competitionId, compA))
+      .all();
+    assert.equal(compACompetitors.length, 1, 'morning auto-merge should produce 1 row');
+
+    // Step 2: create comp B + switch active. (Class name "Vit" same as A
+    // and matches the MeOS class id=1 → maximum risk of cross-bleed.)
+    const compBRes = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/competitions',
+      payload: { name: '4-klubbs afternoon', date: '2026-05-20' },
+    });
+    assert.equal(compBRes.statusCode, 201);
+    const compB = (compBRes.json() as { id: string }).id;
+    const classBRes = await ctx.app.inject({
+      method: 'POST',
+      url: `/api/competitions/${compB}/classes`,
+      payload: { name: 'Vit' },
+    });
+    assert.equal(classBRes.statusCode, 201);
+    const setRes = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/sessions/active-competition',
+      payload: { competition_id: compB },
+    });
+    assert.equal(setRes.statusCode, 200);
+
+    // Step 3: MeOS sends a MOPDiff that DOES NOT mention card 12345
+    // (touches an unrelated row only). The stale shadow row for card 12345
+    // must NOT be re-merged into comp B by virtue of being in
+    // meos_competitors. F-002 filter `last_mop_update_ms = nowMs` is the
+    // guard.
+    const unrelatedDiff =
+      '<?xml version="1.0" encoding="UTF-8"?>' +
+      '<MOPDiff xmlns="http://www.melin.nu/mop">' +
+      '<cmp id="9999" card="88888"><base cls="1">Other, Person</base></cmp>' +
+      '</MOPDiff>';
+    const r2 = await postMop(ctx, unrelatedDiff);
+    assert.equal(r2.status, 200);
+
+    const compBCompetitors = ctx.handle.db
+      .select()
+      .from(competitors)
+      .where(eq(competitors.competitionId, compB))
+      .all();
+    // The new row (card 88888) should land in B because it WAS just
+    // written. The stale row (card 12345 from morning) must NOT bleed in.
+    const compBCards = compBCompetitors.map((c) => c.cardNumber).sort();
+    assert.deepEqual(compBCards, [88888], 'only just-written rows merge into new active comp');
+    assert.equal(
+      compBCompetitors.length,
+      1,
+      'F-002 bug would have produced 2 rows here (stale + new)'
+    );
+  });
+
   test('test 13: no auth — works with no pwd AND with pwd=anything (D-MOP-4)', async () => {
     const r1 = await postMop(ctx, COMPLETE_XML);
     assert.equal(r1.status, 200);
