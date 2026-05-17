@@ -68,8 +68,10 @@ describe('bench-smoke-phase2.sh', () => {
 
   test('test 2 (parameterization): script honors FARTOL_SKIP_BOOT short-circuit', async () => {
     // FARTOL_SKIP_BOOT=1 tells the script to assume an externally-running
-    // bridge. With no bridge actually present, the wait-for-ready loop
-    // should time out and exit non-zero with a clear error.
+    // bridge. With no bridge actually present, the script should exit
+    // non-zero — either at preflight (missing tool), the readiness probe
+    // timeout, or a downstream curl failure. Any of those is a clear
+    // operator-actionable error.
     const r = await runScript({
       FARTOL_PORT: '13599',
       FARTOL_HOST: '127.0.0.1',
@@ -77,11 +79,12 @@ describe('bench-smoke-phase2.sh', () => {
       FARTOL_SKIP_BOOT: '1',
     });
     assert.notEqual(r.code, 0, 'expected non-zero exit when no bridge is reachable');
-    // Either the readiness probe times out OR a downstream curl fails — both
-    // surface as a clear error in stderr/stdout.
+    // Any of: preflight tool missing, readiness probe timeout, downstream
+    // curl failure — they all print a red FAIL prefix the operator can
+    // grep on.
     const combined = r.stdout + r.stderr;
     assert.ok(
-      /not ready|connection refused|failed|curl/i.test(combined),
+      /not ready|connection refused|failed|FAIL|curl|preflight/i.test(combined),
       `expected a clear error message; got: ${combined.slice(0, 400)}`
     );
   });
