@@ -71,6 +71,27 @@
     date = v;
   }
 
+  /** Step 1 quickstart import: pre-fills name + date + sets pendingFile
+   * so Step 2's DropZone sees the file as already loaded. Operator can
+   * still edit name + date and / or replace the file in Step 2. */
+  function acceptQuickstart(
+    f: File,
+    parsedName: string,
+    parsedDate: string,
+    p: PreviewMeta
+  ): void {
+    pendingFile = f;
+    preview = p;
+    dropError = null;
+    if (parsedName) name = parsedName;
+    if (parsedDate) date = parsedDate;
+  }
+  function clearQuickstart(): void {
+    pendingFile = null;
+    preview = null;
+    dropError = null;
+  }
+
   function acceptFile(f: File, p: PreviewMeta): void {
     pendingFile = f;
     preview = p;
@@ -145,8 +166,11 @@
         <WizardStep1
           {name}
           {date}
+          preimportedFile={pendingFile}
           onnamechange={setName}
           ondatechange={setDate}
+          onquickstart={acceptQuickstart}
+          onquickstartclear={clearQuickstart}
         />
       {:else if step === 2}
         <WizardStep2
