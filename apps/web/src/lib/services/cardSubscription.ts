@@ -67,6 +67,16 @@ export interface CardSubscriptionOpts {
   /** Optional extra channels to pre-subscribe beyond readoutChannel.
    * /readout subscribes to resultsChannel as well. */
   extraChannels?: ChannelName[];
+  /** When true, replay-wrapped `card_read` envelopes (the server's hello
+   * response with the last N historical card_reads) are IGNORED. Live
+   * card_reads still fire onCardRead normally. Use this on the
+   * registration-desk screen to prevent old card_reads (from before the
+   * desk page mounted — e.g. the operator briefly opened /readout
+   * earlier) from being enqueued as fresh registration candidates.
+   * /readout sets this false (default) so its recent-reads history can
+   * back-fill from server-side replay. Code-review F-002 (codex) BLOCKER
+   * fix. */
+  ignoreReplayCardReads?: boolean;
 }
 
 export interface CardSubscriptionHandle {
@@ -86,6 +96,11 @@ export function createCardSubscription(opts: CardSubscriptionOpts): CardSubscrip
     if (env.type === 'replay') {
       const inner = env.payload as { event_type?: string } | null;
       if (!inner || typeof inner.event_type !== 'string') return;
+      // F-002 (codex) BLOCKER guard: callers that don't want historical
+      // card_reads (registration-desk) opt out via ignoreReplayCardReads.
+      // Other replayed envelope types (results_update, card_bound, etc.)
+      // still pass through so /readout can rehydrate its projection.
+      if (opts.ignoreReplayCardReads === true && inner.event_type === 'card_read') return;
       dispatch(inner.event_type, inner);
       return;
     }

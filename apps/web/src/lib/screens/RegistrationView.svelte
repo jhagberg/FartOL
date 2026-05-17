@@ -33,9 +33,13 @@
   import { t } from '$lib/i18n/index.ts';
   import { cardQueue, type QueuedCard } from '$lib/stores/cardQueue.svelte.ts';
   import { createCardSubscription } from '$lib/services/cardSubscription.ts';
-  import { getCompetition, setActiveCompetition } from '$lib/api/client.ts';
+  import {
+    getCompetition,
+    lookupEventorBySiCard,
+    setActiveCompetition,
+  } from '$lib/api/client.ts';
   import WalkupModal from '$lib/screens/WalkupModal.svelte';
-  import type { ClassDTO } from '@fartol/shared-types';
+  import type { ClassDTO, EventorLookupHit } from '@fartol/shared-types';
 
   interface Props {
     competitionId: string;
@@ -56,6 +60,12 @@
    * modal opens; the queue holds only PENDING cards (the "N i kö" badge
    * is keyed off cardQueue.count, not currentCard). */
   let currentCard: QueuedCard | null = $state(null);
+  /** Eventor pre-fill for the currently-mounted card, fetched async
+   * after handleIncomingCard pops. Null while the lookup is in-flight
+   * or returned hit=false. Code-review F-003 (codex) HIGH fix —
+   * /registration must match /readout's Eventor-prefill ergonomics so
+   * the 3-5s/kid throughput target holds at 4-klubbs. */
+  let currentEventorHint: EventorLookupHit | null = $state(null);
   let toastMessage: string | null = $state(null);
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
   let subscription: ReturnType<typeof createCardSubscription> | null = null;
@@ -99,6 +109,12 @@
       onCardRead: (cardNumber, hint, _classification) => {
         handleIncomingCard(cardNumber, hint);
       },
+      // F-002 (codex) BLOCKER guard: when the operator opens
+      // /registration after some readout activity, the server replays
+      // the last N card_reads on connect. Those are historical and
+      // must NOT enqueue as fresh registration candidates here. /readout
+      // still wants them (for its recent-reads history strip).
+      ignoreReplayCardReads: true,
     });
     subscription.connect();
   });
@@ -127,18 +143,51 @@
       toast(t('registration.dedupeToast', { card: cardNumber }));
       return;
     }
-    // If no modal is currently open, open it immediately for the just-
-    // pushed card. Otherwise leave it in the queue — the modal-close
-    // handler below will advance to it.
+    // If no modal is currently open, pop the just-pushed card and mount.
+    // F-003 race-fix: pop returns null when the queue is empty (e.g. two
+    // events landed in the same microtask and both `if`-checked currentCard
+    // before either popped). Only assign when pop actually yielded a card,
+    // otherwise the next assign would clobber an already-mounted modal
+    // with null. Pre-fix this could drop the first mount on two-cards-
+    // in-one-tick.
     if (currentCard === null) {
-      currentCard = cardQueue.pop();
+      const next = cardQueue.pop();
+      if (next !== null) mountCard(next);
     }
+  }
+
+  function mountCard(card: QueuedCard): void {
+    currentCard = card;
+    // Reset previous Eventor hint immediately so the modal doesn't see
+    // stale data while the new lookup is in-flight.
+    currentEventorHint = null;
+    // Fire-and-forget Eventor lookup — same pattern as ReadoutView's
+    // walkup-overlay handler. The modal mounts with cardHolderHint first;
+    // when the lookup resolves, eventorHint takes over via WalkupModal's
+    // $effect that reacts to late-arriving eventorHint props.
+    void lookupEventorBySiCard(card.cardNumber)
+      .then((res) => {
+        // Guard: another card could have been popped in the meantime
+        // (operator hit Spara before the lookup resolved). Only apply
+        // the hint if we still own this card.
+        if (currentCard?.cardNumber !== card.cardNumber) return;
+        if (res.hit) currentEventorHint = res;
+      })
+      .catch(() => {
+        /* offline / 5xx — leave the firmware-hint path active */
+      });
   }
 
   function onWalkupClose(): void {
     // Auto-advance: pop the next queued card (null if empty → modal
     // unmounts via {#if currentCard !== null}).
-    currentCard = cardQueue.pop();
+    const next = cardQueue.pop();
+    if (next !== null) {
+      mountCard(next);
+    } else {
+      currentCard = null;
+      currentEventorHint = null;
+    }
   }
 
   function toast(msg: string): void {
@@ -177,6 +226,7 @@
         {competitionId}
         classes={resolvedClasses}
         cardHolderHint={currentCard.cardHolderHint}
+        eventorHint={currentEventorHint}
         onClose={onWalkupClose}
       />
     {/key}
