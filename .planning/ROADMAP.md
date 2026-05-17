@@ -206,5 +206,3 @@ These must be respected throughout, not deferred to a phase:
 | 3. Children's finish, public engagement | 0/TBD | Not started | - |
 | 4. Multi-arena, radio controls | 0/TBD | Not started | - |
 | 5. O-ringen scale | 0/TBD | Not started | - |
-</content>
-</invoke>
