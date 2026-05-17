@@ -57,6 +57,11 @@ declare module 'fastify' {
   interface FastifyInstance {
     fartolDb: DbHandle;
     fartolNodeId: string;
+    /** Phase 2.0 — wired in server.ts from BuildServerOpts.allowLan. When
+     * true the WS origin allow-list permits same-origin LAN hosts so the
+     * MeOS parallel-run laptop can subscribe to readout / registration
+     * channels. Loopback only when false. */
+    fartolAllowLan: boolean;
     wsBroadcast: (
       channel: ChannelName,
       envelope: { type: string; payload: unknown; seq?: number }
@@ -85,9 +90,29 @@ const ORIGIN_ALLOW_LIST = new Set([
   'http://[::1]:3000',
 ]);
 
-function isOriginAllowed(origin: string | undefined): boolean {
+// Phase 2.0 — RFC1918 LAN + IPv6 link-local + .local mDNS regexes. Only
+// consulted when the operator explicitly passed --allow-lan, otherwise
+// the loopback-only Set above is the authority. Code-review F-001
+// (codex) BLOCKER fix — the MeOS parallel laptop must be able to open
+// the SPA over LAN, and once the page loads it sends Origin: http://
+// <fartol-lan-ip>:3000 which the loopback-only Set rejected.
+const LAN_ORIGIN_REGEXES: RegExp[] = [
+  /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$/,
+  /^http:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/,
+  /^http:\/\/172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}(:\d+)?$/,
+  /^http:\/\/\[fe80::[^\]]+\](:\d+)?$/,
+  /^http:\/\/[a-z0-9-]+\.local(:\d+)?$/,
+];
+
+export function isOriginAllowed(origin: string | undefined, allowLan: boolean): boolean {
   if (!origin) return true; // CLI / same-origin tools; no Origin header
-  return ORIGIN_ALLOW_LIST.has(origin);
+  if (ORIGIN_ALLOW_LIST.has(origin)) return true;
+  if (allowLan) {
+    for (const re of LAN_ORIGIN_REGEXES) {
+      if (re.test(origin)) return true;
+    }
+  }
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -106,12 +131,23 @@ interface ConnState {
 async function wsPlugin(app: FastifyInstance): Promise<void> {
   const clients = new Map<WebSocket, ConnState>();
 
+  // Capture the allow-lan decorator at plugin-registration time. server.ts
+  // decorates `fartolAllowLan` BEFORE registering this plugin (the
+  // decorate() call sits in the same block as the wsPlugin register
+  // call), so reading it here is safe. Default false if the decorator is
+  // somehow absent (e.g. a test path that registers the WS plugin
+  // directly without going through buildServer).
+  const allowLan =
+    'fartolAllowLan' in app
+      ? Boolean((app as unknown as { fartolAllowLan?: boolean }).fartolAllowLan)
+      : false;
+
   await app.register(websocket, {
     options: {
       maxPayload: 256 * 1024, // T-DOS-WS
       verifyClient: (info, next) => {
         const origin = info.req.headers.origin;
-        if (!isOriginAllowed(origin)) {
+        if (!isOriginAllowed(origin, allowLan)) {
           // Refuse the upgrade. Second arg is the HTTP status code.
           next(false, 403, 'forbidden origin');
           return;

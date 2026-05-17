@@ -466,6 +466,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
     dbHandle: handle,
     nodeId,
     printerSink,
+    allowLan: opts.allowLan,
   });
 
   // Optional CLI override for the active competition. Routes/sessions.ts

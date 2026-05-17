@@ -119,6 +119,13 @@ export interface BuildServerOpts {
    * tarball populates dist/web/ via scripts/build-tarball.sh so the
    * installed binary auto-detects and serves the SPA. */
   staticRoot?: string;
+  /** Phase 2.0 — when true, the CORS allow-list AND the WebSocket origin
+   * allow-list both accept non-loopback Origin headers so the MeOS
+   * parallel-run laptop on the same LAN can open the FartOL UI at
+   * `http://<fartol-lan-ip>:3000/...` (D-WS-LAN). Wired from
+   * bin/fartol.ts when `--allow-lan` is set. Default false (loopback only,
+   * Phase 1 posture). Code-review F-001 (codex) BLOCKER fix. */
+  allowLan?: boolean;
 }
 
 /** Default static root resolution for the packaged binary. Mirrors the
@@ -159,10 +166,27 @@ export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyIn
 
   // Localhost-loopback-only CORS — Phase 1 plan 01 has no LAN clients.
   // Plan 03 keeps the same allow-list because the SvelteKit dev server
-  // runs on the same loopback origin (port 5173).
-  await app.register(cors, {
-    origin: [/^http:\/\/127\.0\.0\.1(:\d+)?$/, /^http:\/\/localhost(:\d+)?$/],
-  });
+  // runs on the same loopback origin (port 5173). Phase 2.0 widens it
+  // when `opts.allowLan === true` (operator passed `--allow-lan` at the
+  // CLI) so the MeOS parallel-run laptop can open the SPA over LAN.
+  // Same-origin Host header is the implicit trust anchor — Fastify only
+  // serves bound interfaces, so an attacker on the LAN must already be
+  // on the LAN, which is the explicit Phase 2.0 trust model (D-MIP-1 /
+  // D-MOP-4 no-auth closed-LAN posture).
+  const corsOrigin: Array<RegExp> = [
+    /^http:\/\/127\.0\.0\.1(:\d+)?$/,
+    /^http:\/\/localhost(:\d+)?$/,
+  ];
+  if (opts.allowLan === true) {
+    // RFC1918 private LAN ranges (192.168/16, 10/8, 172.16/12) + IPv6
+    // link-local + .local mDNS hostnames.
+    corsOrigin.push(/^http:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$/);
+    corsOrigin.push(/^http:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/);
+    corsOrigin.push(/^http:\/\/172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}(:\d+)?$/);
+    corsOrigin.push(/^http:\/\/\[fe80::[^\]]+\](:\d+)?$/);
+    corsOrigin.push(/^http:\/\/[a-z0-9-]+\.local(:\d+)?$/);
+  }
+  await app.register(cors, { origin: corsOrigin });
 
   // Decorate the FastifyInstance BEFORE wsPlugin / dev routes register.
   // Both rely on app.fartolDb / app.fartolNodeId being present and the
@@ -178,6 +202,10 @@ export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyIn
     // Surface the SI bridge connection state to routes (GET /api/bridge/status).
     // The bin's BridgeLifecycle mutates this; --no-bridge boots stay 'closed'.
     app.decorate('bridgeState', 'closed');
+    // Phase 2.0 — surface --allow-lan to the WS plugin so its Origin
+    // allow-list can permit LAN origins when the operator explicitly
+    // opted in. Default false (loopback only). Code-review F-001 fix.
+    app.decorate('fartolAllowLan', opts.allowLan === true);
 
     await app.register(wsPlugin);
 
