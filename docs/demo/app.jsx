@@ -22,7 +22,7 @@ function App() {
   const t = useT(tw.locale);
 
   // Routing state
-  const [route, setRoute] = useState('readout'); // home | readout | results | export
+  const [route, setRoute] = useState('readout'); // home | readout | results | export | hyrbrickor | registration
   const [wizardOpen, setWizardOpen] = useState(false);
   const [walkupOpen, setWalkupOpen] = useState(false);
   const [walkupCard, setWalkupCard] = useState(null);
@@ -195,6 +195,17 @@ function App() {
           <span className="badge" style={{fontSize: 9}}>IOF 3.0</span>
         </button>
 
+        {/* Phase 2.0 — separator + parallel-MeOS surfaces */}
+        <div style={{margin: '14px 8px 6px', padding: '0 8px', fontSize: 9, color: 'var(--fg-faint)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, fontFamily: 'var(--font-mono)'}}>Phase 2 · 4-klubbs</div>
+        <button className={'nav-item ' + (route === 'registration' ? 'active' : '')} onClick={() => setRoute('registration')}>
+          <span style={{width: 16, textAlign: 'center'}}>⌗</span> Registreringsdisk
+          <span className="badge" style={{fontSize: 9}}>{(window.MOCK_PHASE2.registrationQueue || []).length} i kö</span>
+        </button>
+        <button className={'nav-item ' + (route === 'hyrbrickor' ? 'active' : '')} onClick={() => setRoute('hyrbrickor')}>
+          <span style={{width: 16, textAlign: 'center'}}>⌬</span> Hyrbrickor
+          <span className="badge" style={{fontSize: 9}}>{(window.MOCK_PHASE2.hyrbrickor || []).filter(h => !h.returnedAt).length} öppna</span>
+        </button>
+
         <div className="sidebar-footer">
           <div className="station-card">
             <div className="row"><b style={{fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--fg-muted)'}}>{t('ro.station')}</b></div>
@@ -210,11 +221,14 @@ function App() {
         <div className="topbar">
           <div className="crumb">
             {route === 'home' && <>FartOL / <strong>{t('nav.competitions')}</strong></>}
-            {route === 'readout' && <>FartOL / Onsdagsträning v.20 / <strong>{t('nav.readout')}</strong></>}
-            {route === 'results' && <>FartOL / Onsdagsträning v.20 / <strong>{t('nav.results')}</strong></>}
-            {route === 'export' && <>FartOL / Onsdagsträning v.20 / <strong>{t('nav.export')}</strong></>}
+            {route === 'readout' && <>FartOL / 4-klubbs 2026-05-20 / <strong>{t('nav.readout')}</strong></>}
+            {route === 'results' && <>FartOL / 4-klubbs 2026-05-20 / <strong>{t('nav.results')}</strong></>}
+            {route === 'export' && <>FartOL / 4-klubbs 2026-05-20 / <strong>{t('nav.export')}</strong></>}
+            {route === 'registration' && <>FartOL / 4-klubbs 2026-05-20 / <strong>Registreringsdisk</strong></>}
+            {route === 'hyrbrickor' && <>FartOL / 4-klubbs 2026-05-20 / <strong>Hyrbrickor</strong></>}
           </div>
           <div className="spacer"></div>
+          <Phase2StatusStrip phase2={window.MOCK_PHASE2} />
           {route === 'readout' && (
             <div className="row" style={{fontSize: 13}}>
               <span className="pulse-dot"></span>
@@ -264,6 +278,12 @@ function App() {
           )}
           {route === 'export' && (
             <ExportView t={t} />
+          )}
+          {route === 'registration' && (
+            <RegistrationDeskView t={t} queue={window.MOCK_PHASE2.registrationQueue} classes={window.MOCK_CLASSES} onSaved={() => { showSavedToast(); setRoute('readout'); }} />
+          )}
+          {route === 'hyrbrickor' && (
+            <HyrbrickorView t={t} rows={window.MOCK_PHASE2.hyrbrickor} onReturn={() => showSavedToast()} />
           )}
         </div>
       </main>
