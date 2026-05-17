@@ -51,7 +51,71 @@ curl --version && jq --version && xmllint --version && sqlite3 --version
 ```
 
 All four should print a version line. If any errors, re-run the install
-and recheck before proceeding to Step 1.
+and recheck before proceeding to Step 0.5.
+
+### 0.5. One-time: install the `fartol` binary + prepare the data directory
+
+The runbook's `fartol --port ...` invocations below assume the binary
+is on PATH and the SQLite database directory exists. On a fresh
+laptop, do both **once**:
+
+**Build + install the tarball** (from inside the repo working tree):
+
+```
+bash scripts/build-fartol.sh
+npm install -g dist/fartol-*.tgz
+```
+
+`scripts/build-fartol.sh` runs `pnpm -r typecheck`, `pnpm -r test`,
+builds `apps/web` (SvelteKit SPA), bundles it next to `apps/edge`'s
+compiled output, then `pnpm pack`s the result into `dist/fartol-*.tgz`.
+The `npm install -g` then drops the `fartol` binary on PATH (typically
+`$(npm prefix -g)/bin/fartol`).
+
+Verify:
+
+```
+which fartol
+fartol --help
+```
+
+If `fartol --help` errors with "command not found", check
+`$(npm prefix -g)/bin` is on your `$PATH` — the npm prefix is
+user-owned on most modern Linux installs (no sudo needed) but the
+default `$PATH` doesn't always pick it up. Quick fix:
+
+```
+export PATH="$(npm prefix -g)/bin:$PATH"
+echo 'export PATH="$(npm prefix -g)/bin:$PATH"' >> ~/.bashrc
+```
+
+**Prepare the data directory** (XDG location, no sudo required):
+
+```
+mkdir -p ~/.local/share/fartol ~/.local/share/fartol/backups
+```
+
+The runbook uses `~/.local/share/fartol/4-klubbs.db` as the SQLite
+file path throughout. If you prefer a different layout
+(e.g. `/var/lib/fartol/` for a server-style install), substitute
+the path in every `--db-path` invocation below — the bridge doesn't
+care, but you'll need `sudo mkdir -p /var/lib/fartol && sudo chown
+$USER /var/lib/fartol` first because `/var/lib/` is root-owned.
+
+**Set up the Eventor key** (D-EV-1 prerequisite; the bridge boots
+without it but Eventor pre-fill silently degrades to the firmware
+hint). Create `.eventor-env` in your home directory or the working
+directory where you'll launch `fartol`:
+
+```
+echo 'EVENTOR_API_KEY=<paste-stora-tuna-ok-key-here>' > ~/.eventor-env
+chmod 600 ~/.eventor-env
+```
+
+The key is the Stora Tuna OK Eventor API key; the file is gitignored
+and never logged. To use it, `source ~/.eventor-env` before each
+`fartol ...` invocation OR add `export $(cat ~/.eventor-env | xargs)`
+to your shell rc.
 
 ### 1. Power up the FartOL laptop
 
@@ -70,26 +134,84 @@ and recheck before proceeding to Step 1.
 - From the MeOS laptop, `ping <fartol-laptop-ip>` should respond within
   a few ms. If not, fix LAN before continuing.
 
-### 3. Boot the FartOL bridge
+### 3. Boot the FartOL bridge (first boot — no competition yet)
 
-On the FartOL laptop:
+On the FartOL laptop. **This first boot intentionally omits
+`--competition-id`** because the 4-klubbs competition doesn't exist
+in the DB yet — Step 3.5 below creates it via the wizard. Once you
+have the UUID, restart with `--competition-id <uuid>` (Step 3.6) so
+MIP/MOP know which competition the wire belongs to.
 
 ```
-fartol --port 3000 --bind-host 0.0.0.0 --allow-lan \
-       --competition-id <4-klubbs-competition-uuid> \
-       --db-path /var/lib/fartol/4-klubbs.db
+source ~/.eventor-env  # exports EVENTOR_API_KEY for the child process
+FARTOL_DEV=1 fartol \
+  --port 3000 --bind-host 0.0.0.0 --allow-lan \
+  --db-path ~/.local/share/fartol/4-klubbs.db \
+  --backup-dir ~/.local/share/fartol/backups
 ```
 
 Notes:
 
-- `--bind-host 0.0.0.0` + `--allow-lan` is REQUIRED to expose `/mip` and
-  `/mop` to the MeOS laptop. Without `--allow-lan` the argv parser
+- `--bind-host 0.0.0.0` + `--allow-lan` is REQUIRED to expose `/mip`
+  and `/mop` to the MeOS laptop. Without `--allow-lan` the argv parser
   refuses non-loopback bind hosts (T-WS-FAN-OUT guard).
-- `--competition-id` sets the active competition at boot so MIP/MOP know
-  which competition the wire belongs to. Equivalent to a
-  `POST /api/sessions/active-competition` after listen.
+- `FARTOL_DEV=1` enables `/api/__dev/*` + `/api/__admin/*` operator
+  endpoints + makes the TweaksPanel "Uppdatera Eventor" button visible.
+  Pre-event setup uses it; at event time you may drop it if you want a
+  pure-production posture.
 - Watch for `listening on 0.0.0.0:3000` in the log. If the bridge
-  silently exits, check the systemd unit log: `journalctl -u fartol -n 50`.
+  silently exits, check the systemd unit log (`journalctl -u fartol -n
+50`) or stderr if running interactively.
+- First boot also triggers the Eventor cachedcompetitors download in
+  the background (D-EV-1 upstart). Expect a ~10s blip then green
+  "Eventor: cache OK" in the TweaksPanel.
+
+### 3.5. Create the 4-klubbs competition via the wizard
+
+The wizard takes the Condes / Purple Pen courseData XML and creates the
+competition + classes + courses in one atomic POST.
+
+1. On the FartOL laptop, browser → `http://localhost:3000/_new?wizard=1`.
+2. Fill **Name** (`4-klubbs 2026-05-20`), **Date** (`2026-05-20`).
+3. Drag-drop the local courseData XML (
+   `.reference/2026-05-20 4-klubbs_coursedata.xml`) onto the DropZone.
+4. Click **Spara** / **Create**. The wizard hits `POST
+/api/competitions/from-wizard` which atomically inserts the
+   competition + all 5 courses (Vit/Grön/Gul/Orange/Violett) + classes
+   (the course-only fallback synthesises a 1:1 class-per-course).
+5. The browser redirects to `/competition/<uuid>/readout` — **capture
+   the UUID from the URL**. It looks like
+   `9bda20c2-605b-2fe3-cf27-209c4642dab8`.
+6. Confirm the WalkupModal Bana picker now shows the 5 course names.
+
+### 3.6. Restart the bridge with `--competition-id` (optional but recommended)
+
+You can either:
+
+A) **Set the active competition via REST** (no restart needed; survives
+restart because it persists to the `config` table):
+
+```
+curl -X POST http://localhost:3000/api/sessions/active-competition \
+  -H 'content-type: application/json' \
+  -d '{ "competition_id": "<paste-uuid-from-step-3.5>" }'
+```
+
+B) **Restart with `--competition-id`** to make the CLI invocation
+self-documenting:
+
+```
+# Ctrl-C the previous fartol, then:
+source ~/.eventor-env
+FARTOL_DEV=1 fartol \
+  --port 3000 --bind-host 0.0.0.0 --allow-lan \
+  --db-path ~/.local/share/fartol/4-klubbs.db \
+  --backup-dir ~/.local/share/fartol/backups \
+  --competition-id <paste-uuid-from-step-3.5>
+```
+
+Either way, the bridge log should now show
+`active competition: <uuid>` near the listen line.
 
 ### 4. Open the FartOL UI on the FartOL laptop
 
@@ -161,7 +283,7 @@ directory:
 
 ```
 FARTOL_PORT=3000 \
-FARTOL_DB=/var/lib/fartol/4-klubbs.db \
+FARTOL_DB=~/.local/share/fartol/4-klubbs.db \
 FARTOL_HOST=127.0.0.1 \
 FARTOL_SKIP_BOOT=1 \
 bash apps/edge/scripts/bench-smoke-phase2.sh
@@ -338,7 +460,7 @@ Symptoms: Step 9 above does NOT print `6/6 passed`.
      pre-v2.0 MOP payload.
    - **Eventor status missing** → key not set; see Step 8.
    - **Hyrbricka round-trip fails** → check the SQLite migration ran:
-     `sqlite3 /var/lib/fartol/4-klubbs.db ".schema hired_cards"`
+     `sqlite3 ~/.local/share/fartol/4-klubbs.db ".schema hired_cards"`
      should include `marked_at_ms`.
 3. **If you can't fix the smoke before the event start**, the safe
    fallback is **MeOS-only operation** — turn off FartOL's `0.0.0.0`
@@ -434,11 +556,11 @@ Quick-reference for stressed-operator lookups during the event.
 journalctl -u fartol -f
 
 # Confirm the bench smoke is green
-FARTOL_SKIP_BOOT=1 FARTOL_PORT=3000 FARTOL_DB=/var/lib/fartol/4-klubbs.db \
+FARTOL_SKIP_BOOT=1 FARTOL_PORT=3000 FARTOL_DB=~/.local/share/fartol/4-klubbs.db \
   bash apps/edge/scripts/bench-smoke-phase2.sh
 
 # Inspect open rentals from the shell
-sqlite3 /var/lib/fartol/4-klubbs.db \
+sqlite3 ~/.local/share/fartol/4-klubbs.db \
   "SELECT card_number, contact_name, contact_phone FROM hired_cards
    WHERE competition_id = '<id>' AND returned_at_ms IS NULL;"
 
