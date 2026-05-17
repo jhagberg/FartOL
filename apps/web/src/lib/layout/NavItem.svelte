@@ -77,8 +77,12 @@
     cursor: default;
   }
   .nav-icon {
-    width: 16px;
-    text-align: center;
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
   }
   .nav-label {
     flex: 1;

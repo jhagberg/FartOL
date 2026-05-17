@@ -274,15 +274,29 @@
   }
   .contact-line {
     display: flex;
-    gap: 12px;
+    gap: 8px;
     font-size: 13px;
     flex-wrap: wrap;
+    align-items: center;
+  }
+  .contact-line > span,
+  .contact-line > a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 8px 10px;
+    border-radius: 6px;
+  }
+  .contact-line > span {
+    padding-left: 0;
   }
   a {
     color: var(--accent);
     text-decoration: none;
   }
-  a:hover {
+  a:hover,
+  a:focus-visible {
+    background: var(--bg-sunken);
     text-decoration: underline;
   }
   .note {

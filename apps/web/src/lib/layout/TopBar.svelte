@@ -14,6 +14,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import PulseDot from '../ui/PulseDot.svelte';
+  import Icon from '../ui/Icon.svelte';
   import Clock from './Clock.svelte';
   import { t } from '../i18n/index.ts';
 
@@ -23,9 +24,14 @@
     crumb?: Snippet;
     wsStatus?: WsStatus;
     showWs?: boolean;
+    /** Mobile drawer trigger. When provided, a hamburger renders at the
+     * left of the topbar but only at ≤720px (CSS-gated). At desktop the
+     * sidebar is permanently visible, so the hamburger is hidden even if
+     * onMenu is set. */
+    onMenu?: () => void;
   }
 
-  let { crumb, wsStatus = 'closed', showWs = true }: Props = $props();
+  let { crumb, wsStatus = 'closed', showWs = true, onMenu }: Props = $props();
 
   const variant = $derived(
     wsStatus === 'open' ? 'green' : wsStatus === 'connecting' ? 'amber' : 'red'
@@ -41,6 +47,17 @@
 </script>
 
 <header class="topbar">
+  {#if onMenu}
+    <button
+      type="button"
+      class="menu-btn"
+      onclick={onMenu}
+      aria-label={t('nav.menu')}
+      data-testid="topbar-menu"
+    >
+      <Icon name="menu" size={22} />
+    </button>
+  {/if}
   {#if crumb}
     <div class="crumb">{@render crumb()}</div>
   {/if}
@@ -64,6 +81,33 @@
     align-items: center;
     gap: var(--space-md);
     flex-shrink: 0;
+  }
+  /* Hamburger — appears only on viewports where AppShell collapses the
+     sidebar. Keeps Settings + TweaksPanel reachable on mobile. */
+  .menu-btn {
+    display: none;
+    width: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 0;
+    color: var(--fg);
+    border-radius: var(--radius);
+    cursor: pointer;
+    margin-left: calc(var(--space-lg) * -1 + var(--space-xs));
+  }
+  .menu-btn:hover,
+  .menu-btn:focus-visible {
+    background: var(--bg-sunken);
+  }
+  @media (max-width: 720px) {
+    .topbar {
+      padding: 0 var(--space-md);
+    }
+    .menu-btn {
+      display: inline-flex;
+    }
   }
   .crumb {
     font-size: var(--fs-label);

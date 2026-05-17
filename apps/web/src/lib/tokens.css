@@ -177,3 +177,48 @@ input, select, textarea { font: inherit; color: inherit; }
 /* Tabular numeric utilities — used everywhere a time, place or seq prints. */
 .mono { font-family: var(--font-mono); font-feature-settings: "tnum" 1, "zero" 1; }
 .tnum { font-feature-settings: "tnum" 1; }
+
+/* ───── Skip-link (a11y) ──────────────────────────────────────────────── */
+/* Visually hidden until keyboard-focused. Lets keyboard users bypass the
+   sidebar's 6+ nav items when reaching content. WCAG 2.1 SC 2.4.1. */
+.skip-link {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1000;
+  padding: 8px 14px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-radius: var(--radius);
+  font-size: var(--fs-label);
+  font-weight: 600;
+  text-decoration: none;
+  transform: translateY(-200%);
+  transition: transform 120ms ease-out;
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid var(--accent-fg);
+  outline-offset: 2px;
+}
+
+/* ───── prefers-reduced-motion (WCAG SC 2.3.3) ────────────────────────── */
+/* Users who opt out of motion get instant transitions + no backdrop blur
+   (the blur isn't motion per se, but it's the kind of decorative effect
+   that triggers vestibular discomfort + costs GPU on low-end devices). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .modal-scrim,
+  .walkup-scrim,
+  .wiz-scrim {
+    backdrop-filter: none !important;
+  }
+}

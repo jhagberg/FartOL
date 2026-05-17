@@ -324,8 +324,9 @@
   .banner {
     margin: 0;
     padding: 8px 12px;
-    background: oklch(0.92 0.05 80);
-    color: oklch(0.3 0.05 80);
+    background: var(--mp-soft);
+    color: var(--mp);
+    border: 1px solid color-mix(in oklch, var(--mp) 35%, transparent);
     border-radius: var(--radius);
     font-size: 13px;
     line-height: 1.4;

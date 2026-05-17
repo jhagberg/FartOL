@@ -206,18 +206,42 @@
   let manualCard = $state('');
   let manualError = $state<string | null>(null);
 
-  function onManualSubmit(e: SubmitEvent): void {
-    e.preventDefault();
-    manualError = null;
+  /** Returns the parsed card number or null if input is empty/invalid.
+   * Empty string is considered "not yet entered" → no error surface,
+   * but blur on a non-empty bad value surfaces inline so the operator
+   * doesn't tap Submit to discover the typo. UX audit #10. */
+  function validateManual(): number | null {
     const trimmed = manualCard.trim();
-    if (trimmed === '') return;
+    if (trimmed === '') return null;
     const n = Number(trimmed);
     if (!Number.isInteger(n) || n < 1 || !/^\d+$/.test(trimmed)) {
       manualError = t('registration.manualEntry.invalid');
+      return null;
+    }
+    manualError = null;
+    return n;
+  }
+
+  function onManualInput(): void {
+    // Clear stale error eagerly as the operator corrects — re-validation
+    // happens on blur or submit.
+    if (manualError !== null) manualError = null;
+  }
+  function onManualBlur(): void {
+    if (manualCard.trim() === '') {
+      manualError = null;
       return;
     }
+    validateManual();
+  }
+
+  function onManualSubmit(e: SubmitEvent): void {
+    e.preventDefault();
+    const n = validateManual();
+    if (n === null) return;
     handleIncomingCard(n, null);
     manualCard = '';
+    manualError = null;
   }
 </script>
 
@@ -240,8 +264,12 @@
       pattern="\d*"
       autocomplete="off"
       bind:value={manualCard}
+      oninput={onManualInput}
+      onblur={onManualBlur}
       placeholder={t('registration.manualEntry.placeholder')}
       aria-label={t('registration.manualEntry.placeholder')}
+      aria-invalid={manualError !== null}
+      aria-describedby={manualError !== null ? 'reg-manual-error' : undefined}
       data-testid="reg-manual-input"
     />
     <button
@@ -254,7 +282,9 @@
     </button>
   </form>
   {#if manualError !== null}
-    <p class="manual-err" role="alert" data-testid="reg-manual-error">{manualError}</p>
+    <p id="reg-manual-error" class="manual-err" role="alert" data-testid="reg-manual-error">
+      {manualError}
+    </p>
   {/if}
 
   {#if currentCard === null}

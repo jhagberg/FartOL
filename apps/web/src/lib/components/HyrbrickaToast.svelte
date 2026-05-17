@@ -127,8 +127,8 @@
 <style>
   .hyrbricka-toast {
     position: fixed;
-    right: 24px;
-    bottom: 24px;
+    right: max(24px, env(safe-area-inset-right));
+    bottom: max(24px, env(safe-area-inset-bottom));
     width: min(420px, calc(100vw - 32px));
     background: var(--bg-elev);
     border: 1px solid var(--border-strong);
@@ -180,8 +180,16 @@
   a {
     color: var(--accent);
     text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 4px 6px;
+    margin: -4px -6px;
+    border-radius: 6px;
   }
-  a:hover {
+  a:hover,
+  a:focus-visible {
+    background: var(--bg-sunken);
     text-decoration: underline;
   }
   .actions {

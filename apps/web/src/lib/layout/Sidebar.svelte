@@ -12,6 +12,7 @@
   import BrandMark from './BrandMark.svelte';
   import NavItem from './NavItem.svelte';
   import StationCard from './StationCard.svelte';
+  import Icon from '../ui/Icon.svelte';
   import { t } from '../i18n/index.ts';
 
   type StationStatus = 'online' | 'offline' | 'connecting';
@@ -42,12 +43,12 @@
   </div>
 
   <NavItem active={route === 'home'} onclick={() => onNavigate?.('home')}>
-    {#snippet icon()}<span>◇</span>{/snippet}
+    {#snippet icon()}<Icon name="home" />{/snippet}
     {t('nav.competitions')}
   </NavItem>
 
   <NavItem active={route === 'readout'} onclick={() => onNavigate?.('readout')}>
-    {#snippet icon()}<span>●</span>{/snippet}
+    {#snippet icon()}<Icon name="radio" />{/snippet}
     {t('nav.readout')}
     {#snippet badge()}
       {#if readoutBadge != null}{readoutBadge}{/if}
@@ -55,23 +56,23 @@
   </NavItem>
 
   <NavItem active={route === 'results'} onclick={() => onNavigate?.('results')}>
-    {#snippet icon()}<span>≣</span>{/snippet}
+    {#snippet icon()}<Icon name="list" />{/snippet}
     {t('nav.results')}
   </NavItem>
 
   <NavItem active={route === 'export'} onclick={() => onNavigate?.('export')}>
-    {#snippet icon()}<span>↗</span>{/snippet}
+    {#snippet icon()}<Icon name="arrow-up-right" />{/snippet}
     {t('nav.export')}
     {#snippet badge()}IOF 3.0{/snippet}
   </NavItem>
 
   <NavItem active={route === 'hyrbrickor'} onclick={() => onNavigate?.('hyrbrickor')}>
-    {#snippet icon()}<span>⚷</span>{/snippet}
+    {#snippet icon()}<Icon name="key" />{/snippet}
     {t('nav.hyrbrickor')}
   </NavItem>
 
   <NavItem onclick={() => onOpenSettings?.()}>
-    {#snippet icon()}<span>⚙</span>{/snippet}
+    {#snippet icon()}<Icon name="settings" />{/snippet}
     {t('nav.settings')}
   </NavItem>
 

@@ -11,12 +11,17 @@
      hand the parsed File up to the wizard so Step 2's DropZone shows
      the same file as already-loaded (no double-upload).
 
-  Date uses native `<input type="date">` so mobile / tablet operators
-  get the OS date picker. Forced `lang="sv"` so display is always
-  YYYY-MM-DD regardless of the OS or Chrome UI language — Jonas's
-  laptop has LC_TIME=sv_SE but LANGUAGE=en_GB:en which Chrome reads
-  instead, so without `lang="sv"` the input renders DD/MM/YYYY.
-  Server-side Zod stays authoritative on the format.
+  Date input uses `type="text"` with an ISO-8601 pattern, NOT the
+  native `<input type="date">`. The native control was attempted with
+  `lang="sv"` first, but Chrome on Linux ignores the element-level lang
+  attribute for date input rendering and falls back to the system
+  LANG/LANGUAGE locale — so on Jonas's laptop the native picker rendered
+  the value as `DD/MM/YYYY` even with `lang="sv"`. A text input with
+  `pattern="\d{4}-\d{2}-\d{2}"` and Swedish-format placeholder gives a
+  stable YYYY-MM-DD display on every Chrome/Firefox/Safari/OS combo.
+  The quickstart-import path auto-fills this field from the XML
+  `<Event>` block in most real-world cases anyway. Server-side Zod
+  stays authoritative on format.
 
   Locked by:
   - 01-UI-SPEC.md §"Click 1, Click 2, Click 3" + §"Date inputs"
@@ -178,6 +183,8 @@
           accept=".xml,application/xml,text/xml"
           onchange={onFileInputChange}
           class="hidden-file-input"
+          tabindex={-1}
+          aria-hidden="true"
           data-testid="wiz-step1-file"
         />
         <button
@@ -228,18 +235,25 @@
   </div>
   <div class="field">
     <label for="wiz-date">{t('wiz.date')}</label>
-    <!-- `lang="sv"` forces YYYY-MM-DD display + Swedish picker
-         localisation regardless of Chrome UI language. Wire format is
-         always ISO 8601 (the value attr serializes that way). -->
+    <!-- ISO 8601 text input, NOT type="date" — see the file header for
+         the Chrome/Linux locale fallback that made the native control
+         unusable. Pattern validates client-side; canAdvanceFromStep1
+         in the parent wizard already enforces isoDate.test(date) before
+         Next, and the server's Zod schema is the authoritative gate. -->
     <input
       id="wiz-date"
-      class="input"
-      type="date"
-      lang="sv"
+      class="input mono"
+      type="text"
       value={date}
+      placeholder={t('wiz.date.placeholder')}
+      pattern={'\\d{4}-\\d{2}-\\d{2}'}
+      maxlength={10}
+      autocomplete="off"
+      spellcheck="false"
       oninput={(e) => ondatechange((e.currentTarget as HTMLInputElement).value)}
       data-testid="wiz-date"
     />
+    <small class="muted small">{t('wiz.date.helper')}</small>
   </div>
 </div>
 

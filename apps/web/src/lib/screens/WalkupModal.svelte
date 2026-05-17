@@ -149,6 +149,38 @@
    * immediately when the save didn't land. The form stays populated. */
   let networkError = $state(false);
 
+  /** Dirty-check (UI/UX audit #2, 2026-05-17): when the operator has
+   * typed anything that would be discarded on close, scrim-tap shows a
+   * confirm row instead of dropping the form. At the registration desk
+   * one accidental tap = one runner lost from the queue. The Esc + the
+   * explicit Avbryt button still close without confirm — they're
+   * explicit intent. */
+  const initialNameVal = untrack(initialName);
+  const initialClubVal = untrack(initialClub);
+  const dirty = $derived(
+    name !== initialNameVal ||
+      club !== initialClubVal ||
+      classId !== '' ||
+      cardNumberLocal !== initialCard ||
+      hiredCard !== false ||
+      contactName !== '' ||
+      contactPhone !== '' ||
+      contactEmail !== '' ||
+      contactNote !== ''
+  );
+  let confirmingClose = $state(false);
+
+  function onScrimTap(): void {
+    if (dirty && !confirmingClose) {
+      confirmingClose = true;
+      return;
+    }
+    close();
+  }
+  function cancelClose(): void {
+    confirmingClose = false;
+  }
+
   function close(): void {
     // Phase 2.0 Plan 02-02b: when the parent supplies onClose (the
     // registration desk drives auto-advance), invoke it instead of
@@ -302,7 +334,7 @@
   }
 </script>
 
-<div class="walkup-scrim" role="presentation" data-testid="walkup-overlay" onclick={close}>
+<div class="walkup-scrim" role="presentation" data-testid="walkup-overlay" onclick={onScrimTap}>
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div
     class="walkup-modal"
@@ -442,6 +474,32 @@
         </div>
       {/if}
 
+      {#if confirmingClose}
+        <div class="discard-confirm" role="alert" data-testid="walkup-discard-confirm">
+          <p class="discard-msg">{t('walk.discard.msg')}</p>
+          <div class="discard-actions">
+            <Button
+              variant="ghost"
+              size="sm"
+              type="button"
+              onclick={cancelClose}
+              data-testid="walkup-discard-cancel"
+            >
+              {t('walk.discard.keep')}
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              type="button"
+              onclick={close}
+              data-testid="walkup-discard-confirm-btn"
+            >
+              {t('walk.discard.discard')}
+            </Button>
+          </div>
+        </div>
+      {/if}
+
       <footer class="foot">
         <Button
           variant="ghost"
@@ -511,6 +569,17 @@
   .head {
     padding: 18px 22px 8px;
     border-bottom: 1px solid var(--border);
+  }
+  @media (max-width: 480px) {
+    .walkup-scrim {
+      padding: var(--space-sm);
+    }
+    .head {
+      padding: 14px 16px 6px;
+    }
+    .body {
+      padding: 14px 16px;
+    }
   }
   .head h2 {
     margin: 0 0 4px;
@@ -597,5 +666,30 @@
     justify-content: flex-end;
     gap: 10px;
     padding-top: 6px;
+  }
+  /* Discard-confirm bar — visible only when the operator taps the
+     scrim with unsaved edits. Visually heavy enough that an accidental
+     tap won't be missed; lives inside the modal body so it stays in
+     visual context with the form. */
+  .discard-confirm {
+    margin: 4px 0 0;
+    padding: 10px 12px;
+    background: var(--mp-soft);
+    border: 1px solid var(--mp);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .discard-msg {
+    margin: 0;
+    color: var(--fg);
+    font-size: 13.5px;
+    font-weight: 500;
+  }
+  .discard-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
   }
 </style>
