@@ -19,10 +19,17 @@
 //   3. Construct the clubs endpoint:
 //         {baseUrl}export/clubs?version=3.0
 //   4. Both requests carry the `ApiKey: <opts.apiKey>` header.
-//   5. Response bodies are gzipped; pipe through node:zlib's createGunzip
-//      into tempfiles under opts.tmpDir (default os.tmpdir()). The
-//      returned paths are absolute; the caller is responsible for
-//      cleanup once ingestEventorCache has consumed them.
+//   5. Response bodies are PKZIP archives (Content-Type: application/zip,
+//      magic 50 4b 03 04), NOT gzip streams — `zip=true` in the URL is the
+//      MeOS-mirrored archive-container flag, not an HTTP-level compression
+//      hint. The archive contains a single XML entry; yauzl streams the
+//      entry to a tempfile under opts.tmpDir (default os.tmpdir()) without
+//      buffering the full 90 MB uncompressed body. The returned paths are
+//      absolute; the caller is responsible for cleanup once
+//      ingestEventorCache has consumed them.
+//
+//      The clubs endpoint (zip=false) returns plain XML; the same fetch
+//      path detects format via magic bytes and skips the unzip step.
 //
 // Threat register entries this satisfies:
 //   - T-02-06 (boot fetch hangs bridge): timeout via AbortController
@@ -38,12 +45,13 @@
 // - .planning/research/eventor-api-smoke.md §"Download pipeline"
 
 import { createGunzip } from 'node:zlib';
-import { createWriteStream } from 'node:fs';
+import { createWriteStream, promises as fsp } from 'node:fs';
 import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
 import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
+import yauzl from 'yauzl';
 
 export interface EventorDownloadOpts {
   /** Eventor API key. When undefined or empty, download throws BEFORE issuing
@@ -51,7 +59,9 @@ export interface EventorDownloadOpts {
   apiKey: string | undefined;
   /** Override the global fetch — used by tests to inject mock responses. */
   fetchImpl?: typeof fetch;
-  /** Directory for the gunzipped XML tempfiles. Default os.tmpdir(). */
+  /** Directory for the decoded XML tempfiles (and the transient raw-body
+   * tempfile that lands next to each XML during the sniff/decode step,
+   * cleaned up on the same call). Default os.tmpdir(). */
   tmpDir?: string;
   /** Base URL for the Eventor REST API (trailing slash required). Default:
    *  https://eventor.orientering.se/api/ . */
@@ -75,6 +85,66 @@ const COMPETITORS_SUFFIX =
   'export/cachedcompetitors?includePreselectedClasses=false&zip=true&version=3.0';
 const CLUBS_SUFFIX = 'export/clubs?version=3.0';
 
+/** Magic-byte sniff over the first 4 bytes. Determines how to decode the body
+ *  written to a tempfile by `fetchToFile`. */
+function sniffFormat(head: Buffer): 'zip' | 'gzip' | 'xml' | 'unknown' {
+  if (
+    head.length >= 4 &&
+    head[0] === 0x50 &&
+    head[1] === 0x4b &&
+    head[2] === 0x03 &&
+    head[3] === 0x04
+  ) {
+    return 'zip';
+  }
+  if (head.length >= 2 && head[0] === 0x1f && head[1] === 0x8b) {
+    return 'gzip';
+  }
+  if (head.length >= 1 && head[0] === 0x3c) {
+    return 'xml';
+  }
+  return 'unknown';
+}
+
+/** Stream the first .xml entry from a PKZIP archive at `zipPath` into `destPath`. */
+function unzipFirstXmlEntry(zipPath: string, destPath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    yauzl.open(zipPath, { lazyEntries: true }, (err, zipfile) => {
+      if (err || !zipfile) {
+        reject(err ?? new Error('yauzl.open returned no zipfile'));
+        return;
+      }
+      let extracted = false;
+      zipfile.on('error', (e) => reject(e));
+      zipfile.on('end', () => {
+        if (!extracted) reject(new Error(`no .xml entry found in ${zipPath}`));
+      });
+      zipfile.on('entry', (entry: yauzl.Entry) => {
+        // Skip directories and non-XML entries (the Eventor archive ships a
+        // single competitors.xml today, but we defend against future siblings).
+        if (/\/$/.test(entry.fileName) || !/\.xml$/i.test(entry.fileName)) {
+          zipfile.readEntry();
+          return;
+        }
+        zipfile.openReadStream(entry, (rsErr, readStream) => {
+          if (rsErr || !readStream) {
+            reject(rsErr ?? new Error('openReadStream returned no stream'));
+            return;
+          }
+          extracted = true;
+          pipeline(readStream, createWriteStream(destPath))
+            .then(() => {
+              zipfile.close();
+              resolve();
+            })
+            .catch(reject);
+        });
+      });
+      zipfile.readEntry();
+    });
+  });
+}
+
 async function fetchAndUnzipTo(
   url: string,
   destPath: string,
@@ -90,6 +160,11 @@ async function fetchAndUnzipTo(
     if (abortSignal.aborted) controller.abort();
     else abortSignal.addEventListener('abort', () => controller.abort(), { once: true });
   }
+  // Raw body lands here first so we can sniff magic bytes and pick the right
+  // decoder. yauzl needs random-access to a file, not a stream, so this
+  // tempfile is unavoidable for the PKZIP path; gzip + plain-XML paths reuse
+  // the same write to keep the code shape uniform.
+  const rawPath = `${destPath}.raw`;
   try {
     const res = await fetchImpl(url, {
       method: 'GET',
@@ -104,9 +179,38 @@ async function fetchAndUnzipTo(
     }
     // res.body is a Web ReadableStream — convert to a Node Readable for pipeline.
     const nodeStream = Readable.fromWeb(res.body as unknown as import('stream/web').ReadableStream);
-    await pipeline(nodeStream, createGunzip(), createWriteStream(destPath));
+    await pipeline(nodeStream, createWriteStream(rawPath));
+
+    const fh = await fsp.open(rawPath, 'r');
+    let head: Buffer;
+    try {
+      const buf = Buffer.alloc(4);
+      const { bytesRead } = await fh.read(buf, 0, 4, 0);
+      head = buf.subarray(0, bytesRead);
+    } finally {
+      await fh.close();
+    }
+    const format = sniffFormat(head);
+
+    if (format === 'zip') {
+      await unzipFirstXmlEntry(rawPath, destPath);
+    } else if (format === 'gzip') {
+      await pipeline(
+        Readable.from(await fsp.readFile(rawPath)),
+        createGunzip(),
+        createWriteStream(destPath)
+      );
+    } else if (format === 'xml') {
+      await fsp.rename(rawPath, destPath);
+    } else {
+      const headHex = head.toString('hex');
+      throw new Error(
+        `eventor body has unknown format (head=${headHex}, url=${url}); expected PKZIP / gzip / XML`
+      );
+    }
   } finally {
     clearTimeout(timer);
+    await fsp.unlink(rawPath).catch(() => undefined);
   }
 }
 

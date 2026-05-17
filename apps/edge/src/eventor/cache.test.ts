@@ -45,6 +45,7 @@ import { eq } from 'drizzle-orm';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIX_DIR = path.join(__dirname, '__fixtures__');
 const COMPETITORS_XML = path.join(FIX_DIR, 'competitors-sample.xml');
+const COMPETITORS_ZIP = path.join(FIX_DIR, 'competitors-sample.zip');
 const CLUBS_XML = path.join(FIX_DIR, 'clubs-sample.xml');
 
 interface FetchCall {
@@ -119,6 +120,54 @@ describe('downloadEventorPayloads — URL + header + tempfile shape', () => {
       assert.match(compXml, /CompetitorList/);
       const clubsXml = readFileSync(result.clubsPath, 'utf8');
       assert.match(clubsXml, /OrganisationList|ClubList/);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test('extracts PKZIP archive (real Eventor zip=true format) to tempfile XML', async () => {
+    // Eventor's /export/cachedcompetitors?zip=true returns a PKZIP archive
+    // containing a single .xml entry (NOT a gzip stream — that misread cost
+    // a debug cycle on 2026-05-17 with Z_DATA_ERROR "incorrect header check"
+    // when the old createGunzip path met real Eventor bytes). competitors
+    // path = PKZIP; clubs path = plain XML (no zip parameter in URL).
+    const compZipBytes = readFileSync(COMPETITORS_ZIP);
+    const clubsXmlBytes = readFileSync(CLUBS_XML);
+    const { impl } = makeMockFetch(compZipBytes, clubsXmlBytes);
+    const tmp = mkdtempSync(path.join(tmpdir(), 'fartol-eventor-pkzip-'));
+    try {
+      const result = await downloadEventorPayloads({
+        apiKey: 'TEST-KEY-1234',
+        fetchImpl: impl,
+        tmpDir: tmp,
+      });
+      const compXml = readFileSync(result.competitorsPath, 'utf8');
+      assert.match(compXml, /CompetitorList/, 'PKZIP-extracted XML should match fixture');
+      const clubsXml = readFileSync(result.clubsPath, 'utf8');
+      assert.match(
+        clubsXml,
+        /OrganisationList|ClubList/,
+        'plain-XML clubs body should pass through'
+      );
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test('rejects body with neither PKZIP / gzip / XML magic with a descriptive error', async () => {
+    const junk = Buffer.from([0xff, 0xfe, 0xfd, 0xfc, 0xfb]);
+    const { impl } = makeMockFetch(junk, junk);
+    const tmp = mkdtempSync(path.join(tmpdir(), 'fartol-eventor-junk-'));
+    try {
+      await assert.rejects(
+        () =>
+          downloadEventorPayloads({
+            apiKey: 'TEST-KEY-1234',
+            fetchImpl: impl,
+            tmpDir: tmp,
+          }),
+        /unknown format.*PKZIP.*gzip.*XML/i
+      );
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }
