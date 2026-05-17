@@ -36,11 +36,19 @@
 // - .planning/phases/02-4-klubbs-mvp/02-PATTERNS.md §4 (transactional ingest)
 //   + §S-4 (broadcast after commit)
 
+import crypto from 'node:crypto';
+
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { XMLParser } from 'fast-xml-parser';
 import { eq, sql } from 'drizzle-orm';
 
-import { meosCompetitors, meosClasses, meosClubs, config as configTable } from '../../db/schema.ts';
+import {
+  meosCompetitors,
+  meosClasses,
+  meosClubs,
+  competitors,
+  config as configTable,
+} from '../../db/schema.ts';
 import { readoutChannel } from '@fartol/shared-types';
 import { toArray, asInt, asString, asBool } from './shared.ts';
 
@@ -266,25 +274,30 @@ export default async function registerMopRoute(app: FastifyInstance): Promise<vo
         // just wrote get merged. This is race-safe because both writes and
         // the merge SELECT run inside the same sqlite.transaction.
         if (activeCompetitionId !== null) {
-          const result = app.fartolDb.db.run(sql`
-            INSERT INTO competitors (
-              id, competition_id, name, club, class_id, card_number,
-              consent_at_ms, consent_status, source
-            )
+          // Gemini review G-003: was a single INSERT...SELECT using SQL
+          // `lower(hex(randomblob(16)))` which produces 32-char hex strings
+          // (no hyphens) — inconsistent with the rest of the codebase, which
+          // uses crypto.randomUUID() (RFC 4122 36-char hyphenated). External
+          // consumers (frontend routes, IOF XML export) expect the canonical
+          // shape. Refactor: SELECT the eligible rows in one query, then
+          // INSERT each with crypto.randomUUID() in a JS loop. Still runs
+          // inside the surrounding sqlite.transaction() so the all-or-nothing
+          // atomicity (D-MOP-2) is preserved.
+          const eligible = app.fartolDb.db.all<{
+            name: string;
+            club: string | null;
+            card_number: number;
+            class_id: string;
+          }>(sql`
             SELECT
-              lower(hex(randomblob(16))),
-              ${activeCompetitionId},
-              mc.name,
-              (SELECT mo.name FROM meos_clubs mo WHERE mo.id = mc.org_id),
+              mc.name AS name,
+              (SELECT mo.name FROM meos_clubs mo WHERE mo.id = mc.org_id) AS club,
+              mc.card_number AS card_number,
               (SELECT c.id FROM classes c
                 JOIN meos_classes mcl ON mcl.id = mc.class_id
                 WHERE c.competition_id = ${activeCompetitionId}
                   AND c.name = mcl.name
-                LIMIT 1),
-              mc.card_number,
-              NULL,
-              'pending_first_read',
-              'meos'
+                LIMIT 1) AS class_id
             FROM meos_competitors mc
             WHERE mc.card_number IS NOT NULL
               AND mc.last_mop_update_ms = ${nowMs}
@@ -300,7 +313,24 @@ export default async function registerMopRoute(app: FastifyInstance): Promise<vo
                   AND c.name = mcl.name
               )
           `);
-          mergedCount = (result as unknown as { changes?: number }).changes ?? 0;
+
+          for (const row of eligible) {
+            app.fartolDb.db
+              .insert(competitors)
+              .values({
+                id: crypto.randomUUID(),
+                competitionId: activeCompetitionId,
+                name: row.name,
+                club: row.club,
+                classId: row.class_id,
+                cardNumber: row.card_number,
+                consentAtMs: null,
+                consentStatus: 'pending_first_read',
+                source: 'meos',
+              })
+              .run();
+            mergedCount++;
+          }
         }
       })();
     } catch (err) {

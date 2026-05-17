@@ -404,6 +404,34 @@ describe('POST /mop — integrations/meos/mop', () => {
     assert.equal(merges.length, 0);
   });
 
+  test('test 9c (Gemini G-003): auto-merged competitor IDs are RFC 4122 UUIDs (36-char hyphenated)', async () => {
+    // Gemini review G-003: the previous SQL `lower(hex(randomblob(16)))`
+    // produced 32-char hex strings with no hyphens, inconsistent with the
+    // crypto.randomUUID() format used elsewhere. After the refactor, every
+    // auto-merged competitor MUST carry a canonical UUID v4 ID so frontend
+    // routes and IOF XML consumers see the same shape they get from walkup
+    // POSTs (which always use crypto.randomUUID()).
+    const { competitionId } = await seedActiveCompetition(ctx, { className: 'Vit' });
+
+    const res = await postMop(ctx, COMPLETE_XML);
+    assert.equal(res.status, 200);
+
+    const compRows = ctx.handle.db
+      .select()
+      .from(competitors)
+      .where(eq(competitors.competitionId, competitionId))
+      .all();
+    assert.equal(compRows.length, 1);
+    const merged = compRows[0];
+    assert.ok(merged);
+    assert.equal(merged.source, 'meos');
+    assert.match(
+      merged.id,
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+      'auto-merged competitor id must be a canonical RFC 4122 UUID v4 (36 chars, hyphenated)'
+    );
+  });
+
   test('test 10: empty body → MOPStatus ERROR (Pitfall 7)', async () => {
     const res = await postMop(ctx, '');
     assert.equal(res.status, 200);
