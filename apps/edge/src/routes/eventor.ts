@@ -39,6 +39,7 @@ import { lookupBySiCard, lookupByNamePrefix } from '../eventor/lookup.ts';
 import { eventorCompetitors, config as configTable } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
 import { issuesToErrors } from './_zod-errors.ts';
+import { resolveSecret, resolveSecretSource } from '../config/secrets.ts';
 
 const LookupQuery = z.object({
   // z.coerce because query strings arrive as strings.
@@ -84,7 +85,13 @@ export default async function registerEventorRoutes(app: FastifyInstance): Promi
     // at runtime. import.meta.env.DEV would be bundler-time and wrong in
     // production builds.
     const fartolDev = process.env['FARTOL_DEV'] === '1';
-    const apiKey = process.env['EVENTOR_API_KEY'];
+    // Plan 02-07 task 2: env→config→absent precedence. The UI write
+    // path (PUT /api/settings/integrations) lands the key in the
+    // config table; the next status refresh reflects source='config'
+    // without a restart. process.env still wins so the headless
+    // ~/.env.fartol path stays the source of truth for CLI operators.
+    const apiKey = resolveSecret(app.fartolDb, 'EVENTOR_API_KEY');
+    const source = resolveSecretSource(app.fartolDb, 'EVENTOR_API_KEY');
 
     // Competitor count is cheap (SQLite COUNT over a 252k indexed table is
     // sub-ms). Drives the 'offline' vs 'no_key' branch when no marker is set.
@@ -121,6 +128,6 @@ export default async function registerEventorRoutes(app: FastifyInstance): Promi
       state = competitorCount > 0 ? 'ready' : 'offline';
     }
 
-    return { state, ageDays, competitorCount, fartol_dev: fartolDev };
+    return { state, ageDays, competitorCount, source, fartol_dev: fartolDev };
   });
 }

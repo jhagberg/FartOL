@@ -48,6 +48,7 @@ import { createCupsPrinterSink } from '../print/cups-sink.ts';
 import { scheduleDailyBackup } from '../backup/daily.ts';
 import { scheduleDailyRetention } from '../privacy/retention.ts';
 import { scheduleEventorBoot } from '../eventor/boot.ts';
+import { resolveSecret } from '../config/secrets.ts';
 
 export interface CliOpts {
   port: number;
@@ -524,7 +525,13 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
   // first runNow() as fire-and-forget AFTER app.listen below so a missing
   // EVENTOR_API_KEY or a network failure NEVER blocks bridge startup
   // (Pitfall 5 mitigation).
-  const eventorApiKey = process.env['EVENTOR_API_KEY'];
+  //
+  // Plan 02-07 task 2 — env→config→absent precedence. The UI write
+  // path (PUT /api/settings/integrations) lands the key in the config
+  // table; the next boot picks it up via resolveSecret without
+  // requiring an ~/.env.fartol edit. process.env still wins so
+  // headless / CI installs keep working unchanged.
+  const eventorApiKey = resolveSecret(handle, 'EVENTOR_API_KEY');
   const eventor = scheduleEventorBoot(handle, {
     apiKey: eventorApiKey,
     logger: app.log,

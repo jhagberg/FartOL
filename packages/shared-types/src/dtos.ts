@@ -356,6 +356,13 @@ export const EventorStatusDTO = z.object({
   state: z.enum(['ready', 'stale', 'offline', 'no_key']),
   ageDays: z.number().int().nullable(),
   competitorCount: z.number().int().nonnegative(),
+  /** Phase 2.0 Plan 02-07 task 2 — source of the resolved EVENTOR_API_KEY.
+   * 'env' = process.env wins (~/.env.fartol / CLI export); 'config' = UI
+   * wrote it via PUT /api/settings/integrations; 'absent' = neither set
+   * (paired with state='no_key'). SettingsView reads this to render the
+   * "Värdet kommer från ~/.env.fartol …" banner so the operator knows
+   * env will trump any UI save on next boot. */
+  source: z.enum(['env', 'config', 'absent']),
   fartol_dev: z.boolean(),
 });
 export type EventorStatusDTO = z.infer<typeof EventorStatusDTO>;

@@ -238,4 +238,66 @@ describe('GET /api/eventor/status', () => {
       await teardown(ctx);
     }
   });
+
+  // ---------------------------------------------------------------------------
+  // Plan 02-07 task 2 — boot precedence reflected in /status.
+  //
+  // The status endpoint exposes a `source` field so the SettingsView
+  // banner can render "Värdet kommer från ~/.env.fartol …" when env
+  // wins, and ops can confirm at a glance which precedence path is
+  // active without restarting the bridge. Truth keys:
+  //   - env set → source: 'env'
+  //   - env unset, config row set → source: 'config'
+  //   - neither → state: 'no_key' (existing) + source: 'absent'
+  // ---------------------------------------------------------------------------
+
+  test('Task 2 Test 4a: env set → source=env', async () => {
+    process.env['EVENTOR_API_KEY'] = 'ENV-WINS';
+    const ctx = await boot();
+    try {
+      // Seed a config row that would normally lose to env.
+      ctx.handle.db
+        .insert(configTable)
+        .values({ key: 'EVENTOR_API_KEY', value: 'CONFIG-LOSES' })
+        .run();
+      const res = await ctx.app.inject({ method: 'GET', url: '/api/eventor/status' });
+      assert.equal(res.statusCode, 200);
+      const body = res.json() as { source: string };
+      assert.equal(body.source, 'env');
+    } finally {
+      await teardown(ctx);
+    }
+  });
+
+  test('Task 2 Test 4b: env undefined + config row → source=config (UI write path)', async () => {
+    delete process.env['EVENTOR_API_KEY'];
+    const ctx = await boot();
+    try {
+      ctx.handle.db.insert(configTable).values({ key: 'EVENTOR_API_KEY', value: 'FROM-UI' }).run();
+      const res = await ctx.app.inject({ method: 'GET', url: '/api/eventor/status' });
+      assert.equal(res.statusCode, 200);
+      const body = res.json() as { state: string; source: string };
+      // When the UI writes a key, the bridge should NOT report no_key
+      // even though the env var is unset. ageDays/marker still drives
+      // ready/stale/offline; here we just assert source switched.
+      assert.equal(body.source, 'config');
+      assert.notEqual(body.state, 'no_key');
+    } finally {
+      await teardown(ctx);
+    }
+  });
+
+  test('Task 2 Test 4c: neither → source=absent + state=no_key', async () => {
+    delete process.env['EVENTOR_API_KEY'];
+    const ctx = await boot();
+    try {
+      const res = await ctx.app.inject({ method: 'GET', url: '/api/eventor/status' });
+      assert.equal(res.statusCode, 200);
+      const body = res.json() as { state: string; source: string };
+      assert.equal(body.state, 'no_key');
+      assert.equal(body.source, 'absent');
+    } finally {
+      await teardown(ctx);
+    }
+  });
 });
