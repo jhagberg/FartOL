@@ -63,11 +63,15 @@ export type EventorBootResult =
       skipped: false;
       competitors: number;
       clubs: number;
+      /** Phase 2.0 — competitors whose Eventor club_id had no matching
+       * row in the just-loaded clubs.xml; nulled to keep the runner
+       * searchable. Surfaced for observability (code-review F-005). */
+      nulledClubs: number;
     }
   | {
       skipped: true;
-      reason: 'fresh' | 'empty' | 'no_key' | 'network_error';
-      /** Only present when reason='network_error'. */
+      reason: 'fresh' | 'empty' | 'no_key' | 'network_error' | 'ingest_error';
+      /** Only present when reason='network_error' or 'ingest_error'. */
       error?: unknown;
     };
 
@@ -126,17 +130,37 @@ export function scheduleEventorBoot(handle: DbHandle, opts: EventorBootOpts): Ev
     //     prior snapshot intact (cache.ts is transactional).
     try {
       const result = await ingestFn(handle, paths.competitorsPath, paths.clubsPath, nowFn());
+      // Code-review F-005: surface nulledClubs in the log. A jump in
+      // this counter (e.g. from 0 to thousands) means clubs.xml lost a
+      // popular org between runs — operator should investigate before
+      // event start. WARN threshold of >100 keeps normal background
+      // noise (single-digit orphans) silent.
+      const NULLED_CLUB_WARN_THRESHOLD = 100;
+      const nulledTail =
+        result.nulledClubs > 0 ? ` (${result.nulledClubs} runners nulled — orphan club)` : '';
       opts.logger.info(
-        `Eventor: refresh ok — ${result.competitors} competitors, ${result.clubs} clubs`
+        `Eventor: refresh ok — ${result.competitors} competitors, ${result.clubs} clubs${nulledTail}`
       );
+      if (result.nulledClubs >= NULLED_CLUB_WARN_THRESHOLD) {
+        opts.logger.warn(
+          { nulledClubs: result.nulledClubs },
+          `Eventor: ${result.nulledClubs} runners had unresolved club FK — clubs.xml may be missing orgs`
+        );
+      }
       return {
         skipped: false,
         competitors: result.competitors,
         clubs: result.clubs,
+        nulledClubs: result.nulledClubs,
       };
     } catch (err) {
+      // Code-review F-008: distinguish ingest-side failures (parser,
+      // SQLite, FK violation) from network-side failures. Operators
+      // reading the log shouldn't be steered toward "check internet"
+      // when the real cause is a malformed XML or a transactional
+      // rollback. Network errors are handled by the (3) catch above.
       opts.logger.warn({ err }, 'Eventor: ingest failed');
-      return { skipped: true, reason: 'network_error', error: err };
+      return { skipped: true, reason: 'ingest_error', error: err };
     }
   }
 

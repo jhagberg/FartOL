@@ -234,8 +234,20 @@ export default async function registerMipRoute(app: FastifyInstance): Promise<vo
       }
       // Landmine: MeOS rejects entries with empty <classname> (falls back
       // to <classid> which we don't emit — D-MIP-4). Skip rather than
-      // emit something MeOS will reject.
-      if (className.length === 0) continue;
+      // emit something MeOS will reject. Log at warn so operator can
+      // diagnose the "walk-up exists in FartOL but never lands in MeOS"
+      // symptom (code-review F-007 — missing class is the only path that
+      // produces this silent drop, and it's near-impossible to debug
+      // without the log line). No-op at 4-klubbs scale (5 classes, no
+      // deletes expected) but high diagnostic value if anything goes
+      // sideways during the race.
+      if (className.length === 0) {
+        req.log.warn(
+          { competitorId: competitor.id, classId: competitor.classId },
+          'MIP: skipping competitor with unresolvable class — MeOS will not see this entry'
+        );
+        continue;
+      }
 
       // Hired-card lookup: open rental row for this card in this competition.
       let hired = false;

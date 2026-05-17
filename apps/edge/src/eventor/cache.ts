@@ -52,6 +52,16 @@ import {
 export interface EventorIngestResult {
   competitors: number;
   clubs: number;
+  /** Phase 2.0 — count of competitors whose Eventor-supplied club_id
+   * referenced a club NOT present in the just-loaded clubs.xml. These
+   * rows are still ingested (the runner stays searchable by si_card and
+   * by family_name) but with `club_id = NULL`, so club autocomplete
+   * misses them. A jump in this counter is a canary for a clubs.xml
+   * regression (e.g. Eventor temporarily omits an org during a server
+   * update); the boot.ts handler logs it at warn level so the 4-klubbs
+   * operator sees `Eventor: N runners nulled (orphan club)` next to the
+   * cache-age indicator. Code-review F-005 fix. */
+  nulledClubs: number;
 }
 
 const BATCH_SIZE = 1000;
@@ -76,6 +86,7 @@ export async function ingestEventorCache(
   // transactions are synchronous; the wrapper rolls back on throw.
   let competitorsInserted = 0;
   let clubsInserted = 0;
+  let nulledClubs = 0;
   handle.sqlite.transaction(() => {
     // 1. Wipe prior snapshot. FK order matters — competitors.club_id
     //    references eventor_clubs.club_id; delete competitors first.
@@ -104,22 +115,27 @@ export async function ingestEventorCache(
     //    Drizzle field names; skip rows whose club_id doesn't exist in the
     //    just-loaded clubs set (orphan rows are common — see fixture row 1002).
     const knownClubIds = new Set(allClubs.map((c) => c.club_id));
-    const mappedCompetitors = allRecords.map((r) => ({
-      personId: r.person_id,
-      familyName: r.family_name,
-      givenName: r.given_name,
-      birthYear: r.birth_year,
-      sex: r.sex,
+    const mappedCompetitors = allRecords.map((r) => {
       // FK-safety: if the competitor references a club we don't have in
       // our just-loaded set, null the FK rather than fail the whole
       // transaction. The runner is still searchable by si_card and by
       // name; the missing club is recoverable by adding the org to the
-      // next clubs.xml refresh.
-      clubId: r.club_id !== null && knownClubIds.has(r.club_id) ? r.club_id : null,
-      siCard: r.si_card,
-      emitCard: r.emit_card,
-      modifyDateMs: r.modify_date_ms,
-    }));
+      // next clubs.xml refresh. Count nullings for observability
+      // (code-review F-005) — boot.ts surfaces this to the operator.
+      const hasClubMatch = r.club_id !== null && knownClubIds.has(r.club_id);
+      if (r.club_id !== null && !hasClubMatch) nulledClubs++;
+      return {
+        personId: r.person_id,
+        familyName: r.family_name,
+        givenName: r.given_name,
+        birthYear: r.birth_year,
+        sex: r.sex,
+        clubId: hasClubMatch ? r.club_id : null,
+        siCard: r.si_card,
+        emitCard: r.emit_card,
+        modifyDateMs: r.modify_date_ms,
+      };
+    });
     for (let i = 0; i < mappedCompetitors.length; i += BATCH_SIZE) {
       const chunk = mappedCompetitors.slice(i, i + BATCH_SIZE);
       handle.db.insert(eventorCompetitors).values(chunk).run();
@@ -136,5 +152,5 @@ export async function ingestEventorCache(
       .run();
   })();
 
-  return { competitors: competitorsInserted, clubs: clubsInserted };
+  return { competitors: competitorsInserted, clubs: clubsInserted, nulledClubs };
 }

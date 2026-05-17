@@ -82,7 +82,7 @@ describe('scheduleEventorBoot: staleness gate (D-EV-2)', () => {
           dlCalled = true;
           return { competitorsPath: '/x', clubsPath: '/y' };
         },
-        ingestFn: async () => ({ competitors: 0, clubs: 0 }),
+        ingestFn: async () => ({ competitors: 0, clubs: 0, nulledClubs: 0 }),
       });
       try {
         const r = await boot.runNow();
@@ -115,7 +115,7 @@ describe('scheduleEventorBoot: staleness gate (D-EV-2)', () => {
         },
         ingestFn: async () => {
           ingestCalls++;
-          return { competitors: 42, clubs: 7 };
+          return { competitors: 42, clubs: 7, nulledClubs: 0 };
         },
       });
       try {
@@ -148,7 +148,7 @@ describe('scheduleEventorBoot: staleness gate (D-EV-2)', () => {
           dlCalls++;
           return { competitorsPath: '/c', clubsPath: '/k' };
         },
-        ingestFn: async () => ({ competitors: 1, clubs: 1 }),
+        ingestFn: async () => ({ competitors: 1, clubs: 1, nulledClubs: 0 }),
       });
       try {
         const r = await boot.runNow();
@@ -176,7 +176,7 @@ describe('scheduleEventorBoot: degraded modes (D-EV-3)', () => {
         downloadFn: async () => {
           throw new Error('connect ETIMEDOUT');
         },
-        ingestFn: async () => ({ competitors: 0, clubs: 0 }),
+        ingestFn: async () => ({ competitors: 0, clubs: 0, nulledClubs: 0 }),
       });
       try {
         // Must not throw — D-EV-3 warn-and-run.
@@ -208,7 +208,7 @@ describe('scheduleEventorBoot: degraded modes (D-EV-3)', () => {
           dlCalled = true;
           return { competitorsPath: '/x', clubsPath: '/y' };
         },
-        ingestFn: async () => ({ competitors: 0, clubs: 0 }),
+        ingestFn: async () => ({ competitors: 0, clubs: 0, nulledClubs: 0 }),
       });
       try {
         const r = await boot.runNow();

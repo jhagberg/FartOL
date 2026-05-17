@@ -207,7 +207,7 @@ describe('/api/__admin/eventor/refresh — gate + happy path', () => {
       // Recording stub mirrors the EventorBootResult shape for the
       // success path. ok=true wraps the spread runNow result.
       ctx.app.fartolEventor = {
-        runNow: async () => ({ skipped: false, competitors: 252919, clubs: 1234 }),
+        runNow: async () => ({ skipped: false, competitors: 252919, clubs: 1234, nulledClubs: 0 }),
         stop: () => {},
       };
       const res = await ctx.app.inject({
