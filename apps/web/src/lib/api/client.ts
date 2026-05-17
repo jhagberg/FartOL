@@ -516,6 +516,51 @@ export function getEventorStatus(): Promise<EventorStatusDTO> {
 }
 
 // ---------------------------------------------------------------------------
+// Eventor event-based import. Two-step:
+//   1. listEventorEvents — show events on a given date so the operator
+//      can confirm they're picking the right one (not just typing an ID)
+//   2. importEntriesFromEventor — fetch + ingest the EntryList for the
+//      chosen event ID
+// ---------------------------------------------------------------------------
+
+export interface EventorEventListItem {
+  eventId: number;
+  name: string;
+  /** YYYY-MM-DD. */
+  date: string;
+  /** HH:MM:SS — null for multi-day events. */
+  clock: string | null;
+}
+
+export function listEventorEvents(opts: {
+  fromDate: string;
+  toDate?: string;
+  organisationIds?: string;
+}): Promise<{ events: EventorEventListItem[] }> {
+  const query: Record<string, string> = { fromDate: opts.fromDate };
+  if (opts.toDate !== undefined) query['toDate'] = opts.toDate;
+  if (opts.organisationIds !== undefined) query['organisationIds'] = opts.organisationIds;
+  return apiFetch<{ events: EventorEventListItem[] }>('/api/eventor/events', { query });
+}
+
+export interface EventorImportResult {
+  kind: 'EntryList';
+  competitors_created: number;
+  classes_missing: string[];
+  auto_bound: string[];
+}
+
+export function importEntriesFromEventor(
+  competitionId: string,
+  eventId: number
+): Promise<EventorImportResult> {
+  return apiFetch<EventorImportResult>(`/api/competitions/${competitionId}/eventor-import`, {
+    method: 'POST',
+    body: { eventId },
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Settings — integration API keys (Phase 2.0 Plan 02-07).
 // ---------------------------------------------------------------------------
 

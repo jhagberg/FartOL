@@ -36,6 +36,7 @@ import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { lookupBySiCard, lookupByNamePrefix } from '../eventor/lookup.ts';
+import { listEventorEvents } from '../eventor/events.ts';
 import { eventorCompetitors, config as configTable } from '../db/schema.ts';
 import { eq } from 'drizzle-orm';
 import { issuesToErrors } from './_zod-errors.ts';
@@ -46,6 +47,15 @@ const LookupQuery = z.object({
   si_card: z.coerce.number().int().positive().optional(),
   prefix: z.string().min(1).max(120).optional(),
   limit: z.coerce.number().int().positive().max(50).optional(),
+});
+
+const EventsQuery = z.object({
+  fromDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  toDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  organisationIds: z.string().max(120).optional(),
 });
 
 const CACHE_MARKER_KEY = 'eventor_cache_refreshed_at_ms';
@@ -77,6 +87,45 @@ export default async function registerEventorRoutes(app: FastifyInstance): Promi
       // prefix branch (TS narrows after the missing_query guard above).
       const suggestions = lookupByNamePrefix(app.fartolDb, prefix as string, limit ?? 20);
       return { suggestions };
+    }
+  );
+
+  // GET /api/eventor/events?fromDate=YYYY-MM-DD&toDate=YYYY-MM-DD&organisationIds=637
+  //
+  // Proxies Eventor's public `events` REST endpoint — documented in the
+  // SOFT "Guide Eventor — Hämta data via API" v2.1 (page 3 sample uses
+  // exactly `events?fromDate=2014-04-01&toDate=2014-04-30`) and at
+  // https://eventor.orientering.se/api/documentation. Returns parsed
+  // JSON the web UI can render directly. Used by ImportRunnersView to
+  // populate the event picker (operator types the competition date →
+  // sees matching Eventor events → picks one → imports the entries via
+  // the per-competition route below).
+  app.get<{ Querystring: { fromDate?: string; toDate?: string; organisationIds?: string } }>(
+    '/api/eventor/events',
+    async (req, reply) => {
+      const parsed = EventsQuery.safeParse(req.query);
+      if (!parsed.success) {
+        return reply.code(400).send(issuesToErrors(parsed.error.issues));
+      }
+      const apiKey = resolveSecret(app.fartolDb, 'EVENTOR_API_KEY');
+      if (!apiKey || apiKey.length === 0) {
+        return reply.code(503).send({ error: 'eventor_no_key' });
+      }
+      try {
+        const events = await listEventorEvents({
+          apiKey,
+          fromDate: parsed.data.fromDate,
+          ...(parsed.data.toDate !== undefined ? { toDate: parsed.data.toDate } : {}),
+          ...(parsed.data.organisationIds !== undefined
+            ? { organisationIds: parsed.data.organisationIds }
+            : {}),
+        });
+        return { events };
+      } catch (e) {
+        const msg = (e as Error).message ?? 'fetch failed';
+        app.log.warn({ err: msg }, 'eventor events fetch failed');
+        return reply.code(502).send({ error: 'eventor_fetch_failed', detail: msg });
+      }
     }
   );
 

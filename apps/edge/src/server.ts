@@ -58,6 +58,7 @@ import registerPrintRoute from './routes/print.ts';
 import registerExportRoutes from './routes/export.ts';
 import registerAdminRoutes from './routes/admin.ts';
 import registerEventorRoutes from './routes/eventor.ts';
+import registerEventorImportRoutes from './routes/eventorImport.ts';
 import registerHiredCardsRoutes from './routes/hiredCards.ts';
 import registerSettingsRoutes from './routes/settings.ts';
 import registerMipRoute from './integrations/meos/mip.ts';
@@ -274,6 +275,7 @@ export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyIn
     // Phase 2.0 Plan 02-02 — Eventor lookup + status (walk-up autocomplete).
     // Mounted after registerClubs since the lookup parallels clubs autocomplete.
     await app.register(registerEventorRoutes);
+    await app.register(registerEventorImportRoutes);
     await app.register(registerImportRoutes);
     await app.register(registerCompetitionsFromWizard);
     // Sessions registers BEFORE dev routes so dev.ts can read

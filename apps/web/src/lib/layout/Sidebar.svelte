@@ -55,6 +55,11 @@
     {/snippet}
   </NavItem>
 
+  <NavItem active={route === 'import'} onclick={() => onNavigate?.('import')}>
+    {#snippet icon()}<Icon name="arrow-up-right" />{/snippet}
+    {t('nav.import')}
+  </NavItem>
+
   <NavItem active={route === 'results'} onclick={() => onNavigate?.('results')}>
     {#snippet icon()}<Icon name="list" />{/snippet}
     {t('nav.results')}

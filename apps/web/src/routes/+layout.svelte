@@ -57,6 +57,7 @@
     const p = page.url.pathname;
     if (p === '/' || p === '') return 'home';
     if (p.endsWith('/readout')) return 'readout';
+    if (p.endsWith('/import')) return 'import';
     if (p.endsWith('/results')) return 'results';
     if (p.endsWith('/export')) return 'export';
     return 'home';
@@ -73,6 +74,7 @@
       return;
     }
     if (route === 'readout') void goto(`/competition/${activeCompId}/readout`);
+    else if (route === 'import') void goto(`/competition/${activeCompId}/import`);
     else if (route === 'results') void goto(`/competition/${activeCompId}/results`);
     else if (route === 'export') void goto(`/competition/${activeCompId}/export`);
   }
