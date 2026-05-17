@@ -104,6 +104,13 @@ export default async function registerEventorImportRoutes(app: FastifyInstance):
       }
       const validation = await validateXml(xml);
       if (!validation.valid) {
+        // Surface in the terminal log too — operators watch the log when the
+        // toast just says "xsd_invalid" and don't know which line/element
+        // the Eventor body tripped over.
+        app.log.warn(
+          { competitionId, eventId, errors: validation.errors.slice(0, 10) },
+          'eventor-import: xsd_invalid'
+        );
         return reply.code(422).send({ error: 'xsd_invalid', errors: validation.errors });
       }
 

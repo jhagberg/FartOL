@@ -72,6 +72,26 @@
   let uploading = $state(false);
   let uploadError = $state<string | null>(null);
 
+  /** Build a user-facing error string from a thrown ApiError. When the
+   * server responds with `{ error: 'xsd_invalid', errors: [...] }` (or any
+   * other shape that carries a structured `errors` array), surface the
+   * first few entries so the operator can actually see WHAT failed instead
+   * of a bare `"xsd_invalid"` code. */
+  function formatApiError(e: unknown, fallback: string): string {
+    if (!(e instanceof ApiError)) return (e as Error)?.message || fallback;
+    const body = e.body as { error?: string; errors?: unknown } | undefined;
+    const code = body?.error ?? e.message ?? fallback;
+    const errs = Array.isArray(body?.errors) ? body!.errors : null;
+    if (!errs || errs.length === 0) return code;
+    const head = errs
+      .slice(0, 3)
+      .map((x) =>
+        typeof x === 'string' ? x : typeof x === 'object' && x ? JSON.stringify(x) : String(x)
+      );
+    const more = errs.length > 3 ? ` (+${errs.length - 3} more)` : '';
+    return `${code}: ${head.join('; ')}${more}`;
+  }
+
   // --- Init: prefill the date from the competition record ------------------
   onMount(() => {
     void prefillDate();
@@ -155,7 +175,7 @@
       } else if (e instanceof ApiError && e.status === 502) {
         importError = t('importRunners.errEventorDown');
       } else {
-        importError = (e as Error).message || t('importRunners.errImportFailed');
+        importError = formatApiError(e, t('importRunners.errImportFailed'));
       }
     } finally {
       importingEventId = null;
@@ -187,7 +207,7 @@
         uploadError = t('importRunners.errWrongKind');
       }
     } catch (e) {
-      uploadError = (e as Error).message || t('importRunners.errImportFailed');
+      uploadError = formatApiError(e, t('importRunners.errImportFailed'));
     } finally {
       uploading = false;
     }
