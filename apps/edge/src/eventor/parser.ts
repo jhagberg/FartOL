@@ -42,6 +42,7 @@
 //   — wire shape, orphan-no-Organisation rule, multi-ControlCard rule.
 
 import { createReadStream, readFileSync, openSync, readSync, closeSync } from 'node:fs';
+import { StringDecoder } from 'node:string_decoder';
 import { SaxesParser } from 'saxes';
 import { XMLParser } from 'fast-xml-parser';
 
@@ -193,14 +194,22 @@ export async function streamCompetitorsXml(
     textBuf = '';
   });
 
-  // Read as raw Buffers (no encoding) — saxes decodes UTF-8 internally so
-  // multi-byte sequences split across chunk boundaries are not corrupted
-  // (RESEARCH §Pitfall 6).
+  // Use StringDecoder for stateful UTF-8 decoding across stream chunks.
+  // saxes v6 only accepts strings (verified in its .d.ts) so we MUST
+  // convert buffers ourselves. Buffer.toString('utf8') has no streaming
+  // state, so a chunk boundary that lands inside a multi-byte codepoint
+  // yields U+FFFD at the seam — every "Östberg" / "Pär" / "André" in the
+  // 252919-row Swedish runner DB has ~64KB/N probability of corruption.
+  // StringDecoder buffers partial multi-byte sequences across writes,
+  // which is exactly its purpose (Phase 2.0 code-review F-001 BLOCKER).
+  const decoder = new StringDecoder('utf8');
   const stream = createReadStream(path);
   for await (const chunk of stream) {
-    parser.write(chunk.toString('utf8'));
+    parser.write(decoder.write(chunk as Buffer));
     if (parserError) throw parserError;
   }
+  const tail = decoder.end();
+  if (tail.length > 0) parser.write(tail);
   parser.close();
   if (parserError) throw parserError;
 }

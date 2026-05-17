@@ -96,6 +96,55 @@ describe('eventor parser: streamCompetitorsXml — synthetic fixture', () => {
   });
 });
 
+describe('eventor parser: UTF-8 chunk-boundary safety (F-001 regression)', () => {
+  // Regression test for code-review F-001 BLOCKER. Forces a chunk
+  // boundary INSIDE a multi-byte UTF-8 codepoint and asserts that
+  // streamCompetitorsXml preserves the character. Before the fix, the
+  // per-chunk Buffer.toString('utf8') lost the upper bytes of "Östberg"
+  // / "Pär" / similar at any seam landing inside the two-byte 0xC3 0x96
+  // sequence for "Ö" (and the 0xC3 0xA4 for "ä", 0xC3 0xA5 for "å").
+  test('manual saxes pipeline preserves "Östberg" when chunk splits mid-codepoint', async () => {
+    const { SaxesParser } = await import('saxes');
+    const { StringDecoder } = await import('node:string_decoder');
+    const xml =
+      '<?xml version="1.0" encoding="UTF-8"?>' +
+      '<CompetitorList xmlns="http://www.orienteering.org/datastandard/3.0">' +
+      '<Competitor><Person><Id type="Sweden">42</Id>' +
+      '<Name><Family>Östberg</Family><Given>Pär</Given></Name>' +
+      '</Person></Competitor>' +
+      '</CompetitorList>';
+    const bytes = Buffer.from(xml, 'utf8');
+    // Find the byte index of "Ö" (0xC3 0x96) and force a split BETWEEN
+    // the two bytes — that's exactly the boundary that produced U+FFFD
+    // before the fix.
+    const splitAt = bytes.indexOf(0xc3) + 1; // points at the 0x96
+    assert.ok(splitAt > 1, 'fixture must contain the multi-byte Ö');
+    const chunkA = bytes.subarray(0, splitAt);
+    const chunkB = bytes.subarray(splitAt);
+
+    const parser = new SaxesParser({ xmlns: true });
+    const decoder = new StringDecoder('utf8');
+    let captured = '';
+    let inFamily = false;
+    parser.on('opentag', (tag) => {
+      if (tag.name === 'Family') inFamily = true;
+    });
+    parser.on('text', (t) => {
+      if (inFamily) captured += t;
+    });
+    parser.on('closetag', (tag) => {
+      if (tag.name === 'Family') inFamily = false;
+    });
+
+    parser.write(decoder.write(chunkA));
+    parser.write(decoder.write(chunkB));
+    const tail = decoder.end();
+    if (tail.length > 0) parser.write(tail);
+    parser.close();
+    assert.equal(captured, 'Östberg');
+  });
+});
+
 describe('eventor parser: DOCTYPE pre-flight (T-FILE-IMPORT)', () => {
   test('throws "DOCTYPE not allowed" on the with-doctype fixture', async () => {
     await assert.rejects(
