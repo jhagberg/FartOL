@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v0.0.1
 milestone_name: milestone
-status: phase-ready-for-discussion
+status: Phase 2 complete
 stopped_at: Phase 2 round-2 context gathered — 14 implementation decisions locked across MIP/MOP/Eventor/Hyrbricka; ready for /gsd-plan-phase 2
-last_updated: "2026-05-16T19:58:29.718Z"
+last_updated: '2026-05-17T00:33:44.987Z'
 progress:
   total_phases: 8
   completed_phases: 2
@@ -24,7 +24,7 @@ not duplicated here.
 
 ## Current position
 
-Phase: 2.0 (4-klubbs MVP — parallel with MeOS) — READY FOR DISCUSSION
+Phase: 2 — COMPLETE
 Plan: 0 of TBD (suggested 5–6, see CONTEXT.md)
 **Phase:** Phase 2.0 — 4-klubbs MVP (parallel with MeOS)
 **Hard deadline:** Wednesday **2026-05-20** (4-klubbs training at Stora Tuna OK)
@@ -279,11 +279,10 @@ Resume File: .planning/phases/02-4-klubbs-mvp/02-CONTEXT.md
   entirely — MIP XSD v3.0 (uploaded 2026-05-14) and MOP v2.0 (March 2025) are
   the only actively-versioned protocols and cover every documented use case.
   Hyrbricka handled in both systems independently (FartOL toast at finish-readout
-
-  + MIP `hired="true"` triggers MeOS reminder). Yjs and QR self-signup deferred
-  to Phase 2.1. CONTEXT.md at `.planning/phases/02-4-klubbs-mvp/02-CONTEXT.md`.
-  ROADMAP.md updated with the split. MeOS protocol research at
-  `.planning/research/meos-protocols.md`.
+  - MIP `hired="true"` triggers MeOS reminder). Yjs and QR self-signup deferred
+    to Phase 2.1. CONTEXT.md at `.planning/phases/02-4-klubbs-mvp/02-CONTEXT.md`.
+    ROADMAP.md updated with the split. MeOS protocol research at
+    `.planning/research/meos-protocols.md`.
 
 - 2026-05-13 — Phase 0.1 (gap-closure) COMPLETE. Codex deep review of Phase 0
   HEAD (immediately after v0.0.1-handshake) flagged 3 critical + 3 warning + 1

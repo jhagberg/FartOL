@@ -119,13 +119,13 @@ Phase 1.5 is explicitly non-blocking for Phase 2 — if the StorTuna club is rea
   5. Course-only model (no Klasser) works for 4-klubbs's 5-course bundle (Vit / Grön / Gul / Orange / Violett).
   6. If FartOL is killed mid-event, MeOS-side registrations done during the outage are picked up via MOP on FartOL restart.
 **Plans**: 7 plans
-  - [ ] 02-01-PLAN.md — Wave 0 [BLOCKING]: Drizzle migration 0002 (6 new tables + competitors.source) + Eventor saxes streaming parser + ingest cache + scheduleEventorBoot + admin refresh route + ADR-0009 + REQ-EXT-MEOS-001 entry
-  - [ ] 02-02-PLAN.md — Wave 1: WalkupModal Bana label + Hyrbricka checkbox + Eventor autocomplete (si_card pre-fill + name prefix) + competitors transactional hired_cards write + TweaksPanel Eventor status + walkup-eventor e2e
-  - [ ] 02-02b-PLAN.md — Wave 2: Registration-desk screen (/competition/:id/registration) + cardQueue Svelte rune store (FIFO + dedupe) + cardSubscription shared WS service (refactors ReadoutView WS code) + WalkupModal onClose callback + auto-advance + dedupe toast + registration-queue e2e (added late 2026-05-16 — addresses ReadoutView.svelte:406-414 silent-drop site)
-  - [ ] 02-03-PLAN.md — Wave 1: MIP GET /mip Fastify route + shared.ts (MIP_NS / MOP_NS / normalizers) + mip.xsd v3.0 pinned + XSD round-trip tests + card-replace re-emit verification (D-MIP-1/2/3/4)
-  - [ ] 02-04-PLAN.md — Wave 2: MOP POST /mop Fastify route + mop.xsd v2.0 pinned + transactional shadow-table writes + D-MOP-3 auto-merge + meos_merge WS broadcast + ReadoutView toast
-  - [ ] 02-05-PLAN.md — Wave 2: hiredCards REST (GET list + PATCH return) + readout.ts hired_card_open extension + HyrbrickaToast + ReadoutView Set-based dismissal + ActiveHyrbrickorView admin page + hyrbricka e2e
-  - [ ] 02-06-PLAN.md — Wave 3: retention.ts hired_cards.contact_* scrub + docs/ops/parallel-meos-runbook.md + bench-smoke-phase2.sh + Wednesday-morning bench checkpoint
+  - [x] 02-01-PLAN.md — Wave 0 [BLOCKING]: Drizzle migration 0002 (6 new tables + competitors.source) + Eventor saxes streaming parser + ingest cache + scheduleEventorBoot + admin refresh route + ADR-0009 + REQ-EXT-MEOS-001 entry
+  - [x] 02-02-PLAN.md — Wave 1: WalkupModal Bana label + Hyrbricka checkbox + Eventor autocomplete (si_card pre-fill + name prefix) + competitors transactional hired_cards write + TweaksPanel Eventor status + walkup-eventor e2e
+  - [x] 02-02b-PLAN.md — Wave 2: Registration-desk screen (/competition/:id/registration) + cardQueue Svelte rune store (FIFO + dedupe) + cardSubscription shared WS service (refactors ReadoutView WS code) + WalkupModal onClose callback + auto-advance + dedupe toast + registration-queue e2e (added late 2026-05-16 — addresses ReadoutView.svelte:406-414 silent-drop site)
+  - [x] 02-03-PLAN.md — Wave 1: MIP GET /mip Fastify route + shared.ts (MIP_NS / MOP_NS / normalizers) + mip.xsd v3.0 pinned + XSD round-trip tests + card-replace re-emit verification (D-MIP-1/2/3/4)
+  - [x] 02-04-PLAN.md — Wave 2: MOP POST /mop Fastify route + mop.xsd v2.0 pinned + transactional shadow-table writes + D-MOP-3 auto-merge + meos_merge WS broadcast + ReadoutView toast
+  - [x] 02-05-PLAN.md — Wave 2: hiredCards REST (GET list + PATCH return) + readout.ts hired_card_open extension + HyrbrickaToast + ReadoutView Set-based dismissal + ActiveHyrbrickorView admin page + hyrbricka e2e
+  - [x] 02-06-PLAN.md — Wave 3: retention.ts hired_cards.contact_* scrub + docs/ops/parallel-meos-runbook.md + bench-smoke-phase2.sh + Wednesday-morning bench checkpoint
 
 ### Phase 2.1: Sanctioned-competition foundations
 
