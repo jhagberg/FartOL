@@ -158,27 +158,48 @@ export default async function registerHiredCardsRoutes(app: FastifyInstance): Pr
         });
       }
 
+      // Gemini review G-001 (race condition): two concurrent PATCH /return
+      // requests for the same card can both pass the pre-flight SELECT
+      // above (line 153), then both UPDATE, then both broadcast — leading
+      // to duplicate hired_card_returned envelopes on the wire. Fix:
+      //   (a) include isNull(returnedAtMs) in the UPDATE WHERE so only
+      //       ONE of the racing writes flips the row,
+      //   (b) capture the row-count from inside the transaction so the
+      //       broadcast is gated on the actual UPDATE landing (the loser
+      //       of the race sees changes=0 and stays silent).
+      // Pattern lifted from entryImport.ts (PATTERNS S-2 transactional
+      // capture-then-act).
       const now = Date.now();
+      let changes = 0;
       app.fartolDb.sqlite.transaction(() => {
-        app.fartolDb.db
+        const result = app.fartolDb.db
           .update(hiredCards)
           .set({ returnedAtMs: now })
-          .where(and(eq(hiredCards.competitionId, id), eq(hiredCards.cardNumber, cardNumber)))
+          .where(
+            and(
+              eq(hiredCards.competitionId, id),
+              eq(hiredCards.cardNumber, cardNumber),
+              isNull(hiredCards.returnedAtMs)
+            )
+          )
           .run();
+        changes = result.changes;
       })();
 
-      // PATTERNS S-4: broadcast AFTER commit so subscribers only see
-      // committed state. ReadoutView reads this envelope informationally —
-      // it has its own dismissal Set covering the operator's own click,
-      // but the WS receipt covers the cross-operator case (another
-      // operator returned the same card from the admin view).
-      app.wsBroadcast(readoutChannel(id), {
-        type: 'hired_card_returned',
-        payload: {
-          card_number: cardNumber,
-          returned_at_ms: now,
-        },
-      });
+      if (changes > 0) {
+        // PATTERNS S-4: broadcast AFTER commit so subscribers only see
+        // committed state. ReadoutView reads this envelope informationally —
+        // it has its own dismissal Set covering the operator's own click,
+        // but the WS receipt covers the cross-operator case (another
+        // operator returned the same card from the admin view).
+        app.wsBroadcast(readoutChannel(id), {
+          type: 'hired_card_returned',
+          payload: {
+            card_number: cardNumber,
+            returned_at_ms: now,
+          },
+        });
+      }
 
       return reply.code(200).send({ ok: true, returned_at_ms: now });
     }

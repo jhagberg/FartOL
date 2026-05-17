@@ -28,6 +28,7 @@
 import { describe, test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import type { FastifyInstance } from 'fastify';
+import { and, eq, isNull } from 'drizzle-orm';
 
 import { buildServer } from '../server.ts';
 import type { BroadcastSink } from '../server.ts';
@@ -340,5 +341,37 @@ describe('PATCH /api/competitions/:id/hired-cards/:cardNumber/return', () => {
 
     const returnedEnvelopes = ctx.captured.filter((c) => c.envelope.type === 'hired_card_returned');
     assert.equal(returnedEnvelopes.length, 0);
+  });
+
+  test('test 6c (Gemini G-001): UPDATE WHERE isNull(returnedAtMs) is race-safe — loser writes 0 rows + no broadcast', async () => {
+    // Gemini review G-001: the PATCH return handler had a race where two
+    // concurrent requests could both pass the pre-flight SELECT, then both
+    // UPDATE, then both broadcast (duplicate hired_card_returned envelopes).
+    // Fix: the UPDATE WHERE now includes isNull(returnedAtMs), and the
+    // broadcast is gated on result.changes > 0. This test simulates the
+    // race-loser path at the SQL level: a row that was unreturned at
+    // pre-flight time has since been returned by another request. The
+    // race-loser's UPDATE must affect 0 rows (no silent overwrite of the
+    // race-winner's timestamp) so the gate suppresses its broadcast.
+    seedCompetition(ctx.handle, 'comp-6c');
+    seedHiredCard(ctx.handle, 'comp-6c', 55555, { returnedAtMs: 999 });
+
+    const result = ctx.handle.db
+      .update(hiredCards)
+      .set({ returnedAtMs: 1234 })
+      .where(
+        and(
+          eq(hiredCards.competitionId, 'comp-6c'),
+          eq(hiredCards.cardNumber, 55555),
+          isNull(hiredCards.returnedAtMs)
+        )
+      )
+      .run();
+
+    assert.equal(result.changes, 0, 'isNull guard must prevent the race-loser write');
+
+    const row = ctx.handle.db.select().from(hiredCards).all()[0];
+    assert.ok(row);
+    assert.equal(row.returnedAtMs, 999, 'returnedAtMs must NOT be overwritten by race-loser');
   });
 });
