@@ -166,13 +166,20 @@
   {/if}
 
   {#if currentCard !== null}
-    <WalkupModal
-      cardNumber={currentCard.cardNumber}
-      {competitionId}
-      classes={resolvedClasses}
-      cardHolderHint={currentCard.cardHolderHint}
-      onClose={onWalkupClose}
-    />
+    <!-- Keying on cardNumber unmounts + remounts WalkupModal on
+         auto-advance so its $state form fields (name, club, classId,
+         cardNumberLocal) re-initialize for the next queued card.
+         Without this, WalkupModal would keep the prior card's
+         cardNumberLocal because $state(...) only runs at mount. -->
+    {#key currentCard.cardNumber}
+      <WalkupModal
+        cardNumber={currentCard.cardNumber}
+        {competitionId}
+        classes={resolvedClasses}
+        cardHolderHint={currentCard.cardHolderHint}
+        onClose={onWalkupClose}
+      />
+    {/key}
   {/if}
 
   {#if toastMessage !== null}
