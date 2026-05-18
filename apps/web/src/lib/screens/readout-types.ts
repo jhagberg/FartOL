@@ -106,30 +106,92 @@ function formatSplit(sec: number): string {
 }
 
 /** Convert raw card punches → ReceiptPunch[] with split + cumulative times.
+ * When `expectedCodes` is non-empty the result is course-shaped: one tile
+ * per expected control in course order, with `ok: false` + dashes for
+ * codes that were never punched. Extra punches the runner made that don't
+ * belong to the course are appended at the end with `ok: false` so the
+ * operator still sees them. When `expectedCodes` is empty (no class /
+ * unmatched card) we fall back to a raw render — every punch shown ok.
+ *
  * Splits are gap-from-previous; cumulative is gap-from-start (or first
- * punch if no start). The half-day rollover is handled by adding 43200s
- * when the delta would be negative. */
+ * punch if no start). Half-day rollover is handled by adding 43200s when
+ * the delta would be negative. */
 export function rawPunchesToReceipt(
   raw: RawPunch[],
   startSecondsInHalfDay: number | null,
-  finishSecondsInHalfDay: number | null
+  finishSecondsInHalfDay: number | null,
+  expectedCodes: number[] = []
 ): ReceiptPunch[] {
-  if (raw.length === 0) return [];
-  const baseSec = startSecondsInHalfDay ?? raw[0]?.seconds_in_half_day ?? 0;
   const result: ReceiptPunch[] = [];
+  if (raw.length === 0 && expectedCodes.length === 0) return result;
+  const baseSec = startSecondsInHalfDay ?? raw[0]?.seconds_in_half_day ?? 0;
   let prevSec = baseSec;
-  for (let i = 0; i < raw.length; i++) {
-    const p = raw[i]!;
-    const splitSec = p.seconds_in_half_day - prevSec;
-    const cumSec = p.seconds_in_half_day - baseSec;
-    result.push({
-      code: p.code,
-      split: formatSplit(splitSec),
-      time: formatSplit(cumSec),
-      ok: true,
-    });
-    prevSec = p.seconds_in_half_day;
+
+  if (expectedCodes.length === 0) {
+    // No course assigned — render raw punches as-is.
+    for (const p of raw) {
+      const splitSec = p.seconds_in_half_day - prevSec;
+      const cumSec = p.seconds_in_half_day - baseSec;
+      result.push({
+        code: p.code,
+        split: formatSplit(splitSec),
+        time: formatSplit(cumSec),
+        ok: true,
+      });
+      prevSec = p.seconds_in_half_day;
+    }
+  } else {
+    // Slot-by-slot match: walk expected course, greedy-find each code in
+    // the remaining raw punches. Unmatched expected → miss tile. Any
+    // raw punches left over after the walk are extras → appended ok:false.
+    const consumed = new Array<boolean>(raw.length).fill(false);
+    let actualIdx = 0;
+    for (const expectedCode of expectedCodes) {
+      let foundIdx = -1;
+      for (let j = actualIdx; j < raw.length; j++) {
+        if (raw[j]!.code === expectedCode) {
+          foundIdx = j;
+          break;
+        }
+      }
+      if (foundIdx >= 0) {
+        const p = raw[foundIdx]!;
+        const splitSec = p.seconds_in_half_day - prevSec;
+        const cumSec = p.seconds_in_half_day - baseSec;
+        result.push({
+          code: p.code,
+          split: formatSplit(splitSec),
+          time: formatSplit(cumSec),
+          ok: true,
+        });
+        prevSec = p.seconds_in_half_day;
+        consumed[foundIdx] = true;
+        actualIdx = foundIdx + 1;
+      } else {
+        result.push({
+          code: expectedCode,
+          split: '—',
+          time: '—',
+          ok: false,
+        });
+      }
+    }
+    // Append any raw punches the matcher skipped (extras / wrong-order
+    // punches that didn't slot in). They retain their actual splits so
+    // the operator can see when they happened.
+    for (let j = 0; j < raw.length; j++) {
+      if (consumed[j]) continue;
+      const p = raw[j]!;
+      const cumSec = p.seconds_in_half_day - baseSec;
+      result.push({
+        code: p.code,
+        split: '—',
+        time: formatSplit(cumSec),
+        ok: false,
+      });
+    }
   }
+
   if (finishSecondsInHalfDay !== null) {
     const splitSec = finishSecondsInHalfDay - prevSec;
     const cumSec = finishSecondsInHalfDay - baseSec;
@@ -161,7 +223,8 @@ export function toReceiptRead(input: {
     rawPunchesToReceipt(
       input.row.punches,
       input.row.start_seconds_in_half_day,
-      input.row.finish_seconds_in_half_day
+      input.row.finish_seconds_in_half_day,
+      input.row.expected_codes
     );
   return {
     cardNumber: input.row.card_number,
