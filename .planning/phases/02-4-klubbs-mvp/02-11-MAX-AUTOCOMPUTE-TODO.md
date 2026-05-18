@@ -48,6 +48,43 @@ null` short-circuits the auto-detect path).
 - Automatic DNS sweep when race-end timestamp passes — different feature
   ([[reference_meos_source]] `oEvent::analyzeClassResultStatus`)
 
+## Codex third-pass follow-ups (2026-05-18, post commit `b81c19b`)
+
+Codex flagged four MEDIUM and two LOW items on the status-extension diff.
+Sort-order was shipped as a same-day fix; the rest are queued here.
+
+### MEDIUM — phase 2.1
+
+- **DQ keeps punch fields after a contaminated read.** If the operator
+  applies DQ to a competitor whose card*read carried someone else's
+  punch data (rare: rental card mix-up before the rule decision), the
+  stale `missing_codes` / `extra_codes` / `latest_punches` linger.
+  \_Fix:* either zero punch fields on `manual_status_set{status:'DQ'}`
+  too, or add an operator-visible "card contaminated, clear punches"
+  toggle. Decide which is the right cut.
+- **`POST /status` is not idempotent at the REST layer.** Two identical
+  consecutive requests append two events. Reducer absorbs them, but
+  the log grows. _Fix:_ cheap short-circuit: read projection state at
+  the route, return `200` (not `201`) when current `manual_status ===
+payload.status`. Same treatment for `/clear-status` when already
+  null.
+- **`LatestReadCard.isOverridden()` collapses auto-DNF and manual-DNF.**
+  An auto-detected `DNF` (no finish punch) triggers the same single-
+  click clear path as an operator-asserted DNF — pre-existing behavior
+  but worth a visual distinction. _Fix:_ clear button + popover only
+  for `view.manual_status !== null`; auto-DNF gets only the popover.
+  Needs `manual_status` plumbed through the readout DTO.
+
+### LOW — opportunistic cleanup
+
+- **`ClearManualStatusInput.passthrough()` accepts any body silently.**
+  Tighten to `z.object({}).strict()`.
+- **`StatusPill` `aria-describedby` id collisions.** Many same-status
+  pills on one page (results table) emit duplicate `id="status-tip-mp"`
+  spans. Replace with a per-instance unique id (Svelte 5 `$id()` or a
+  per-pill counter). Screen readers tolerate the current state; this
+  is a polish item, not a functional bug.
+
 ## References
 
 - Phase 2.0 status extension: `apps/edge/src/projection/types.ts`,

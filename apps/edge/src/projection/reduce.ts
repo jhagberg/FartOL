@@ -60,17 +60,18 @@ export interface ReduceInput {
 }
 
 // Sort order on results tables: finished runners first (OK → MP), then runners
-// who failed to complete (DNF), then time-cap (MAX), then operator rule states
-// (DQ), then runners absent on race day (DNS), then pre-race withdrawals
-// (CANCEL), then runners with no read yet (PEND). MeOS uses the same broad
-// shape — finished > unfinished > absent — but our exact ordering is fartol's
-// (no copy from MeOS).
+// who failed to complete (DNF), then operator rule states (DQ — more severe
+// assertion than the time-domain MAX), then time-cap exceeded (MAX), then
+// runners absent on race day (DNS), then pre-race withdrawals (CANCEL), then
+// runners with no read yet (PEND). DQ-before-MAX matches Eventor + the IOF
+// v3 convention where Disqualified outranks OverTime; broad shape (finished
+// > unfinished > absent) is universal across orienteering software.
 const STATUS_ORDER: Record<CompetitorView['status'], number> = {
   OK: 0,
   MP: 1,
   DNF: 2,
-  MAX: 3,
-  DQ: 4,
+  DQ: 3,
+  MAX: 4,
   DNS: 5,
   CANCEL: 6,
   PEND: 7,

@@ -552,7 +552,7 @@ describe('reduce — CompetitionState projection', () => {
     assert.equal(anna.elapsed_time_ms, 600 * 1000);
   });
 
-  test('Phase-2.0 results sort: OK > MP > DNF > MAX > DQ > DNS > CANCEL > PEND', () => {
+  test('Phase-2.0 results sort: OK > MP > DNF > DQ > MAX > DNS > CANCEL > PEND', () => {
     seqCounter = 0;
     const competitors = [
       comp({ id: 'c-ok', name: 'OK', cardNumber: 1 }),
@@ -604,7 +604,7 @@ describe('reduce — CompetitionState projection', () => {
     assert.ok(rows);
     assert.deepEqual(
       rows.map((r) => r.status),
-      ['OK', 'MP', 'DNF', 'MAX', 'DQ', 'DNS', 'CANCEL', 'PEND']
+      ['OK', 'MP', 'DNF', 'DQ', 'MAX', 'DNS', 'CANCEL', 'PEND']
     );
   });
 });
