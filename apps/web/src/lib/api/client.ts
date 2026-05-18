@@ -511,13 +511,22 @@ export function lookupEventorByPrefix(
 /** FTS5-backed competitor search. Folds diacritics, matches across
  * family + given + club_name in any word order. Use this for new code
  * (the Lägg-till sheet) — `lookupEventorByPrefix` stays for back-compat
- * with WalkupModal. */
+ * with WalkupModal.
+ *
+ * When `clubId` is supplied, the result set is hard-narrowed to that
+ * federation club. The Lägg-till sheet passes this once the operator
+ * has picked a club so a common name like "Per Karlsson" returns the
+ * in-club match instead of being ranked-out by homonyms from other
+ * clubs. */
 export function searchEventorCompetitors(
   q: string,
-  limit: number = 20
+  limit: number = 20,
+  clubId?: number
 ): Promise<{ suggestions: EventorNameSuggestion[] }> {
+  const query: Record<string, string | number> = { q, limit };
+  if (clubId !== undefined) query['club_id'] = clubId;
   return apiFetch<{ suggestions: EventorNameSuggestion[] }>('/api/eventor/lookup', {
-    query: { q, limit },
+    query,
   });
 }
 

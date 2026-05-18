@@ -139,16 +139,21 @@ interface FtsClubRow {
 }
 
 /** Build an FTS5 MATCH expression from a free-text operator query. We
- * split on whitespace, sanitise every token to safe FTS5 alnum (strips
- * the special chars FTS5 treats as operators: `* " ( ) : -`), and
- * append `*` to each remaining non-empty token so "jonas hag" matches
+ * split on whitespace AND common punctuation separators (comma / semicolon
+ * / slash — operators reach for these when typing "Karlsson, Per" or
+ * "Per Karlsson, Stora Tuna"), sanitise every token to safe FTS5 alnum
+ * (strips the special chars FTS5 treats as operators: `* " ( ) : -`),
+ * and append `*` to each remaining non-empty token so "jonas hag" matches
  * "jonas*" AND "hag*". The implicit FTS5 AND between bare tokens means
- * word order is irrelevant — "hag jonas" and "jonas hag" match the
- * same rows. Returns null when sanitisation leaves no usable tokens
- * (caller treats it as zero hits without ever hitting SQLite). */
+ * word order is irrelevant — "hag jonas", "jonas hag", and "jonas hag stora"
+ * all match the same conjunctive filter (each token must hit *some* column,
+ * which means the operator can mix name and club words freely: e.g.
+ * "per karlsson stora tuna" finds Per Karlsson at Stora Tuna OK). Returns
+ * null when sanitisation leaves no usable tokens (caller treats it as zero
+ * hits without ever hitting SQLite). */
 function buildFtsMatch(rawQuery: string): string | null {
   const tokens = rawQuery
-    .split(/\s+/)
+    .split(/[\s,;/]+/)
     .map((t) => t.replace(/[^\p{L}\p{N}]+/gu, ''))
     .filter((t) => t.length > 0);
   if (tokens.length === 0) return null;
@@ -159,15 +164,56 @@ function buildFtsMatch(rawQuery: string): string | null {
  * matches across family + given + club_name, word-order-free. Returns up
  * to `limit` matches ordered by FTS5 rank (BM25-ish relevance — exact
  * token hits rank above prefix hits). Falls back to an empty array on
- * an empty / sanitised-empty query. */
+ * an empty / sanitised-empty query.
+ *
+ * When `clubId` is supplied, the result set is hard-narrowed to that
+ * federation club. This is the path the Lägg-till sheet uses once the
+ * operator has picked a club: typing a common name like "Per Karlsson"
+ * across 252k rows would otherwise drown the in-club match in higher-
+ * ranked homonyms from other clubs. */
 export function searchCompetitorsByName(
   handle: DbHandle,
   query: string,
-  limit: number
+  limit: number,
+  clubId?: number
 ): EventorNameSuggestion[] {
   const match = buildFtsMatch(query);
   if (match === null) return [];
 
+  if (clubId !== undefined) {
+    const sqliteRows = handle.sqlite
+      .prepare<[string, number, number], FtsCompetitorRow>(
+        `SELECT
+           c.person_id,
+           c.family_name,
+           c.given_name,
+           k.name AS club_name,
+           c.si_card
+         FROM eventor_competitors_fts f
+         JOIN eventor_competitors c ON c.person_id = f.rowid
+         LEFT JOIN eventor_clubs k ON k.club_id = c.club_id
+         WHERE eventor_competitors_fts MATCH ?
+           AND c.club_id = ?
+         ORDER BY rank
+         LIMIT ?`
+      )
+      .all(match, clubId, limit);
+
+    return sqliteRows.map((r) => ({
+      person_id: r.person_id,
+      family_name: r.family_name,
+      given_name: r.given_name,
+      club_name: r.club_name ?? null,
+      si_card: r.si_card,
+    }));
+  }
+
+  // Demote NULL-club ("Klubblös") rows: BM25 rewards short text and the
+  // unattached cache rows have no club_name to inflate length, so they
+  // can dominate the top of a ranked result set even when an in-club hit
+  // exists. The `c.club_id IS NULL` boolean evaluates to 0 (false → first)
+  // / 1 (true → last) under ASC, so attached rows always sort above
+  // unattached ones; rank is the tiebreaker within each group.
   const sqliteRows = handle.sqlite
     .prepare<[string, number], FtsCompetitorRow>(
       `SELECT
@@ -180,7 +226,7 @@ export function searchCompetitorsByName(
        JOIN eventor_competitors c ON c.person_id = f.rowid
        LEFT JOIN eventor_clubs k ON k.club_id = c.club_id
        WHERE eventor_competitors_fts MATCH ?
-       ORDER BY rank
+       ORDER BY (c.club_id IS NULL) ASC, rank ASC
        LIMIT ?`
     )
     .all(match, limit);

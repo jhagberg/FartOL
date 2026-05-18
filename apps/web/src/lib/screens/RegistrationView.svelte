@@ -39,7 +39,9 @@
     setActiveCompetition,
   } from '$lib/api/client.ts';
   import WalkupModal from '$lib/screens/WalkupModal.svelte';
-  import type { ClassDTO, EventorLookupHit } from '@fartol/shared-types';
+  import AddRunnerSheet from '$lib/components/AddRunnerSheet.svelte';
+  import Icon from '$lib/ui/Icon.svelte';
+  import type { ClassDTO, EventorLookupHit, CompetitorDTO } from '@fartol/shared-types';
 
   interface Props {
     competitionId: string;
@@ -243,6 +245,24 @@
     manualCard = '';
     manualError = null;
   }
+
+  // --- "Lägg till löpare manuellt" sheet — the no-card walk-up path. Same
+  // AddRunnerSheet used on /runners; on /registrering it covers the case
+  // where the runner walks up without their bricka, the operator searches
+  // Eventor by name (or types fresh), saves, and the runner is registered
+  // for the competition. No queue / WalkupModal involved — saving is
+  // terminal here. ---------------------------------------------------------
+  let addSheetOpen = $state(false);
+  function openAddSheet(): void {
+    addSheetOpen = true;
+  }
+  function closeAddSheet(): void {
+    addSheetOpen = false;
+  }
+  function onAddSheetSaved(created: CompetitorDTO): void {
+    addSheetOpen = false;
+    toast(t('registration.addedToast', { name: created.name }));
+  }
 </script>
 
 <div class="registration" data-testid="registration-view">
@@ -287,6 +307,19 @@
     </p>
   {/if}
 
+  <!-- No-card walk-up: open the same AddRunnerSheet used on /runners so
+       the operator gets the Eventor-FTS5 smart-search (name + club free-
+       text) as the no-bricka entry point. -->
+  <button
+    type="button"
+    class="add-manual-btn"
+    onclick={openAddSheet}
+    data-testid="reg-add-manual-btn"
+  >
+    <Icon name="user-plus" size={16} />
+    <span>{t('registration.addManualSheet')}</span>
+  </button>
+
   {#if currentCard === null}
     <p class="empty" data-testid="reg-empty">{t('registration.empty')}</p>
   {/if}
@@ -313,6 +346,14 @@
     <div class="toast" role="status" data-testid="reg-toast">{toastMessage}</div>
   {/if}
 </div>
+
+<AddRunnerSheet
+  open={addSheetOpen}
+  {competitionId}
+  classes={resolvedClasses}
+  onClose={closeAddSheet}
+  onSaved={onAddSheetSaved}
+/>
 
 <style>
   .registration {
@@ -407,6 +448,26 @@
     margin: -4px 0 0;
     color: var(--dnf);
     font-size: 13px;
+  }
+  .add-manual-btn {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: var(--hit);
+    min-height: var(--hit);
+    padding: 0 var(--space-md);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    background: var(--bg-elev);
+    color: var(--fg);
+    font-size: var(--fs-label);
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: -4px;
+  }
+  .add-manual-btn:hover {
+    background: var(--bg-sunken);
   }
   .toast {
     position: fixed;

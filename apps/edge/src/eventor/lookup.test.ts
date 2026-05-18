@@ -133,6 +133,34 @@ describe('eventor lookup FTS5 — searchCompetitorsByName', () => {
       assert.equal(rows.length, 2);
     });
   });
+
+  test('club_id filter narrows the result set to that federation club', async () => {
+    await withSeededDb((handle) => {
+      // 'stora' matches both Hagberg (club 637) and Östberg (club 637)
+      // via their club_name column. Larsson (no club) does not match.
+      const all = searchCompetitorsByName(handle, 'stora', 20);
+      assert.equal(all.length, 2);
+
+      const inSTK = searchCompetitorsByName(handle, 'stora', 20, 637);
+      assert.equal(inSTK.length, 2);
+      assert.ok(inSTK.every((r) => r.club_name === 'Stora Tuna OK'));
+
+      const inOther = searchCompetitorsByName(handle, 'stora', 20, 999_999);
+      assert.equal(inOther.length, 0);
+    });
+  });
+
+  test('splits on commas/semicolons so "Hagberg, Jonas" matches the same row as "Hagberg Jonas"', async () => {
+    await withSeededDb((handle) => {
+      const a = searchCompetitorsByName(handle, 'Hagberg, Jonas', 20);
+      const b = searchCompetitorsByName(handle, 'Hagberg Jonas', 20);
+      assert.deepEqual(
+        a.map((r) => r.person_id),
+        b.map((r) => r.person_id)
+      );
+      assert.ok(a.find((r) => r.family_name === 'Hagberg' && r.given_name === 'Jonas'));
+    });
+  });
 });
 
 describe('eventor lookup FTS5 — searchClubsByName', () => {

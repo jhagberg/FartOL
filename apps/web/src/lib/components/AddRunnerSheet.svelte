@@ -56,6 +56,13 @@
   let searchValue = $state('');
   let name = $state('');
   let club = $state('');
+  /** Federation club_id once the operator has picked a club from
+   * SmartClubSearch (or one was filled from an Eventor name pick).
+   * When non-null, SmartRunnerSearch narrows its FTS5 query to this
+   * club so common names like "Per Karlsson" stop being drowned by
+   * higher-ranked homonyms from other clubs. Cleared whenever the
+   * operator types into the Klubb field or ticks Klubblös. */
+  let selectedClubId = $state<number | null>(null);
   let klubblos = $state(false);
   let classId = $state('');
   let cardNumber = $state('');
@@ -71,6 +78,7 @@
     searchValue = '';
     name = '';
     club = '';
+    selectedClubId = null;
     klubblos = false;
     classId = '';
     cardNumber = '';
@@ -87,6 +95,11 @@
     if (s.club_name) {
       club = s.club_name;
       klubblos = false;
+      // s carries club_name but not club_id. Leave selectedClubId as-is —
+      // if the operator picked a club before searching, the narrowing
+      // stays; if not, the picked runner's club is shown but the search
+      // remains unscoped (correct: we don't want to retroactively narrow
+      // a search that already returned this row).
     }
     if (s.si_card !== null) cardNumber = String(s.si_card);
     searchValue = name;
@@ -110,16 +123,25 @@
 
   function onClubPick(s: EventorClubSuggestion): void {
     club = s.name;
+    selectedClubId = s.club_id;
     klubblos = false;
   }
 
   function onClubValue(v: string): void {
     club = v;
+    // Typing into the Klubb field invalidates the picked club_id — the
+    // operator may be editing toward a different club entirely. Without
+    // this clear, a stale selectedClubId would keep narrowing the name
+    // search to the previously-picked club.
+    selectedClubId = null;
   }
 
   function onKlubblosChange(e: Event): void {
     klubblos = (e.currentTarget as HTMLInputElement).checked;
-    if (klubblos) club = '';
+    if (klubblos) {
+      club = '';
+      selectedClubId = null;
+    }
   }
 
   function validate(): string | null {
@@ -182,18 +204,16 @@
 
 <Modal {open} onClose={onCancel}>
   {#snippet head()}
-    <div class="sheet-head">
-      <h2>{t('runners.addSheet.title')}</h2>
-      <button
-        type="button"
-        class="sheet-close"
-        onclick={onCancel}
-        aria-label={t('runners.importSheet.close')}
-        disabled={saving}
-      >
-        <Icon name="x" size={18} />
-      </button>
-    </div>
+    <h2 class="sheet-title">{t('runners.addSheet.title')}</h2>
+    <button
+      type="button"
+      class="sheet-close"
+      onclick={onCancel}
+      aria-label={t('runners.importSheet.close')}
+      disabled={saving}
+    >
+      <Icon name="x" size={18} />
+    </button>
   {/snippet}
 
   {#snippet body()}
@@ -205,11 +225,16 @@
             id="add-runner-search"
             value={searchValue}
             placeholder={t('runners.addSheet.searchPlaceholder')}
+            clubId={selectedClubId}
             onValue={onSearchValue}
             onPick={onSearchPick}
           />
         </Field>
-        <p class="hint">{t('runners.addSheet.searchHint')}</p>
+        <p class="hint">
+          {selectedClubId !== null
+            ? t('runners.addSheet.searchHintClubScoped', { club })
+            : t('runners.addSheet.searchHint')}
+        </p>
         {#if eventorFillNote}
           <p class="ok-note" role="status">{t('runners.addSheet.eventorFill')}</p>
         {/if}
@@ -298,31 +323,28 @@
   {/snippet}
 
   {#snippet foot()}
-    <div class="sheet-foot">
-      <Button variant="ghost" onclick={onCancel} disabled={saving}>
-        {t('runners.addSheet.cancel')}
-      </Button>
-      <Button
-        variant="primary"
-        onclick={onSave}
-        disabled={saving}
-        data-testid="add-runner-save"
-      >
-        {saving ? t('runners.addSheet.saving') : t('runners.addSheet.save')}
-      </Button>
-    </div>
+    <Button variant="ghost" onclick={onCancel} disabled={saving}>
+      {t('runners.addSheet.cancel')}
+    </Button>
+    <Button
+      variant="primary"
+      onclick={onSave}
+      disabled={saving}
+      data-testid="add-runner-save"
+    >
+      {saving ? t('runners.addSheet.saving') : t('runners.addSheet.save')}
+    </Button>
   {/snippet}
 </Modal>
 
 <style>
-  .sheet-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--border);
-  }
-  .sheet-head h2 {
+  /* The Modal primitive already renders <header class="modal-head">
+     with padding + border-bottom. We render the title and close button
+     directly into the head snippet — no inner wrapper, no second
+     underline. flex:1 on the title pushes the close button to the right
+     since .modal-head is `display: flex; gap: ...`. */
+  .sheet-title {
+    flex: 1;
     margin: 0;
     font-size: 16px;
     font-weight: 600;
@@ -343,13 +365,14 @@
     background: var(--bg-sunken);
     color: var(--fg);
   }
+  /* Modal's .modal-body owns padding + overflow:auto. The inner sheet-body
+     is just a flex-column-gap container so the sections stack nicely; do
+     NOT set max-height/overflow here or the modal-body and sheet-body
+     each scroll independently → double scrollbar. */
   .sheet-body {
-    padding: 16px;
     display: flex;
     flex-direction: column;
     gap: var(--space-md);
-    max-height: calc(100vh - 220px);
-    overflow-y: auto;
   }
   .block {
     display: flex;
@@ -435,13 +458,5 @@
     color: var(--dnf);
     border-radius: var(--radius);
     font-size: 13px;
-  }
-  .sheet-foot {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: var(--space-sm);
-    padding: 12px 16px;
-    border-top: 1px solid var(--border);
   }
 </style>

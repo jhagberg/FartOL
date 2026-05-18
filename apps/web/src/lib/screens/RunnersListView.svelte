@@ -344,22 +344,18 @@
      never has to leave the roster screen to pull more entries. -->
 <Modal open={importSheetOpen} onClose={closeImportSheet}>
   {#snippet head()}
-    <div class="sheet-head">
-      <h2>{t('runners.importSheet.title')}</h2>
-      <button
-        type="button"
-        class="sheet-close"
-        onclick={closeImportSheet}
-        aria-label={t('runners.importSheet.close')}
-      >
-        <Icon name="x" size={18} />
-      </button>
-    </div>
+    <h2 class="sheet-title">{t('runners.importSheet.title')}</h2>
+    <button
+      type="button"
+      class="sheet-close"
+      onclick={closeImportSheet}
+      aria-label={t('runners.importSheet.close')}
+    >
+      <Icon name="x" size={18} />
+    </button>
   {/snippet}
   {#snippet body()}
-    <div class="sheet-body">
-      <ImportRunnersView {competitionId} embedded />
-    </div>
+    <ImportRunnersView {competitionId} embedded />
   {/snippet}
 </Modal>
 
@@ -624,14 +620,11 @@
     font-size: 18px;
     font-weight: 600;
   }
-  .sheet-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--border);
-  }
-  .sheet-head h2 {
+  /* Modal renders the head wrapper with padding + border-bottom; we just
+     drop title + close button into the head snippet so we don't get a
+     double underline. flex:1 on the title pushes the close button right. */
+  .sheet-title {
+    flex: 1;
     margin: 0;
     font-size: 16px;
     font-weight: 600;
@@ -651,10 +644,6 @@
   .sheet-close:hover {
     background: var(--bg-sunken);
     color: var(--fg);
-  }
-  .sheet-body {
-    overflow-y: auto;
-    max-height: calc(100vh - 200px);
   }
   /* Mobile: tighten paddings + stack action buttons full-width */
   @media (max-width: 480px) {

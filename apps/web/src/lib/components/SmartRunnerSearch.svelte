@@ -36,6 +36,12 @@
     /** Min characters before we start hitting the API for the name path.
      * Digits skip this gate (we hit si_card lookup as soon as ≥3 digits). */
     minLength?: number;
+    /** Optional federation club narrowing. When set, the name path
+     * passes club_id to the backend so a common name returns only
+     * matches inside that club (drowns-by-rank fix for the Lägg-till
+     * sheet when the operator has already picked a club). Null/undefined
+     * = unscoped global search. */
+    clubId?: number | null;
     /** Operator typed — keep upstream value in sync but don't auto-pick. */
     onValue: (next: string) => void;
     /** Operator picked a suggestion (mouse tap, keyboard Enter, or si_card
@@ -50,6 +56,7 @@
     id = 'smart-search',
     placeholder = '',
     minLength = 2,
+    clubId = null,
     onValue,
     onPick,
     showNoResults = true,
@@ -123,7 +130,11 @@
     }
     loading = true;
     try {
-      const res = await searchEventorCompetitors(trimmed, 8);
+      const res = await searchEventorCompetitors(
+        trimmed,
+        50,
+        clubId ?? undefined
+      );
       if (lastQuery !== trimmed) return;
       suggestions = res.suggestions;
       highlight = suggestions.length > 0 ? 0 : -1;
@@ -184,6 +195,18 @@
   onMount(() => {
     document.addEventListener('mousedown', onDocClick);
     return () => document.removeEventListener('mousedown', onDocClick);
+  });
+
+  // Refetch when the club filter changes mid-flow. Operator typed "per"
+  // unscoped, saw all clubs, then picked "Stora Tuna OK" — popover should
+  // immediately narrow without forcing them to retype. We rely on the
+  // 200ms debounce inside scheduleFetch to coalesce rapid clubId churn
+  // (e.g. operator scrolling through SmartClubSearch options).
+  $effect(() => {
+    void clubId;
+    if (lastQuery.length > 0 && !/^\d+$/.test(lastQuery)) {
+      scheduleFetch(lastQuery);
+    }
   });
 
   // Re-open if focus returns to the input and we already have results.

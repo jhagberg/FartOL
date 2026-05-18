@@ -55,6 +55,11 @@ const LookupQuery = z.object({
   // word-order-free, matches across family + given + club_name. Use this
   // for new code; `prefix` stays for back-compat with WalkupModal.
   q: z.string().min(1).max(120).optional(),
+  // Optional club narrowing — only honored when `q` is supplied. The
+  // Lägg-till sheet sends this once the operator has picked a club so
+  // the name search returns matches scoped to that club (Per Karlsson
+  // Stora Tuna OK isn't drowned by ranked homonyms from other clubs).
+  club_id: z.coerce.number().int().positive().optional(),
   limit: z.coerce.number().int().positive().max(50).optional(),
 });
 
@@ -76,39 +81,44 @@ const CACHE_MARKER_KEY = 'eventor_cache_refreshed_at_ms';
 const STALE_THRESHOLD_MS = 7 * 86_400_000;
 
 export default async function registerEventorRoutes(app: FastifyInstance): Promise<void> {
-  app.get<{ Querystring: { si_card?: string; prefix?: string; q?: string; limit?: string } }>(
-    '/api/eventor/lookup',
-    async (req, reply) => {
-      const parsed = LookupQuery.safeParse(req.query);
-      if (!parsed.success) {
-        return reply.code(400).send(issuesToErrors(parsed.error.issues));
-      }
-      const { si_card, prefix, q, limit } = parsed.data;
+  app.get<{
+    Querystring: {
+      si_card?: string;
+      prefix?: string;
+      q?: string;
+      club_id?: string;
+      limit?: string;
+    };
+  }>('/api/eventor/lookup', async (req, reply) => {
+    const parsed = LookupQuery.safeParse(req.query);
+    if (!parsed.success) {
+      return reply.code(400).send(issuesToErrors(parsed.error.issues));
+    }
+    const { si_card, prefix, q, club_id, limit } = parsed.data;
 
-      // Mutual-exclusion gate — exactly one of si_card / prefix / q must
-      // be supplied. We keep the old `conflicting_query` / `missing_query`
-      // error codes for back-compat with WalkupModal.
-      const supplied = [si_card !== undefined, prefix !== undefined, q !== undefined].filter(
-        Boolean
-      ).length;
-      if (supplied > 1) {
-        return reply.code(400).send({ error: 'conflicting_query' });
-      }
-      if (supplied === 0) {
-        return reply.code(400).send({ error: 'missing_query' });
-      }
+    // Mutual-exclusion gate — exactly one of si_card / prefix / q must
+    // be supplied. We keep the old `conflicting_query` / `missing_query`
+    // error codes for back-compat with WalkupModal.
+    const supplied = [si_card !== undefined, prefix !== undefined, q !== undefined].filter(
+      Boolean
+    ).length;
+    if (supplied > 1) {
+      return reply.code(400).send({ error: 'conflicting_query' });
+    }
+    if (supplied === 0) {
+      return reply.code(400).send({ error: 'missing_query' });
+    }
 
-      if (si_card !== undefined) {
-        return lookupBySiCard(app.fartolDb, si_card);
-      }
-      if (q !== undefined) {
-        const suggestions = searchCompetitorsByName(app.fartolDb, q, limit ?? 20);
-        return { suggestions };
-      }
-      const suggestions = lookupByNamePrefix(app.fartolDb, prefix as string, limit ?? 20);
+    if (si_card !== undefined) {
+      return lookupBySiCard(app.fartolDb, si_card);
+    }
+    if (q !== undefined) {
+      const suggestions = searchCompetitorsByName(app.fartolDb, q, limit ?? 20, club_id);
       return { suggestions };
     }
-  );
+    const suggestions = lookupByNamePrefix(app.fartolDb, prefix as string, limit ?? 20);
+    return { suggestions };
+  });
 
   // GET /api/eventor/clubs?q=stk&limit=20 — FTS5-backed federation club
   // search. Matches across name + short_name + media_name; diacritic-
