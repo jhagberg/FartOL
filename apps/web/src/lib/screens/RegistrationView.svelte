@@ -36,6 +36,8 @@
   import {
     getCompetition,
     lookupEventorBySiCard,
+    lookupCompetitorByCard,
+    setManualStatus,
     setActiveCompetition,
   } from '$lib/api/client.ts';
   import WalkupModal from '$lib/screens/WalkupModal.svelte';
@@ -68,6 +70,13 @@
    * /registration must match /readout's Eventor-prefill ergonomics so
    * the 3-5s/kid throughput target holds at 4-klubbs. */
   let currentEventorHint: EventorLookupHit | null = $state(null);
+  /** Card beeped that resolved to an already-registered competitor.
+   * When set, we show the "already registered" banner instead of
+   * opening the walk-up form (which would just show empty fields and
+   * confuse the operator). */
+  let knownCard: { card: number; competitor: CompetitorDTO } | null = $state(null);
+  let cancelBusy = $state(false);
+  let cancelErr: string | null = $state(null);
   let toastMessage: string | null = $state(null);
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
   let subscription: ReturnType<typeof createCardSubscription> | null = null;
@@ -105,10 +114,27 @@
     });
     subscription = createCardSubscription({
       competitionId,
-      // No classifyCard — every card_read on this screen enqueues
-      // (registration desk: nobody is pre-registered, so every read
-      // is a registration candidate). classification='unclassified'.
-      onCardRead: (cardNumber, hint, _classification) => {
+      // classifyCard splits the dispatch: 'known' → show already-
+      // registered banner (no walkup); 'unknown' → enqueue for walkup.
+      // We piggyback the lookup result via cardHolderHint so the banner
+      // gets the competitor name without a second fetch.
+      classifyCard: async (cardNumber) => {
+        try {
+          const res = await lookupCompetitorByCard(competitionId, cardNumber);
+          const hit = res.competitors[0] ?? null;
+          if (hit) {
+            return { isUnmatched: false, cardHolderHint: hit.name };
+          }
+        } catch {
+          /* fall through to unmatched on lookup failure */
+        }
+        return { isUnmatched: true, cardHolderHint: null };
+      },
+      onCardRead: (cardNumber, hint, classification) => {
+        if (classification === 'known') {
+          handleKnownCard(cardNumber);
+          return;
+        }
         handleIncomingCard(cardNumber, hint);
       },
       // F-002 (codex) BLOCKER guard: when the operator opens
@@ -132,6 +158,50 @@
   });
 
   // --- card-arrival handling ------------------------------------------------
+
+  /** Re-beep of a card already bound to a competitor. Skip the queue;
+   * fetch the bound row and surface a banner with the competitor name +
+   * a Cancel-Registration CTA (writes manual_status=CANCEL → "Återbud"
+   * in the readout). */
+  function handleKnownCard(cardNumber: number): void {
+    // If the banner is already showing for this card, do nothing.
+    if (knownCard !== null && knownCard.card === cardNumber) return;
+    cancelErr = null;
+    void lookupCompetitorByCard(competitionId, cardNumber)
+      .then((res) => {
+        const hit = res.competitors[0] ?? null;
+        if (hit) {
+          knownCard = { card: cardNumber, competitor: hit };
+        } else {
+          // Race: card was unbound between classifyCard and this fetch.
+          // Fall back to the queue path.
+          handleIncomingCard(cardNumber, null);
+        }
+      })
+      .catch(() => {
+        handleIncomingCard(cardNumber, null);
+      });
+  }
+
+  async function onCancelKnownRegistration(): Promise<void> {
+    if (knownCard === null) return;
+    cancelBusy = true;
+    cancelErr = null;
+    try {
+      await setManualStatus(competitionId, knownCard.competitor.id, 'CANCEL', 'Återbud');
+      toast(t('registration.cancelToast', { name: knownCard.competitor.name }));
+      knownCard = null;
+    } catch (e) {
+      cancelErr = (e as Error).message;
+    } finally {
+      cancelBusy = false;
+    }
+  }
+
+  function onDismissKnownCard(): void {
+    knownCard = null;
+    cancelErr = null;
+  }
 
   function handleIncomingCard(cardNumber: number, hint: string | null): void {
     // Dedupe against the currently-open modal AND the queue. Same card
@@ -378,7 +448,52 @@
     </section>
   {/if}
 
-  {#if currentCard === null && cardQueue.count === 0}
+  {#if knownCard !== null}
+    <section
+      class="known-banner"
+      role="status"
+      aria-live="polite"
+      data-testid="reg-known-banner"
+    >
+      <div class="known-row">
+        <div class="known-info">
+          <span class="known-card mono">{knownCard.card}</span>
+          <span class="known-label">{t('registration.alreadyRegistered')}</span>
+          <strong class="known-name">{knownCard.competitor.name}</strong>
+          {#if knownCard.competitor.club}
+            <span class="known-club">{knownCard.competitor.club}</span>
+          {/if}
+        </div>
+        <div class="known-actions">
+          <button
+            type="button"
+            class="known-dismiss"
+            onclick={onDismissKnownCard}
+            disabled={cancelBusy}
+            data-testid="reg-known-dismiss"
+          >
+            {t('registration.knownDismiss')}
+          </button>
+          <button
+            type="button"
+            class="known-cancel"
+            onclick={() => void onCancelKnownRegistration()}
+            disabled={cancelBusy}
+            data-testid="reg-known-cancel"
+          >
+            {cancelBusy
+              ? t('registration.cancelling')
+              : t('registration.cancelRegistration')}
+          </button>
+        </div>
+      </div>
+      {#if cancelErr}
+        <p class="known-err" role="alert">{cancelErr}</p>
+      {/if}
+    </section>
+  {/if}
+
+  {#if currentCard === null && cardQueue.count === 0 && knownCard === null}
     <p class="empty" data-testid="reg-empty">{t('registration.empty')}</p>
   {/if}
 
@@ -603,6 +718,88 @@
     color: var(--accent);
     font-size: 13px;
     font-weight: 600;
+  }
+  .known-banner {
+    background: var(--accent-soft, var(--bg-elev));
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-lg);
+    padding: var(--space-sm) var(--space-md);
+    display: grid;
+    gap: var(--space-xs);
+  }
+  .known-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    flex-wrap: wrap;
+  }
+  .known-info {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-xs);
+    flex-wrap: wrap;
+    flex: 1;
+    min-width: 0;
+  }
+  .known-card.mono {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--accent);
+  }
+  .known-label {
+    color: var(--fg-muted);
+    font-size: 13px;
+  }
+  .known-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--fg);
+  }
+  .known-club {
+    color: var(--fg-muted);
+    font-size: 13px;
+  }
+  .known-actions {
+    display: flex;
+    gap: var(--space-2xs);
+  }
+  .known-dismiss,
+  .known-cancel {
+    height: var(--hit);
+    min-height: var(--hit);
+    padding: 0 var(--space-md);
+    border-radius: var(--radius);
+    font: inherit;
+    font-size: var(--fs-label);
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .known-dismiss {
+    background: transparent;
+    border: 1px solid var(--border-strong);
+    color: var(--fg);
+  }
+  .known-dismiss:hover:not(:disabled) {
+    background: var(--bg-sunken);
+  }
+  .known-cancel {
+    background: var(--dnf);
+    border: 1px solid var(--dnf);
+    color: #fff;
+  }
+  .known-cancel:hover:not(:disabled) {
+    filter: brightness(0.92);
+  }
+  .known-dismiss:disabled,
+  .known-cancel:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .known-err {
+    margin: 0;
+    color: var(--dnf);
+    font-size: 13px;
   }
   .toast {
     position: fixed;

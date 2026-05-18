@@ -677,23 +677,43 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
     return reply.code(200).send({ ok: true, competitor: competitorRowToDTO(updated) });
   });
 
-  // GET /api/competitions/:id/competitors — list competitors.
-  app.get<{ Params: { id: string } }>('/api/competitions/:id/competitors', async (req, reply) => {
-    const { id } = req.params;
-    const compRow = app.fartolDb.db
-      .select({ id: competitions.id })
-      .from(competitions)
-      .where(eq(competitions.id, id))
-      .get();
-    if (!compRow) return reply.code(404).send({ error: 'competition not found' });
-    const rows = app.fartolDb.db
-      .select()
-      .from(competitors)
-      .where(eq(competitors.competitionId, id))
-      .orderBy(asc(competitors.name))
-      .all();
-    return { competitors: rows.map(competitorRowToDTO) };
-  });
+  // GET /api/competitions/:id/competitors — list competitors. Optional
+  // `?card_number=N` filter (used by /registration to detect re-beep of
+  // an already-bound card before opening the walk-up form).
+  app.get<{ Params: { id: string }; Querystring: { card_number?: string } }>(
+    '/api/competitions/:id/competitors',
+    async (req, reply) => {
+      const { id } = req.params;
+      const compRow = app.fartolDb.db
+        .select({ id: competitions.id })
+        .from(competitions)
+        .where(eq(competitions.id, id))
+        .get();
+      if (!compRow) return reply.code(404).send({ error: 'competition not found' });
+
+      const cardFilter = req.query.card_number;
+      if (cardFilter !== undefined) {
+        const n = Number(cardFilter);
+        if (!Number.isInteger(n) || n <= 0) {
+          return { competitors: [] };
+        }
+        const rows = app.fartolDb.db
+          .select()
+          .from(competitors)
+          .where(and(eq(competitors.competitionId, id), eq(competitors.cardNumber, n)))
+          .all();
+        return { competitors: rows.map(competitorRowToDTO) };
+      }
+
+      const rows = app.fartolDb.db
+        .select()
+        .from(competitors)
+        .where(eq(competitors.competitionId, id))
+        .orderBy(asc(competitors.name))
+        .all();
+      return { competitors: rows.map(competitorRowToDTO) };
+    }
+  );
 
   // GET /api/competitions/:id/competitors/:competitorId — single competitor.
   app.get<{ Params: { id: string; competitorId: string } }>(

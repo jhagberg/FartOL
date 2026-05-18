@@ -156,6 +156,16 @@ export function startRace(id: string): Promise<CompetitionDTO> {
   });
 }
 
+/** Phase 2.1 — rollback the race-phase gate. Operator hits this when the
+ * race was started by mistake (testing, demo). Idempotent: already-in-pre-
+ * race returns the same row without writing a new event. */
+export function resetRace(id: string): Promise<CompetitionDTO> {
+  return apiFetch<CompetitionDTO>(`/api/competitions/${encodeURIComponent(id)}/reset-race`, {
+    method: 'POST',
+    body: {},
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Wizard atomic create + XML ingest (C-H3 LOCKED — plan 12)
 // ---------------------------------------------------------------------------
@@ -251,6 +261,19 @@ export function createCourse(competitionId: string, body: CourseCreateInput): Pr
 
 export function listCompetitors(competitionId: string): Promise<{ competitors: CompetitorDTO[] }> {
   return apiFetch(`/api/competitions/${encodeURIComponent(competitionId)}/competitors`);
+}
+
+/** Lookup the (at most one) competitor bound to a given SI card in this
+ * competition. Returns an empty competitors[] when no binding exists. The
+ * partial unique index on (competition_id, card_number) WHERE card_number
+ * IS NOT NULL guarantees at most one match. */
+export function lookupCompetitorByCard(
+  competitionId: string,
+  cardNumber: number
+): Promise<{ competitors: CompetitorDTO[] }> {
+  return apiFetch(
+    `/api/competitions/${encodeURIComponent(competitionId)}/competitors?card_number=${encodeURIComponent(cardNumber)}`
+  );
 }
 
 export function getCompetitor(

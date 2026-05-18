@@ -50,6 +50,16 @@ export interface ReadoutHistoryRow {
     contact_email: string | null;
     note: string | null;
   } | null;
+  /** Phase 2.1 — course comparison breakdown. Lets the UI render *which*
+   * controls were missed / extra / out of order rather than just the
+   * OK/MP/DNF label. All three are empty arrays for unmatched cards and
+   * for matched cards whose class has no course assigned. */
+  missing_codes: number[];
+  extra_codes: number[];
+  out_of_order_codes: number[];
+  /** Ordered expected control codes for the competitor's course; empty
+   * when the class has no course or the card is unmatched. */
+  expected_codes: number[];
 }
 
 export interface ReadoutResponse {

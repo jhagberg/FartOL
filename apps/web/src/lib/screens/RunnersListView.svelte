@@ -326,6 +326,7 @@
 <EditCompetitorModal
   open={editOpen}
   competitor={editTarget}
+  {competitionId}
   {classes}
   onClose={closeEdit}
   onSaved={onEditSaved}

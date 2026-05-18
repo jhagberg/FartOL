@@ -69,6 +69,7 @@
     if (p.endsWith('/results')) return 'results';
     if (p.endsWith('/export')) return 'export';
     if (p.endsWith('/hyrbrickor')) return 'hyrbrickor';
+    if (p.endsWith('/info')) return 'info';
     return 'home';
   });
 
@@ -89,6 +90,7 @@
     else if (route === 'results') void goto(`/competition/${activeCompId}/results`);
     else if (route === 'export') void goto(`/competition/${activeCompId}/export`);
     else if (route === 'hyrbrickor') void goto(`/competition/${activeCompId}/hyrbrickor`);
+    else if (route === 'info') void goto(`/competition/${activeCompId}/info`);
   }
 
   // Mirror the tweaks store onto <html> attributes whenever any preference

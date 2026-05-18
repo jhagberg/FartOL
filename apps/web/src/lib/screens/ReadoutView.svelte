@@ -746,6 +746,38 @@
               {receiptRead.punches.filter((p) => p.ok).length}/{receiptRead.punches.length}
             </span>
           </div>
+          {#if currentRow && currentRow.expected_codes.length > 0}
+            <div class="course-compare" data-testid="course-compare">
+              <div class="cc-row">
+                <span class="cc-label">{t('ro.expected')}</span>
+                <span class="cc-codes mono">{currentRow.expected_codes.join(' · ')}</span>
+              </div>
+              {#if currentRow.missing_codes.length > 0}
+                <div class="cc-row">
+                  <span class="cc-label cc-bad">{t('ro.missing')}</span>
+                  <span class="cc-codes mono cc-bad" data-testid="cc-missing">
+                    {currentRow.missing_codes.join(' · ')}
+                  </span>
+                </div>
+              {/if}
+              {#if currentRow.extra_codes.length > 0}
+                <div class="cc-row">
+                  <span class="cc-label cc-warn">{t('ro.extra')}</span>
+                  <span class="cc-codes mono cc-warn" data-testid="cc-extra">
+                    {currentRow.extra_codes.join(' · ')}
+                  </span>
+                </div>
+              {/if}
+              {#if currentRow.out_of_order_codes.length > 0}
+                <div class="cc-row">
+                  <span class="cc-label cc-warn">{t('ro.outOfOrder')}</span>
+                  <span class="cc-codes mono cc-warn" data-testid="cc-out-of-order">
+                    {currentRow.out_of_order_codes.join(' · ')}
+                  </span>
+                </div>
+              {/if}
+            </div>
+          {/if}
           {#if tweaks.density === 'high'}
             <SplitsTable punches={receiptRead.punches} />
           {:else}
@@ -852,6 +884,7 @@
   <EditCompetitorModal
     open={editingCompetitorId !== null}
     competitor={editingCompetitorId ? competitorsById.get(editingCompetitorId) ?? null : null}
+    {competitionId}
     {classes}
     onClose={() => { editingCompetitorId = null; }}
     onSaved={(updated) => {
@@ -900,6 +933,40 @@
     margin: 0;
     font-size: var(--fs-heading);
     font-weight: 600;
+  }
+  .course-compare {
+    display: grid;
+    gap: 6px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    background: var(--bg-sunken);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 12px;
+  }
+  .cc-row {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+  }
+  .cc-label {
+    min-width: 84px;
+    color: var(--fg-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 10px;
+  }
+  .cc-codes {
+    flex: 1;
+    word-break: break-all;
+    color: var(--fg);
+  }
+  .cc-bad {
+    color: var(--dnf);
+  }
+  .cc-warn {
+    color: oklch(0.5 0.12 70);
   }
   .muted {
     color: var(--fg-muted);

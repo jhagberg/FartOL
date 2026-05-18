@@ -234,6 +234,30 @@ export function reduce(input: ReduceInput): CompetitionState {
         }
         break;
       }
+      case 'race_reset': {
+        // Phase 2.1: rollback. Returns the projection to pre-race phase
+        // so subsequent card_reads in this pass stop scoring. The DB
+        // column is the durable source of truth; this arm keeps replay
+        // correct when the events table holds a started→reset pair but
+        // the cached column is stale. We set to `null` (pre-race) not
+        // `undefined` (gate-off) — once a race_started has been recorded,
+        // the gate stays meaningful.
+        raceStartedAtMs = null;
+        // Un-score any auto-detected statuses already applied in this
+        // pass. Manual overrides survive (the operator's assertion is
+        // independent of the race-phase gate). card_read_history stays
+        // intact as an audit trail.
+        for (const v of competitorViews.values()) {
+          if (v.manual_status === null) {
+            v.status = 'PEND';
+            v.missing_codes = [];
+            v.extra_codes = [];
+            v.out_of_order_codes = [];
+            v.elapsed_time_ms = null;
+          }
+        }
+        break;
+      }
       case 'manual_dnf': {
         // Legacy event — pre-Phase-2.0 logs only carry this. Equivalent to
         // manual_status_set{status:'DNF'}; both write the same view fields

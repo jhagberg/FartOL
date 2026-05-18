@@ -22,6 +22,7 @@
   import { t } from '$lib/i18n/index.ts';
   import {
     editCompetitorProfile,
+    setManualStatus,
     type CompetitorProfilePatch,
   } from '$lib/api/client.ts';
   import type { CompetitorDTO, ClassDTO } from '@fartol/shared-types';
@@ -29,12 +30,13 @@
   interface Props {
     open: boolean;
     competitor: CompetitorDTO | null;
+    competitionId: string;
     classes: ClassDTO[];
     onClose: () => void;
     onSaved: (updated: CompetitorDTO) => void;
   }
 
-  let { open, competitor, classes, onClose, onSaved }: Props = $props();
+  let { open, competitor, competitionId, classes, onClose, onSaved }: Props = $props();
 
   let name = $state('');
   let club = $state('');
@@ -42,6 +44,8 @@
   let cardNumber = $state('');
   let saving = $state(false);
   let error: string | null = $state(null);
+  let confirmingWithdraw = $state(false);
+  let withdrawing = $state(false);
 
   // Re-seed the form whenever the parent passes a different competitor
   // (or the modal toggles open). Track `competitor?.id` so the effect
@@ -54,6 +58,7 @@
     classId = competitor?.class_id ?? '';
     cardNumber = competitor?.card_number == null ? '' : String(competitor.card_number);
     error = null;
+    confirmingWithdraw = false;
   });
 
   function close(): void {
@@ -107,6 +112,32 @@
       saving = false;
     }
   }
+
+  /** Withdraw the competitor from this competition. Sets manual_status=
+   * CANCEL ("Återbud") via the existing manual-status route. Event-
+   * sourced: we don't hard-delete the competitors row (the audit trail
+   * needs it); CANCEL hides them from results sorts but keeps history.
+   * Two-step confirm because the action is operator-visible (broadcasts
+   * a manual_status_set envelope) and not free to reverse mid-race. */
+  async function withdraw(): Promise<void> {
+    if (!competitor || withdrawing) return;
+    withdrawing = true;
+    error = null;
+    try {
+      await setManualStatus(competitionId, competitor.id, 'CANCEL', 'Återbud');
+      // Surface the change to the parent by re-emitting the same row;
+      // the manual_status lives on the projection, not the competitors
+      // table, so the row data itself is unchanged. The parent's
+      // refetch on onSaved keeps it in sync.
+      onSaved(competitor);
+      onClose();
+    } catch (e) {
+      error = (e as Error).message;
+    } finally {
+      withdrawing = false;
+      confirmingWithdraw = false;
+    }
+  }
 </script>
 
 <Modal {open} onClose={close}>
@@ -158,17 +189,54 @@
       {#if error}
         <p class="err" data-testid="edit-error">{error}</p>
       {/if}
+      <hr class="divider" />
+      <div class="danger-zone">
+        {#if !confirmingWithdraw}
+          <button
+            type="button"
+            class="btn danger-ghost"
+            data-testid="edit-withdraw-btn"
+            onclick={() => (confirmingWithdraw = true)}
+            disabled={saving || withdrawing}
+          >
+            {t('edit.withdraw.cta')}
+          </button>
+          <p class="danger-hint">{t('edit.withdraw.hint')}</p>
+        {:else}
+          <p class="danger-confirm">{t('edit.withdraw.confirmBody')}</p>
+          <div class="danger-actions">
+            <button
+              type="button"
+              class="btn ghost"
+              onclick={() => (confirmingWithdraw = false)}
+              disabled={withdrawing}
+              data-testid="edit-withdraw-cancel"
+            >
+              {t('walk.cancel')}
+            </button>
+            <button
+              type="button"
+              class="btn danger"
+              onclick={() => void withdraw()}
+              disabled={withdrawing}
+              data-testid="edit-withdraw-confirm"
+            >
+              {withdrawing ? t('edit.withdraw.busy') : t('edit.withdraw.confirm')}
+            </button>
+          </div>
+        {/if}
+      </div>
     </form>
   {/snippet}
   {#snippet foot()}
-    <button type="button" class="btn ghost" onclick={close} disabled={saving}>
+    <button type="button" class="btn ghost" onclick={close} disabled={saving || withdrawing}>
       {t('walk.cancel')}
     </button>
     <button
       type="button"
       class="btn primary"
       data-testid="edit-save-btn"
-      disabled={saving}
+      disabled={saving || withdrawing}
       onclick={() => void save()}
     >
       {saving ? t('ro.editSaving') : t('ro.editSave')}
@@ -204,5 +272,48 @@
     color: var(--dnf);
     font-size: var(--fs-caption);
     margin: 0;
+  }
+  .divider {
+    margin: var(--space-sm) 0 0;
+    border: 0;
+    border-top: 1px solid var(--border);
+  }
+  .danger-zone {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2xs);
+    align-items: flex-start;
+  }
+  .danger-hint {
+    margin: 0;
+    color: var(--fg-muted);
+    font-size: var(--fs-caption);
+  }
+  .danger-confirm {
+    margin: 0;
+    color: var(--fg);
+    font-size: var(--fs-label);
+    font-weight: 500;
+  }
+  .danger-actions {
+    display: flex;
+    gap: var(--space-xs);
+    width: 100%;
+  }
+  .btn.danger-ghost {
+    background: transparent;
+    border: 1px solid var(--dnf);
+    color: var(--dnf);
+  }
+  .btn.danger-ghost:hover:not(:disabled) {
+    background: oklch(0.95 0.02 25);
+  }
+  .btn.danger {
+    background: var(--dnf);
+    border: 1px solid var(--dnf);
+    color: #fff;
+  }
+  .btn.danger:hover:not(:disabled) {
+    filter: brightness(0.92);
   }
 </style>

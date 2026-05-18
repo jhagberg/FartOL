@@ -665,6 +665,67 @@ describe('reduce — CompetitionState projection', () => {
     assert.equal(anna.card_read_history.length, 2);
   });
 
+  test('Phase-2.1 race_reset event un-scores prior reads (auto status only)', () => {
+    seqCounter = 0;
+    const raceStartMs = 1_700_000_000_000;
+    const events = [
+      evt({ event_type: 'race_started', started_at_ms: raceStartMs }, { eventTimeMs: raceStartMs }),
+      cardRead(1, [p(31), p(32), p(33), p(34)], hd(10 * 3600), hd(10 * 3600 + 500), {
+        eventTimeMs: raceStartMs + 60_000,
+      }),
+      evt(
+        { event_type: 'race_reset', previous_started_at_ms: raceStartMs },
+        { eventTimeMs: raceStartMs + 120_000 }
+      ),
+    ];
+    const state = reduce({
+      competition_id: 'comp-1',
+      race_started_at_ms: null,
+      events,
+      competitors: [comp({ id: 'c-anna', cardNumber: 1 })],
+      classes: [cls('cls-H21')],
+      courses: [course('cls-H21', [31, 32, 33, 34])],
+    });
+    const anna = state.competitors.get('c-anna');
+    assert.ok(anna);
+    assert.equal(anna.status, 'PEND');
+    assert.equal(anna.elapsed_time_ms, null);
+    assert.deepEqual(anna.missing_codes, []);
+    assert.deepEqual(anna.extra_codes, []);
+    // History stays — race_reset is a rollback of scoring, not a wipe.
+    assert.equal(anna.card_read_history.length, 1);
+  });
+
+  test('Phase-2.1 race_reset preserves manual_status overrides', () => {
+    seqCounter = 0;
+    const raceStartMs = 1_700_000_000_000;
+    const events = [
+      evt({ event_type: 'race_started', started_at_ms: raceStartMs }, { eventTimeMs: raceStartMs }),
+      evt({
+        event_type: 'manual_status_set',
+        competitor_id: 'c-bob',
+        status: 'DNF',
+        reason: 'injury',
+      }),
+      evt(
+        { event_type: 'race_reset', previous_started_at_ms: raceStartMs },
+        { eventTimeMs: raceStartMs + 120_000 }
+      ),
+    ];
+    const state = reduce({
+      competition_id: 'comp-1',
+      race_started_at_ms: null,
+      events,
+      competitors: [comp({ id: 'c-bob', cardNumber: 2 })],
+      classes: [cls('cls-H21')],
+      courses: [course('cls-H21', [31, 32, 33, 34])],
+    });
+    const bob = state.competitors.get('c-bob');
+    assert.ok(bob);
+    assert.equal(bob.status, 'DNF');
+    assert.equal(bob.manual_status, 'DNF');
+  });
+
   test('Phase-2.0 results sort: OK > MP > DNF > DQ > MAX > DNS > CANCEL > PEND', () => {
     seqCounter = 0;
     const competitors = [

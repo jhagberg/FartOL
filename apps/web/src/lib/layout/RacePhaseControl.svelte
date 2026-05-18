@@ -24,7 +24,7 @@
 -->
 <script lang="ts">
   import { activeCompetition } from '../stores/activeCompetition.svelte.ts';
-  import { startRace } from '../api/client.ts';
+  import { startRace, resetRace } from '../api/client.ts';
   import { t } from '../i18n/index.ts';
 
   const active = $derived(activeCompetition.value);
@@ -32,7 +32,8 @@
     active !== null && active.race_started_at_ms !== null
   );
 
-  let confirming = $state(false);
+  type Mode = 'idle' | 'confirm-start' | 'confirm-reset';
+  let mode: Mode = $state('idle');
   let busy = $state(false);
   let err: string | null = $state(null);
 
@@ -54,7 +55,22 @@
       // consumer of activeCompetition (Sidebar pill, readout phase
       // indicator, results header).
       await activeCompetition.refreshList();
-      confirming = false;
+      mode = 'idle';
+    } catch (e) {
+      err = (e as Error).message;
+    } finally {
+      busy = false;
+    }
+  }
+
+  async function onConfirmReset(): Promise<void> {
+    if (active === null) return;
+    busy = true;
+    err = null;
+    try {
+      await resetRace(active.id);
+      await activeCompetition.refreshList();
+      mode = 'idle';
     } catch (e) {
       err = (e as Error).message;
     } finally {
@@ -65,27 +81,37 @@
 
 {#if active !== null}
   <div class="phase-wrap">
-    {#if isRaceStarted && active.race_started_at_ms !== null}
-      <div class="phase-pill running" data-testid="race-phase-pill">
-        <span class="dot" aria-hidden="true"></span>
-        <span class="text">
-          {t('race.phase.running', { time: formatHHMM(active.race_started_at_ms) })}
-        </span>
-      </div>
-    {:else if !confirming}
-      <div class="phase-pill prerace" data-testid="race-phase-pill">
-        <span class="dot" aria-hidden="true"></span>
-        <span class="text">{t('race.phase.preRace')}</span>
-      </div>
-      <button
-        type="button"
-        class="start-btn"
-        onclick={() => (confirming = true)}
-        data-testid="start-race-btn"
-      >
-        {t('race.start.cta')}
-      </button>
-    {:else}
+    {#if mode === 'idle'}
+      {#if isRaceStarted && active.race_started_at_ms !== null}
+        <div class="phase-pill running" data-testid="race-phase-pill">
+          <span class="dot" aria-hidden="true"></span>
+          <span class="text">
+            {t('race.phase.running', { time: formatHHMM(active.race_started_at_ms) })}
+          </span>
+        </div>
+        <button
+          type="button"
+          class="reset-btn"
+          onclick={() => (mode = 'confirm-reset')}
+          data-testid="reset-race-btn"
+        >
+          {t('race.reset.cta')}
+        </button>
+      {:else}
+        <div class="phase-pill prerace" data-testid="race-phase-pill">
+          <span class="dot" aria-hidden="true"></span>
+          <span class="text">{t('race.phase.preRace')}</span>
+        </div>
+        <button
+          type="button"
+          class="start-btn"
+          onclick={() => (mode = 'confirm-start')}
+          data-testid="start-race-btn"
+        >
+          {t('race.start.cta')}
+        </button>
+      {/if}
+    {:else if mode === 'confirm-start'}
       <div class="confirm-card" role="dialog" aria-labelledby="race-confirm-title">
         <p id="race-confirm-title" class="confirm-title">
           {t('race.confirm.title')}
@@ -96,7 +122,7 @@
             type="button"
             class="confirm-cancel"
             onclick={() => {
-              confirming = false;
+              mode = 'idle';
               err = null;
             }}
             disabled={busy}
@@ -112,6 +138,39 @@
             data-testid="start-race-confirm"
           >
             {busy ? t('race.confirm.starting') : t('race.confirm.go')}
+          </button>
+        </div>
+        {#if err}
+          <p class="confirm-err" role="alert">{err}</p>
+        {/if}
+      </div>
+    {:else}
+      <div class="confirm-card danger" role="dialog" aria-labelledby="race-reset-title">
+        <p id="race-reset-title" class="confirm-title">
+          {t('race.reset.title')}
+        </p>
+        <p class="confirm-body">{t('race.reset.body')}</p>
+        <div class="confirm-actions">
+          <button
+            type="button"
+            class="confirm-cancel"
+            onclick={() => {
+              mode = 'idle';
+              err = null;
+            }}
+            disabled={busy}
+            data-testid="reset-race-cancel"
+          >
+            {t('race.confirm.cancel')}
+          </button>
+          <button
+            type="button"
+            class="confirm-go danger"
+            onclick={() => void onConfirmReset()}
+            disabled={busy}
+            data-testid="reset-race-confirm"
+          >
+            {busy ? t('race.reset.resetting') : t('race.reset.go')}
           </button>
         </div>
         {#if err}
@@ -169,6 +228,24 @@
   .start-btn:hover {
     background: var(--accent-strong);
   }
+  .reset-btn {
+    width: 100%;
+    min-height: 32px;
+    padding: 0 var(--space-md);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--fg-muted);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .reset-btn:hover {
+    background: var(--bg-sunken);
+    color: var(--dnf);
+    border-color: var(--dnf);
+  }
   .confirm-card {
     padding: var(--space-sm);
     border: 1px solid var(--accent);
@@ -220,6 +297,17 @@
   }
   .confirm-go:hover:not(:disabled) {
     background: var(--accent-strong);
+  }
+  .confirm-card.danger {
+    border-color: var(--dnf);
+    background: var(--dnf-soft, var(--bg-elev));
+  }
+  .confirm-go.danger {
+    background: var(--dnf);
+    border-color: var(--dnf);
+  }
+  .confirm-go.danger:hover:not(:disabled) {
+    filter: brightness(0.92);
   }
   .confirm-cancel:disabled,
   .confirm-go:disabled {

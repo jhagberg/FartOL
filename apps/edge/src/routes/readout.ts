@@ -41,7 +41,15 @@
 import type { FastifyInstance } from 'fastify';
 import { eq, and, desc, isNull } from 'drizzle-orm';
 
-import { events, competitors as competitorsTable, config, hiredCards } from '../db/schema.ts';
+import {
+  events,
+  competitors as competitorsTable,
+  config,
+  hiredCards,
+  courses,
+  courseControls,
+  controls,
+} from '../db/schema.ts';
 import type { PunchStatus } from '../projection/types.ts';
 import type { EventPayload } from '../db/schema.ts';
 
@@ -86,6 +94,18 @@ interface HistoryRow {
     contact_email: string | null;
     note: string | null;
   } | null;
+  /** Phase 2.1 — course comparison breakdown for matched cards. The
+   * reducer already computes these per CompetitorView; the readout
+   * route surfaces them so the UI can show *which* controls are
+   * missing / extra / out-of-order rather than just the OK/MP/DNF
+   * label. All four lists are empty for unmatched cards and for
+   * competitors whose class has no course assigned. */
+  missing_codes: number[];
+  extra_codes: number[];
+  out_of_order_codes: number[];
+  /** Ordered expected control codes for the competitor's course.
+   * Empty array when the competitor's class has no course. */
+  expected_codes: number[];
 }
 
 /** Pull a displayable name out of the SI card's firmware-side
@@ -151,6 +171,44 @@ export default async function registerReadoutRoute(app: FastifyInstance): Promis
       let projection = app.projectionStore.get(id);
       if (projection === null) projection = app.projectionStore.recomputeNow(id);
 
+      // Phase 2.1 — build a class_id → expected_codes index so each
+      // history row can carry the course's expected control list. Two
+      // SELECTs: courses for this competition, then one joined SELECT
+      // pulling all course_controls × controls for these courses ordered
+      // by (course_id, order_idx). Group in TS.
+      const courseRows = app.fartolDb.db
+        .select()
+        .from(courses)
+        .where(eq(courses.competitionId, id))
+        .all();
+      const expectedByClassId = new Map<string, number[]>();
+      if (courseRows.length > 0) {
+        const codeRows = app.fartolDb.db
+          .select({
+            courseId: courseControls.courseId,
+            orderIdx: courseControls.orderIdx,
+            code: controls.code,
+          })
+          .from(courseControls)
+          .innerJoin(controls, eq(courseControls.controlId, controls.id))
+          .where(eq(controls.competitionId, id))
+          .orderBy(desc(courseControls.courseId), desc(courseControls.orderIdx))
+          .all();
+        const codesByCourse = new Map<string, Array<{ orderIdx: number; code: number }>>();
+        for (const c of courseRows) codesByCourse.set(c.id, []);
+        for (const r of codeRows) codesByCourse.get(r.courseId)?.push(r);
+        for (const [courseId, codes] of codesByCourse) {
+          codes.sort((a, b) => a.orderIdx - b.orderIdx);
+          const course = courseRows.find((c) => c.id === courseId);
+          if (course?.classId !== undefined && course?.classId !== null) {
+            expectedByClassId.set(
+              course.classId,
+              codes.map((c) => c.code)
+            );
+          }
+        }
+      }
+
       // Phase 2.0 Plan 02-05 — build a card_number → open hired_cards row
       // map for this competition so each history row's hired_card_open
       // field comes from a single round-trip rather than a per-card
@@ -209,6 +267,14 @@ export default async function registerReadoutRoute(app: FastifyInstance): Promis
           finish_half_day: payload.finish?.half_day ?? null,
           start_seconds_in_half_day: payload.start?.seconds_in_half_day ?? null,
           start_half_day: payload.start?.half_day ?? null,
+          // Phase 2.1 — course comparison. `view` is the projected
+          // CompetitorView (already computed by the reducer); we just
+          // surface its fields plus the static expected_codes from the
+          // course → class index built above.
+          missing_codes: view?.missing_codes ?? [],
+          extra_codes: view?.extra_codes ?? [],
+          out_of_order_codes: view?.out_of_order_codes ?? [],
+          expected_codes: competitor ? (expectedByClassId.get(competitor.classId) ?? []) : [],
         };
       });
 

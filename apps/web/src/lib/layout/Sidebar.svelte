@@ -123,6 +123,15 @@
     {t('nav.hyrbrickor')}
   </NavItem>
 
+  <NavItem
+    active={route === 'info'}
+    disabled={compScopedDisabled}
+    onclick={() => onNavigate?.('info')}
+  >
+    {#snippet icon()}<Icon name="info" />{/snippet}
+    {t('nav.info')}
+  </NavItem>
+
   <NavItem onclick={() => onOpenSettings?.()}>
     {#snippet icon()}<Icon name="settings" />{/snippet}
     {t('nav.settings')}

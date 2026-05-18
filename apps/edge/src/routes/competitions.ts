@@ -292,4 +292,63 @@ export default async function registerCompetitions(app: FastifyInstance): Promis
     if (!updated) return reply.code(404).send({ error: 'competition not found' });
     return reply.code(201).send(competitionRowToDTO(updated));
   });
+
+  // POST /api/competitions/:id/reset-race — rollback the race-phase gate.
+  //
+  // Phase 2.1 (2026-05-18). Counterpart to start-race for the case where
+  // an operator hits "Starta tävling" by mistake (testing, demo) and needs
+  // the projection back to pre-race phase. Atomically:
+  //   1. inserts a `race_reset` event into the log (audit trail) carrying
+  //      the previous start timestamp so the rollback is reversible-by-
+  //      replay if needed
+  //   2. NULLs competitions.race_started_at_ms
+  //   3. broadcasts a `race_reset` envelope on readout:<id>
+  //   4. marks the projection dirty so the next read returns to identity-
+  //      scan semantics for every card_read
+  //
+  // Idempotent: when already in pre-race phase (race_started_at_ms IS NULL),
+  // returns 200 with the current state and writes no new event.
+  app.post<{ Params: { id: string } }>('/api/competitions/:id/reset-race', async (req, reply) => {
+    const { id: competitionId } = req.params;
+    const existing = app.fartolDb.db
+      .select()
+      .from(competitions)
+      .where(eq(competitions.id, competitionId))
+      .get();
+    if (!existing) return reply.code(404).send({ error: 'competition not found' });
+
+    if (existing.raceStartedAtMs === null) {
+      return reply.code(200).send(competitionRowToDTO(existing));
+    }
+
+    const previousStartedAtMs = existing.raceStartedAtMs;
+    const now = Date.now();
+    const r = insertEvent(
+      app.fartolDb,
+      app.fartolNodeId,
+      'race_reset',
+      now,
+      { event_type: 'race_reset', previous_started_at_ms: previousStartedAtMs },
+      competitionId
+    );
+    app.fartolDb.db
+      .update(competitions)
+      .set({ raceStartedAtMs: null })
+      .where(eq(competitions.id, competitionId))
+      .run();
+    app.wsBroadcast(readoutChannel(competitionId), {
+      type: 'race_reset',
+      payload: { previous_started_at_ms: previousStartedAtMs },
+      seq: r.local_seq,
+    });
+    app.projectionStore.markDirty(competitionId);
+
+    const updated = app.fartolDb.db
+      .select()
+      .from(competitions)
+      .where(eq(competitions.id, competitionId))
+      .get();
+    if (!updated) return reply.code(404).send({ error: 'competition not found' });
+    return reply.code(201).send(competitionRowToDTO(updated));
+  });
 }

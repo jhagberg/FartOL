@@ -145,6 +145,14 @@ export type EventPayload =
       started_at_ms: number;
     }
   | {
+      // Phase 2.1 (2026-05-18) — race-phase rollback. Lets the operator
+      // undo an accidental start (e.g. tested the button before the real
+      // race began). The reducer nulls competitions.race_started_at_ms on
+      // apply; subsequent card_reads return to identity-scan semantics.
+      event_type: 'race_reset';
+      previous_started_at_ms: number;
+    }
+  | {
       event_type: 'frame_error';
       reason: string;
       raw: string;
