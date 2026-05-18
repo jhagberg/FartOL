@@ -37,8 +37,9 @@
   import Field from '$lib/ui/Field.svelte';
   import Input from '$lib/ui/Input.svelte';
   import Select from '$lib/ui/Select.svelte';
-  import ClubAutocomplete from '$lib/components/ClubAutocomplete.svelte';
-  import EventorAutocomplete from '$lib/components/EventorAutocomplete.svelte';
+  import SmartRunnerSearch from '$lib/components/SmartRunnerSearch.svelte';
+  import SmartClubSearch from '$lib/components/SmartClubSearch.svelte';
+  import type { EventorClubSuggestion } from '@fartol/shared-types';
   import { ApiError } from '$lib/api/client.ts';
   import type { ClassDTO, EventorLookupHit, EventorNameSuggestion } from '@fartol/shared-types';
 
@@ -94,6 +95,12 @@
   }
   let name = $state(initialName());
   let club = $state(initialClub());
+  /** Federation club_id once a club is locked — either via the SmartClubSearch
+   * picker, via an Eventor name pick that carried a club, or via the
+   * card-scan eventorHint. When non-null, SmartRunnerSearch narrows its
+   * FTS5 query to this club (drowns-by-rank fix for common names).
+   * Cleared when the operator types freely into Klubb. */
+  let selectedClubId = $state<number | null>(null);
   // When eventorHint arrives asynchronously after mount (the parent
   // ReadoutView fetches the lookup in an $effect), reflect the cached
   // values into the form state as long as the operator hasn't already
@@ -106,6 +113,9 @@
       }
       if (club.trim() === '' && eventorHint.club_name) {
         club = eventorHint.club_name;
+      }
+      if (selectedClubId === null && eventorHint.club_id !== null) {
+        selectedClubId = eventorHint.club_id;
       }
       if (eventorFillNote === null) eventorFillNote = t('walk.eventor.fill');
     }
@@ -198,12 +208,29 @@
     eventorFillNote = null;
   }
 
-  /** Eventor picker callback — populate the klubb field from the matching
-   * suggestion's club_name. The autocomplete already wrote "Family, Given"
-   * into the input via its own onValue path. */
+  /** Eventor picker callback — SmartRunnerSearch (unlike the old datalist
+   * autocomplete) doesn't write back into the input, so we set the
+   * canonical "Family, Given" form here. Also lift club_name into the
+   * klubb field, and pre-fill the bricka if the cache row has one. */
   function onEventorPick(s: EventorNameSuggestion): void {
+    name = `${s.family_name}, ${s.given_name}`;
     if (s.club_name) club = s.club_name;
+    if (s.si_card !== null && cardNumberLocal === '') {
+      cardNumberLocal = s.si_card;
+    }
     eventorFillNote = t('walk.eventor.fill');
+  }
+
+  function onClubPick(s: EventorClubSuggestion): void {
+    club = s.name;
+    selectedClubId = s.club_id;
+  }
+  function onClubChange(v: string): void {
+    club = v;
+    // Free-text editing invalidates the picked club_id — without this clear
+    // a stale selectedClubId would keep narrowing the name search to a
+    // club the operator has moved past.
+    selectedClubId = null;
   }
 
   function validate(): string | null {
@@ -359,10 +386,11 @@
       }}
     >
       <Field label={t('walk.name')} htmlFor="walkup-name">
-        <EventorAutocomplete
+        <SmartRunnerSearch
           id="walkup-name"
           value={name}
           placeholder={t('walk.name.ph')}
+          clubId={selectedClubId}
           onValue={onNameChange}
           onPick={onEventorPick}
         />
@@ -373,11 +401,12 @@
       {/if}
 
       <Field label={t('walk.club')} htmlFor="walkup-club">
-        <ClubAutocomplete
+        <SmartClubSearch
           id="walkup-club"
           value={club}
           placeholder={t('walk.club.ph')}
-          onValue={(v) => (club = v)}
+          onValue={onClubChange}
+          onPick={onClubPick}
         />
       </Field>
 

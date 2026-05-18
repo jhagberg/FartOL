@@ -184,7 +184,7 @@
           {t('runners.cta.import')}
         </span>
       </Button>
-      <Button variant="ghost" onclick={openAdd} data-testid="runners-add-btn">
+      <Button variant="secondary" onclick={openAdd} data-testid="runners-add-btn">
         <span class="btn-row">
           <Icon name="plus" size={16} />
           {t('runners.cta.addManual')}

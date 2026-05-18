@@ -14,7 +14,12 @@
   import type { Snippet } from 'svelte';
   import type { HTMLButtonAttributes } from 'svelte/elements';
 
-  type Variant = 'primary' | 'ghost' | 'danger';
+  // 'secondary' = outlined treatment — visible border + elevated background.
+  // Use this for second-tier CTAs that sit next to a primary action so they
+  // read as buttons (not text). Ghost is intentionally text-only and should
+  // only be used inside dense contexts (modal footers, icon-only controls)
+  // where the surrounding chrome already conveys "tappable region".
+  type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
   type Size = 'sm' | 'md' | 'lg';
 
   interface Props extends HTMLButtonAttributes {
@@ -79,6 +84,17 @@
   }
   .variant-primary:hover {
     background: var(--accent-strong);
+  }
+  /* Secondary == base .btn treatment (visible border + elevated background).
+     Declared explicitly so it's discoverable and so callers see why it
+     differs from ghost. */
+  .variant-secondary {
+    background: var(--bg-elev);
+    color: var(--fg);
+    border-color: var(--border-strong);
+  }
+  .variant-secondary:hover {
+    background: var(--bg-sunken);
   }
   .variant-ghost {
     border-color: transparent;
