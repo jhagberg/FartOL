@@ -51,7 +51,7 @@ export interface ReceiptRead {
   readTime: string;
   /** Cumulative time at finish, e.g. "23:14". */
   elapsed: string;
-  status: 'OK' | 'MP' | 'DNF' | 'PEND';
+  status: 'OK' | 'MP' | 'DNF' | 'PEND' | 'DNS' | 'DQ' | 'CANCEL' | 'MAX';
   place: number | null;
   punches: ReceiptPunch[];
   progress: ReceiptProgress;
@@ -66,7 +66,7 @@ export interface ReceiptTopRow {
   place: number | null;
   name: string;
   time: string;
-  status: 'OK' | 'MP' | 'DNF' | 'PEND';
+  status: 'OK' | 'MP' | 'DNF' | 'PEND' | 'DNS' | 'DQ' | 'CANCEL' | 'MAX';
 }
 
 export interface ReceiptTemplateProps {

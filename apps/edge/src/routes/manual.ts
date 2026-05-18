@@ -49,7 +49,7 @@
 import type { FastifyInstance } from 'fastify';
 import { and, eq } from 'drizzle-orm';
 
-import { ManualDnfInput, readoutChannel } from '@fartol/shared-types';
+import { ManualDnfInput, ManualStatusInput, readoutChannel } from '@fartol/shared-types';
 import { competitors as competitorsTable } from '../db/schema.ts';
 import { insertEvent } from '../si/eventInserter.ts';
 import { issuesToErrors } from './_zod-errors.ts';
@@ -119,6 +119,103 @@ export default async function registerManualRoutes(app: FastifyInstance): Promis
       );
       app.wsBroadcast(readoutChannel(competitionId), {
         type: 'un_dnf',
+        payload: { competitor_id: competitorId },
+        seq: r.local_seq,
+      });
+      app.projectionStore.markDirty(competitionId);
+      return reply.code(201).send({ local_seq: r.local_seq });
+    }
+  );
+
+  // ---------------------------------------------------------------------------
+  // Phase 2.0 — generalized manual-status override.
+  //
+  //   POST /api/competitions/:id/competitors/:competitorId/status
+  //        body: { status: 'DNF'|'DNS'|'DQ'|'CANCEL'|'MAX', reason: string }
+  //
+  //   POST /api/competitions/:id/competitors/:competitorId/clear-status
+  //        body: {} (presence is the action)
+  //
+  // Both endpoints share the same cross-competition pre-flight, event-insert,
+  // WS broadcast, and projection-dirty contract as the legacy manual-dnf /
+  // un-dnf pair above. The legacy routes stay because Phase 1 fixtures and
+  // older clients still post to them; both surfaces converge on the same
+  // view.manual_status field in the reducer.
+  // ---------------------------------------------------------------------------
+
+  app.post<{ Params: { id: string; competitorId: string } }>(
+    '/api/competitions/:id/competitors/:competitorId/status',
+    async (req, reply) => {
+      const { id: competitionId, competitorId } = req.params;
+      const parsed = ManualStatusInput.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.code(400).send(issuesToErrors(parsed.error.issues));
+      }
+      const competitor = app.fartolDb.db
+        .select({ id: competitorsTable.id })
+        .from(competitorsTable)
+        .where(
+          and(
+            eq(competitorsTable.id, competitorId),
+            eq(competitorsTable.competitionId, competitionId)
+          )
+        )
+        .get();
+      if (!competitor) return reply.code(404).send({ error: 'competitor_not_found' });
+
+      const r = insertEvent(
+        app.fartolDb,
+        app.fartolNodeId,
+        'manual_status_set',
+        Date.now(),
+        {
+          event_type: 'manual_status_set',
+          competitor_id: competitorId,
+          status: parsed.data.status,
+          reason: parsed.data.reason,
+        },
+        competitionId
+      );
+      app.wsBroadcast(readoutChannel(competitionId), {
+        type: 'manual_status_set',
+        payload: {
+          competitor_id: competitorId,
+          status: parsed.data.status,
+          reason: parsed.data.reason,
+        },
+        seq: r.local_seq,
+      });
+      app.projectionStore.markDirty(competitionId);
+      return reply.code(201).send({ local_seq: r.local_seq });
+    }
+  );
+
+  app.post<{ Params: { id: string; competitorId: string } }>(
+    '/api/competitions/:id/competitors/:competitorId/clear-status',
+    async (req, reply) => {
+      const { id: competitionId, competitorId } = req.params;
+      const competitor = app.fartolDb.db
+        .select({ id: competitorsTable.id })
+        .from(competitorsTable)
+        .where(
+          and(
+            eq(competitorsTable.id, competitorId),
+            eq(competitorsTable.competitionId, competitionId)
+          )
+        )
+        .get();
+      if (!competitor) return reply.code(404).send({ error: 'competitor_not_found' });
+
+      const r = insertEvent(
+        app.fartolDb,
+        app.fartolNodeId,
+        'clear_manual_status',
+        Date.now(),
+        { event_type: 'clear_manual_status', competitor_id: competitorId },
+        competitionId
+      );
+      app.wsBroadcast(readoutChannel(competitionId), {
+        type: 'clear_manual_status',
         payload: { competitor_id: competitorId },
         seq: r.local_seq,
       });

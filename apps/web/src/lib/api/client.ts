@@ -359,6 +359,36 @@ export function unDnf(competitionId: string, competitorId: string): Promise<{ lo
 }
 
 // ---------------------------------------------------------------------------
+// Phase 2.0 — generalized manual-status override (DNS/DQ/CANCEL/MAX + DNF).
+// The legacy manualDnf() above stays for back-compat; new operator UI should
+// call setManualStatus() so the operator can pick any of the five states.
+// ---------------------------------------------------------------------------
+
+export type ManualStatus = 'DNF' | 'DNS' | 'DQ' | 'CANCEL' | 'MAX';
+
+export function setManualStatus(
+  competitionId: string,
+  competitorId: string,
+  status: ManualStatus,
+  reason: string
+): Promise<{ local_seq: number }> {
+  return apiFetch(
+    `/api/competitions/${encodeURIComponent(competitionId)}/competitors/${encodeURIComponent(competitorId)}/status`,
+    { method: 'POST', body: { status, reason } }
+  );
+}
+
+export function clearManualStatus(
+  competitionId: string,
+  competitorId: string
+): Promise<{ local_seq: number }> {
+  return apiFetch(
+    `/api/competitions/${encodeURIComponent(competitionId)}/competitors/${encodeURIComponent(competitorId)}/clear-status`,
+    { method: 'POST', body: {} }
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Import (multipart) — Course XML + IOF XML 3.0 entries
 // ---------------------------------------------------------------------------
 

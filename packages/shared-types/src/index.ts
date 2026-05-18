@@ -46,6 +46,8 @@ export {
   CompetitorCreateInput,
   ManualDnfInput,
   UnDnfInput,
+  ManualStatusInput,
+  ClearManualStatusInput,
   ClubDTO,
   EventorLookupHit,
   EventorLookupMiss,

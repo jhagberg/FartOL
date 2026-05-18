@@ -21,7 +21,7 @@
     cls: string;
     readTime: string;
     elapsed: string;
-    status: 'OK' | 'MP' | 'DNF' | 'PEND';
+    status: 'OK' | 'MP' | 'DNF' | 'PEND' | 'DNS' | 'DQ' | 'CANCEL' | 'MAX';
     unknown: boolean;
     key: string;
   }

@@ -31,6 +31,7 @@ function makeEnvelope(): PrintEnvelope {
         out_of_order_codes: [],
         elapsed_time_ms: 1_325_000,
         manual_dnf_reason: null,
+        manual_status: null,
       },
       competition: {
         id: 'comp-1',

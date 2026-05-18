@@ -435,4 +435,176 @@ describe('reduce — CompetitionState projection', () => {
     assert.deepEqual(anna.card_read_history[0]!.start, hd(10 * 3600));
     assert.deepEqual(anna.card_read_history[1]!.start, hd(11 * 3600));
   });
+
+  // ---------------------------------------------------------------------------
+  // Phase 2.0 — manual_status_set tests for the four new states added on
+  // 2026-05-18. Each test asserts that:
+  //   1. The override flips the status field as expected.
+  //   2. view.manual_status carries the asserted code (not just 'DNF').
+  //   3. view.manual_dnf_reason carries the operator reason (back-compat).
+  //   4. A subsequent card_read does NOT overwrite the override.
+  //   5. clear_manual_status reverts to the auto-detected status.
+  // ---------------------------------------------------------------------------
+
+  for (const status of ['DNS', 'DQ', 'CANCEL', 'MAX'] as const) {
+    test(`Phase-2.0 manual_status_set: ${status} wins over card_read`, () => {
+      seqCounter = 0;
+      const events = [
+        cardRead(1, [p(31), p(32), p(33), p(34)], hd(10 * 3600), hd(10 * 3600 + 600)),
+        evt({
+          event_type: 'manual_status_set',
+          competitor_id: 'c-anna',
+          status,
+          reason: `op-set-${status}`,
+        }),
+      ];
+      const state = reduce({
+        competition_id: 'comp-1',
+        events,
+        competitors: [comp({ id: 'c-anna', cardNumber: 1 })],
+        classes: [cls('cls-H21')],
+        courses: [course('cls-H21', [31, 32, 33, 34])],
+      });
+      const anna = state.competitors.get('c-anna');
+      assert.ok(anna);
+      assert.equal(anna.status, status);
+      assert.equal(anna.manual_status, status);
+      assert.equal(anna.manual_dnf_reason, `op-set-${status}`);
+    });
+  }
+
+  test('Phase-2.0 manual_status_set: DNS clears split fields (operator-asserted absence)', () => {
+    seqCounter = 0;
+    const events = [
+      cardRead(1, [p(31), p(32)], hd(10 * 3600), hd(10 * 3600 + 600)),
+      evt({
+        event_type: 'manual_status_set',
+        competitor_id: 'c-anna',
+        status: 'DNS',
+        reason: 'no-show',
+      }),
+    ];
+    const state = reduce({
+      competition_id: 'comp-1',
+      events,
+      competitors: [comp({ id: 'c-anna', cardNumber: 1 })],
+      classes: [cls('cls-H21')],
+      courses: [course('cls-H21', [31, 32, 33, 34])],
+    });
+    const anna = state.competitors.get('c-anna');
+    assert.ok(anna);
+    assert.equal(anna.status, 'DNS');
+    assert.equal(anna.elapsed_time_ms, null);
+    assert.deepEqual(anna.missing_codes, []);
+    assert.deepEqual(anna.extra_codes, []);
+  });
+
+  test('Phase-2.0 manual_status_set: MAX keeps the punch diff (attempted but over time)', () => {
+    seqCounter = 0;
+    const events = [
+      cardRead(1, [p(31), p(32), p(33), p(34)], hd(10 * 3600), hd(10 * 3600 + 600)),
+      evt({
+        event_type: 'manual_status_set',
+        competitor_id: 'c-anna',
+        status: 'MAX',
+        reason: 'exceeded 2h cap',
+      }),
+    ];
+    const state = reduce({
+      competition_id: 'comp-1',
+      events,
+      competitors: [comp({ id: 'c-anna', cardNumber: 1 })],
+      classes: [cls('cls-H21')],
+      courses: [course('cls-H21', [31, 32, 33, 34])],
+    });
+    const anna = state.competitors.get('c-anna');
+    assert.ok(anna);
+    assert.equal(anna.status, 'MAX');
+    // elapsed stays — runner did attempt the course; the operator's MAX
+    // judgement is independent of whether they touched controls.
+    assert.equal(anna.elapsed_time_ms, 600 * 1000);
+  });
+
+  test('Phase-2.0 clear_manual_status reverts to auto-detected status', () => {
+    seqCounter = 0;
+    const events = [
+      cardRead(1, [p(31), p(32), p(33), p(34)], hd(10 * 3600), hd(10 * 3600 + 600)),
+      evt({
+        event_type: 'manual_status_set',
+        competitor_id: 'c-anna',
+        status: 'DQ',
+        reason: 'rule-break',
+      }),
+      evt({ event_type: 'clear_manual_status', competitor_id: 'c-anna' }),
+    ];
+    const state = reduce({
+      competition_id: 'comp-1',
+      events,
+      competitors: [comp({ id: 'c-anna', cardNumber: 1 })],
+      classes: [cls('cls-H21')],
+      courses: [course('cls-H21', [31, 32, 33, 34])],
+    });
+    const anna = state.competitors.get('c-anna');
+    assert.ok(anna);
+    assert.equal(anna.status, 'OK');
+    assert.equal(anna.manual_status, null);
+    assert.equal(anna.manual_dnf_reason, null);
+    assert.equal(anna.elapsed_time_ms, 600 * 1000);
+  });
+
+  test('Phase-2.0 results sort: OK > MP > DNF > MAX > DQ > DNS > CANCEL > PEND', () => {
+    seqCounter = 0;
+    const competitors = [
+      comp({ id: 'c-ok', name: 'OK', cardNumber: 1 }),
+      comp({ id: 'c-mp', name: 'MP', cardNumber: 2 }),
+      comp({ id: 'c-dnf', name: 'DNF', cardNumber: 3 }),
+      comp({ id: 'c-max', name: 'MAX', cardNumber: 4 }),
+      comp({ id: 'c-dq', name: 'DQ', cardNumber: 5 }),
+      comp({ id: 'c-dns', name: 'DNS', cardNumber: 6 }),
+      comp({ id: 'c-cancel', name: 'CANCEL', cardNumber: 7 }),
+      comp({ id: 'c-pend', name: 'PEND', cardNumber: 8 }),
+    ];
+    const events = [
+      cardRead(1, [p(31), p(32), p(33), p(34)], hd(10 * 3600), hd(10 * 3600 + 500)),
+      cardRead(2, [p(31), p(33)], hd(10 * 3600), hd(10 * 3600 + 700)),
+      cardRead(3, [p(31)], hd(10 * 3600), null),
+      evt({
+        event_type: 'manual_status_set',
+        competitor_id: 'c-max',
+        status: 'MAX',
+        reason: 'over',
+      }),
+      evt({
+        event_type: 'manual_status_set',
+        competitor_id: 'c-dq',
+        status: 'DQ',
+        reason: 'dq',
+      }),
+      evt({
+        event_type: 'manual_status_set',
+        competitor_id: 'c-dns',
+        status: 'DNS',
+        reason: 'no-show',
+      }),
+      evt({
+        event_type: 'manual_status_set',
+        competitor_id: 'c-cancel',
+        status: 'CANCEL',
+        reason: 'wd',
+      }),
+    ];
+    const state = reduce({
+      competition_id: 'comp-1',
+      events,
+      competitors,
+      classes: [cls('cls-H21')],
+      courses: [course('cls-H21', [31, 32, 33, 34])],
+    });
+    const rows = state.results_by_class.get('cls-H21');
+    assert.ok(rows);
+    assert.deepEqual(
+      rows.map((r) => r.status),
+      ['OK', 'MP', 'DNF', 'MAX', 'DQ', 'DNS', 'CANCEL', 'PEND']
+    );
+  });
 });

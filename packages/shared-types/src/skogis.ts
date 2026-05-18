@@ -53,8 +53,10 @@ export interface SkogisInput {
   name: string;
   club: string | null;
   classId: string;
-  /** OK / MP / DNF / PEND — drives accessory choice. */
-  status: 'OK' | 'MP' | 'DNF' | 'PEND';
+  /** PunchStatus — drives accessory choice. MP/DNF/DQ/MAX → bandage (the
+   * runner attempted but didn't validate); DNS/CANCEL/PEND → flag (no
+   * attempt yet, or absent). OK/place 1..3 use crown/silver/bronze. */
+  status: 'OK' | 'MP' | 'DNF' | 'PEND' | 'DNS' | 'DQ' | 'CANCEL' | 'MAX';
   /** 1-based place in the class, or null if not yet ranked. */
   place: number | null;
   /** Number of CONTROL punches (excluding finish) — drives STIG stat. */
@@ -205,6 +207,14 @@ export function skogisFromInput(input: SkogisInput): SkogisDescriptor {
   const baseLevel = ((input.cardNumber || 1) % 29) + 1;
 
   // Result-derived
+  // Bandage = attempted but didn't validate (MP/DNF/DQ/MAX). Flag = no
+  // attempt or absent (PEND/DNS/CANCEL). Medals win over everything for
+  // top-3 finishers.
+  const failedAttempt =
+    input.status === 'MP' ||
+    input.status === 'DNF' ||
+    input.status === 'DQ' ||
+    input.status === 'MAX';
   const accessory: Accessory =
     input.place === 1
       ? 'crown'
@@ -212,7 +222,7 @@ export function skogisFromInput(input: SkogisInput): SkogisDescriptor {
         ? 'silver'
         : input.place === 3
           ? 'bronze'
-          : input.status === 'MP' || input.status === 'DNF'
+          : failedAttempt
             ? 'bandage'
             : 'flag';
 

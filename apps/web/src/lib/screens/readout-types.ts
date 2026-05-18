@@ -14,7 +14,7 @@
 
 import type { ReceiptRead, ReceiptPunch } from '$lib/components/receipt-templates/types.ts';
 
-export type ReadoutStatus = 'PEND' | 'OK' | 'MP' | 'DNF';
+export type ReadoutStatus = 'PEND' | 'OK' | 'MP' | 'DNF' | 'DNS' | 'DQ' | 'CANCEL' | 'MAX';
 
 export interface RawPunch {
   code: number;

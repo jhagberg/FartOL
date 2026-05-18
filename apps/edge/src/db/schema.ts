@@ -115,6 +115,24 @@ export type EventPayload =
       competitor_id: string;
     }
   | {
+      // Phase 2.0 generalization of manual_dnf — operator asserts one of the
+      // five manual statuses (DNF/DNS/DQ/CANCEL/MAX) with optional reason.
+      // The reducer prefers manual_status_set over the legacy manual_dnf;
+      // both write to the same view.manual_status field so old event logs
+      // keep replaying correctly.
+      event_type: 'manual_status_set';
+      competitor_id: string;
+      status: 'DNF' | 'DNS' | 'DQ' | 'CANCEL' | 'MAX';
+      reason: string;
+    }
+  | {
+      // Phase 2.0 generalization of un_dnf — clears whatever manual override
+      // is in force and re-derives status from the latest card_read (or PEND
+      // when no card_read has landed).
+      event_type: 'clear_manual_status';
+      competitor_id: string;
+    }
+  | {
       event_type: 'frame_error';
       reason: string;
       raw: string;

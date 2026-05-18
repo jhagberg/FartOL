@@ -26,7 +26,7 @@
     cls: string;
     readTime: string;
     elapsed: string;
-    status: 'OK' | 'MP' | 'DNF' | 'PEND';
+    status: 'OK' | 'MP' | 'DNF' | 'PEND' | 'DNS' | 'DQ' | 'CANCEL' | 'MAX';
     unknown: boolean;
     /** Locally-unique key — usually `${event_time_ms}-${local_seq}`. */
     key: string;

@@ -310,6 +310,29 @@ export const UnDnfInput = z.object({}).passthrough();
 export type UnDnfInput = z.infer<typeof UnDnfInput>;
 
 // ---------------------------------------------------------------------------
+// Phase 2.0 — generalized manual status override.
+//
+// REST input for POST /api/competitions/:id/competitors/:competitorId/status.
+// Lets the operator assert any of the five manual states (DNF/DNS/DQ/CANCEL/
+// MAX). The legacy /manual-dnf endpoint stays available for back-compat;
+// internally both write to the same view.manual_status field.
+//
+// IOF v3 mapping (apps/edge/src/xml/iofExport.ts):
+//   DNF → DidNotFinish | DNS → DidNotStart | DQ → Disqualified
+//   CANCEL → Cancelled | MAX → OverTime
+// ---------------------------------------------------------------------------
+
+export const ManualStatusInput = z.object({
+  status: z.enum(['DNF', 'DNS', 'DQ', 'CANCEL', 'MAX']),
+  reason: z.string().min(1).max(500),
+});
+export type ManualStatusInput = z.infer<typeof ManualStatusInput>;
+
+/** Clearing the override takes no body — symmetric with UnDnfInput. */
+export const ClearManualStatusInput = z.object({}).passthrough();
+export type ClearManualStatusInput = z.infer<typeof ClearManualStatusInput>;
+
+// ---------------------------------------------------------------------------
 // Club — walk-up autocomplete cache.
 // ---------------------------------------------------------------------------
 

@@ -37,12 +37,14 @@
     startTime: string;
     readTime: string;
     elapsed: string;
-    status: 'OK' | 'MP' | 'DNF' | 'PEND';
+    status: 'OK' | 'MP' | 'DNF' | 'PEND' | 'DNS' | 'DQ' | 'CANCEL' | 'MAX';
     place: number | null;
     unknown: boolean;
     /** Competitor id for the manual-DNF endpoint (null on unknown rows). */
     competitorId: string | null;
   }
+
+  type ManualStatus = 'DNF' | 'DNS' | 'DQ' | 'CANCEL' | 'MAX';
 
   interface Props {
     /** null = waiting state. */
@@ -56,6 +58,12 @@
     onWalkup?: (cardNumber: number) => void;
     onManualDnf?: (competitorId: string, reason: string) => void;
     onUnDnf?: (competitorId: string) => void;
+    /** Phase 2.0 generalized override — preferred over onManualDnf when
+     * supplied. The popover shows all five manual states (DNF/DNS/DQ/
+     * CANCEL/MAX). Falls back to onManualDnf when status==='DNF'. */
+    onManualStatus?: (competitorId: string, status: ManualStatus, reason: string) => void;
+    /** Phase 2.0 clear-override — preferred over onUnDnf when supplied. */
+    onClearManualStatus?: (competitorId: string) => void;
     onEdit?: (competitorId: string) => void;
     /** Snippet that renders either PunchGrid or SplitsTable (parent
      * owns the density toggle). */
@@ -71,37 +79,76 @@
     onWalkup,
     onManualDnf,
     onUnDnf,
+    onManualStatus,
+    onClearManualStatus,
     onEdit,
     controls,
   }: Props = $props();
 
-  // Manual-DNF popover local state.
+  // Manual-status popover state. Defaults to DNF so the existing test path
+  // (manual-dnf-btn → dnf-reason-input → dnf-confirm) keeps producing a DNF.
+  const MANUAL_STATUSES: ManualStatus[] = ['DNF', 'DNS', 'DQ', 'CANCEL', 'MAX'];
+  const REASON_BY_STATUS: Record<ManualStatus, string> = {
+    DNF: 'Bröt loppet',
+    DNS: 'Kom inte till start',
+    DQ: 'Diskvalificerad',
+    CANCEL: 'Återbud',
+    MAX: 'Maxtid passerad',
+  };
+
   let dnfOpen = $state(false);
   let dnfReason = $state('');
+  let pickedStatus = $state<ManualStatus>('DNF');
+
+  // True when the current row already carries an operator-asserted override.
+  // In that case the primary button is a single-click "clear", matching the
+  // pre-Phase-2.0 un-DNF UX.
+  function isOverridden(s: Read['status']): boolean {
+    return s === 'DNF' || s === 'DNS' || s === 'DQ' || s === 'CANCEL' || s === 'MAX';
+  }
 
   function toggleDnf(): void {
     if (!read || !read.competitorId) return;
-    if (read.status === 'DNF') {
-      // Un-DNF — no confirm step; UI-SPEC documents this as a single click.
-      onUnDnf?.(read.competitorId);
+    if (isOverridden(read.status)) {
+      // Single-click clear — preserves the pre-Phase-2.0 un-DNF gesture.
+      if (onClearManualStatus) onClearManualStatus(read.competitorId);
+      else onUnDnf?.(read.competitorId);
       return;
     }
     dnfOpen = !dnfOpen;
-    if (dnfOpen) dnfReason = 'Bröt loppet';
+    if (dnfOpen) {
+      pickedStatus = 'DNF';
+      dnfReason = REASON_BY_STATUS.DNF;
+    }
+  }
+
+  function pickStatus(s: ManualStatus): void {
+    pickedStatus = s;
+    // Pre-fill the reason field with a sensible default for the chosen
+    // status; operator can edit before confirm.
+    dnfReason = REASON_BY_STATUS[s];
   }
 
   function confirmDnf(): void {
     if (!read || !read.competitorId) return;
     const reason = dnfReason.trim();
     if (reason.length === 0) return;
-    onManualDnf?.(read.competitorId, reason);
+    if (onManualStatus) {
+      onManualStatus(read.competitorId, pickedStatus, reason);
+    } else if (pickedStatus === 'DNF') {
+      // Legacy single-state callback path — preserved so existing tests +
+      // any pre-2.0 consumers keep working.
+      onManualDnf?.(read.competitorId, reason);
+    }
     dnfOpen = false;
     dnfReason = '';
+    pickedStatus = 'DNF';
   }
 
   function cancelDnf(): void {
     dnfOpen = false;
     dnfReason = '';
+    pickedStatus = 'DNF';
   }
 </script>
 
@@ -206,11 +253,26 @@
             data-testid="manual-dnf-btn"
             onclick={toggleDnf}
           >
-            {read.status === 'DNF' ? t('ro.undnf') : t('ro.dnf')}
+            {isOverridden(read.status) ? t('ro.undnf') : t('ro.dnf')}
           </button>
           {#if dnfOpen}
             <div class="dnf-pop" role="dialog">
-              <label class="dnf-label" for="dnf-reason">{t('status.DNF')}</label>
+              <div class="status-picker" role="radiogroup" aria-label={t('ro.dnf')}>
+                {#each MANUAL_STATUSES as s (s)}
+                  <button
+                    type="button"
+                    class="status-chip"
+                    class:active={pickedStatus === s}
+                    data-testid={`status-pick-${s}`}
+                    aria-checked={pickedStatus === s}
+                    role="radio"
+                    onclick={() => pickStatus(s)}
+                  >
+                    {t(`status.${s}`)}
+                  </button>
+                {/each}
+              </div>
+              <label class="dnf-label" for="dnf-reason">{t(`status.${pickedStatus}`)}</label>
               <input
                 id="dnf-reason"
                 type="text"
@@ -433,8 +495,34 @@
     box-shadow: var(--shadow-md);
     display: grid;
     gap: 8px;
-    min-width: 260px;
+    min-width: 320px;
     z-index: 10;
+  }
+  .status-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .status-chip {
+    height: 28px;
+    padding: 0 10px;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    background: var(--bg-elev);
+    color: var(--fg-muted);
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    letter-spacing: 0.02em;
+    cursor: pointer;
+  }
+  .status-chip:hover {
+    background: var(--bg-sunken);
+  }
+  .status-chip.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-fg);
   }
   .dnf-label {
     font-size: 12px;

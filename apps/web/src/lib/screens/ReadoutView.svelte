@@ -64,6 +64,9 @@
     listCompetitors,
     manualDnf as apiManualDnf,
     unDnf as apiUnDnf,
+    setManualStatus as apiSetManualStatus,
+    clearManualStatus as apiClearManualStatus,
+    type ManualStatus,
     patchCompetition,
     devSimulateRead,
     printReceipt as apiPrintReceipt,
@@ -602,6 +605,31 @@
     }
   }
 
+  // Phase 2.0 — generalized manual-status override + clear. Uses the new
+  // /status + /clear-status endpoints so the operator can pick DNF/DNS/DQ/
+  // CANCEL/MAX rather than only DNF.
+  async function onManualStatusHandler(
+    competitorId: string,
+    status: ManualStatus,
+    reason: string
+  ): Promise<void> {
+    try {
+      await apiSetManualStatus(competitionId, competitorId, status, reason);
+      await refetchReadout();
+    } catch (err) {
+      toast(`${t('err.network')} (${(err as Error).message})`);
+    }
+  }
+
+  async function onClearManualStatusHandler(competitorId: string): Promise<void> {
+    try {
+      await apiClearManualStatus(competitionId, competitorId);
+      await refetchReadout();
+    } catch (err) {
+      toast(`${t('err.network')} (${(err as Error).message})`);
+    }
+  }
+
   async function onToggleAutoPrint(): Promise<void> {
     const next = !autoPrint;
     autoPrint = next;
@@ -706,6 +734,8 @@
       onWalkup={onWalkupCta}
       onManualDnf={(id, reason) => void onManualDnfHandler(id, reason)}
       onUnDnf={(id) => void onUnDnfHandler(id)}
+      onManualStatus={(id, status, reason) => void onManualStatusHandler(id, status, reason)}
+      onClearManualStatus={(id) => void onClearManualStatusHandler(id)}
       onEdit={(id) => { editingCompetitorId = id; }}
     >
       {#snippet controls()}
