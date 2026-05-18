@@ -94,7 +94,7 @@ test('three-click wizard happy path (C-H3: ONE atomic POST)', async ({ page, req
   // `readout-view` accordingly).
   await expect(page.getByTestId('readout-view')).toBeVisible();
   // The edge has the competition row.
-  const list = await request.get('http://localhost:5173/api/competitions');
+  const list = await request.get('http://localhost:5174/api/competitions');
   expect(list.status()).toBe(200);
   const listBody = (await list.json()) as { competitions: { id: string }[] };
   const newId = page.url().match(/\/competition\/([^/]+)\/readout$/)?.[1];
@@ -107,7 +107,7 @@ test('three-click wizard rollback on corrupt XML — C-H3 regression gate', asyn
   request,
 }) => {
   // Snapshot the count BEFORE the wizard touches anything.
-  const before = await request.get('http://localhost:5173/api/competitions');
+  const before = await request.get('http://localhost:5174/api/competitions');
   expect(before.status()).toBe(200);
   const countBefore = ((await before.json()) as { competitions: unknown[] }).competitions.length;
 
@@ -148,7 +148,7 @@ test('three-click wizard rollback on corrupt XML — C-H3 regression gate', asyn
   // — and is parallel-worker safe. `countBefore` is referenced so
   // ESLint doesn't flag it as unused.
   void countBefore;
-  const after = await request.get('http://localhost:5173/api/competitions');
+  const after = await request.get('http://localhost:5174/api/competitions');
   expect(after.status()).toBe(200);
   const afterBody = (await after.json()) as { competitions: { name: string }[] };
   expect(afterBody.competitions.some((c) => c.name === uniqueName)).toBe(false);

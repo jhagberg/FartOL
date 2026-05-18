@@ -50,7 +50,7 @@ const ENTRYLIST_FIXTURE = path.resolve(
 // tables stable across tests.
 test.describe.configure({ mode: 'serial' });
 
-const BASE = 'http://localhost:5173';
+const BASE = 'http://localhost:5174';
 
 interface SetupRes {
   competitionId: string;

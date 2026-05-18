@@ -37,7 +37,7 @@ const ENTRYLIST_FIXTURE = path.resolve(
 
 test.describe.configure({ mode: 'serial' });
 
-const BASE = 'http://localhost:5173';
+const BASE = 'http://localhost:5174';
 
 async function setup(
   request: import('@playwright/test').APIRequestContext

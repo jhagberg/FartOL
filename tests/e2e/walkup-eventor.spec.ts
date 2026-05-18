@@ -49,7 +49,7 @@ const COURSEDATA_FIXTURE = path.resolve(
 
 test.describe.configure({ mode: 'serial' });
 
-const BASE = 'http://localhost:5173';
+const BASE = 'http://localhost:5174';
 
 interface SetupRes {
   competitionId: string;
