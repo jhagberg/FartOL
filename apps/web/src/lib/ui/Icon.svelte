@@ -27,7 +27,8 @@
     | 'search'
     | 'plus'
     | 'edit'
-    | 'chevron-right';
+    | 'chevron-right'
+    | 'chevron-down';
 
   interface Props {
     name: IconName;
@@ -124,5 +125,8 @@
   {:else if name === 'chevron-right'}
     <!-- row-affordance chevron -->
     <path d="m9 6 6 6-6 6" />
+  {:else if name === 'chevron-down'}
+    <!-- dropdown affordance — competition pill switcher -->
+    <path d="m6 9 6 6 6-6" />
   {/if}
 </svg>

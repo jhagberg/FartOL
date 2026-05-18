@@ -12,6 +12,7 @@
   import BrandMark from './BrandMark.svelte';
   import NavItem from './NavItem.svelte';
   import StationCard from './StationCard.svelte';
+  import ActiveCompetitionPill from './ActiveCompetitionPill.svelte';
   import Icon from '../ui/Icon.svelte';
   import { t } from '../i18n/index.ts';
 
@@ -24,11 +25,11 @@
     stationStatus?: StationStatus;
     stationSerial?: string;
     readoutBadge?: number | null;
-    /** Competition-scoped items (Avläsning, Anmälda, Resultat, Export,
-     * Hyrbrickor) are disabled when this is null. Without it, clicking
-     * one silently routes to '/' which is a mystery dead-click — the
-     * UX audit caught this on the new "Anmälda" item but the pattern
-     * existed before. Now centrally gated. */
+    /** Whether ANY competition is currently active (URL match OR
+     * sticky session pointer from the activeCompetition store). Used
+     * solely to disable comp-scoped nav items when no competition has
+     * been picked yet — once one is, the pill shows it and the nav
+     * routes the operator there from any page. */
     activeCompId?: string | null;
   }
 
@@ -42,6 +43,10 @@
     activeCompId = null,
   }: Props = $props();
 
+  // Comp-scoped items are disabled ONLY when no competition exists in
+  // the system yet (first-boot). Once the operator has picked any
+  // competition, the activeCompetition store keeps a sticky pointer so
+  // navigating to "Tävlingar" (route '/') no longer destroys context.
   const compScopedDisabled = $derived(activeCompId === null);
 </script>
 
@@ -50,6 +55,8 @@
     <BrandMark size={30} />
     <span class="brand-name">{t('app.title')}</span>
   </div>
+
+  <ActiveCompetitionPill />
 
   <NavItem active={route === 'home'} onclick={() => onNavigate?.('home')}>
     {#snippet icon()}<Icon name="home" />{/snippet}

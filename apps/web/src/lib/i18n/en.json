@@ -13,6 +13,14 @@
   "nav.close": "Close menu",
   "a11y.skipToContent": "Skip to main content",
 
+  "active.label": "Active",
+  "active.empty": "No competition selected",
+  "active.empty.list": "No competitions yet — create one under Competitions.",
+  "active.choose": "Pick active competition",
+  "active.switch": "Switch active competition",
+  "active.search.placeholder": "Search competitions…",
+  "active.no.matches": "No matches",
+
   "runners.title": "Registered runners",
   "runners.count": "{{count}} runners",
   "runners.search.placeholder": "Search name, club or card…",

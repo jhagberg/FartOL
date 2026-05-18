@@ -13,6 +13,14 @@
   "nav.close": "Stäng meny",
   "a11y.skipToContent": "Hoppa till innehåll",
 
+  "active.label": "Aktiv",
+  "active.empty": "Ingen tävling vald",
+  "active.empty.list": "Inga tävlingar än — skapa en under Tävlingar.",
+  "active.choose": "Välj aktiv tävling",
+  "active.switch": "Byt aktiv tävling",
+  "active.search.placeholder": "Sök tävling…",
+  "active.no.matches": "Inga träffar",
+
   "runners.title": "Anmälda löpare",
   "runners.count": "{{count}} st",
   "runners.search.placeholder": "Sök namn, klubb eller bricka…",
