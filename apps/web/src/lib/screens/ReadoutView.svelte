@@ -343,16 +343,11 @@
           // Soft fail — operator can still toggle from settings.
         }
       }
-      // Prime bridgeStatus from the server's current view. Without this the
-      // StationCard sits at 'closed' until the next connection_changed
-      // envelope (which never comes if the bridge opened pre-page-load
-      // for a different active comp).
-      try {
-        const bs = await getBridgeStatus();
-        bridgeStatus.set(bs.state);
-      } catch {
-        // Soft fail.
-      }
+      // bridgeStatus is primed + kept fresh by the layout-level 2s poll
+      // (apps/web/src/routes/+layout.svelte). The WS connection_changed
+      // handler below still updates it eagerly for sub-second feedback
+      // while on /readout, but the prime fetch that used to live here is
+      // no longer needed.
     } catch (err) {
       // Surface a transient toast — readout still mounts so the WS
       // can paint the next card_read. Note: in dev this can fire when

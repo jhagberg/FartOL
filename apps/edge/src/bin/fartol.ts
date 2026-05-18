@@ -377,15 +377,25 @@ class BridgeLifecycle {
     // Coalesce: only one timer in flight at a time. station.close() racing
     // a catch-block scheduleReconnect must not produce parallel chains.
     if (this.reconnectTimer !== null) return;
-    if (this.attempt >= BACKOFF_MS.length) {
-      this.app.log.error(
-        'SI bridge reconnect exhausted — operator can POST /api/sessions/reconnect-bridge'
-      );
-      return;
-    }
-    const delay = BACKOFF_MS[this.attempt]!;
+    // Hardware-just-works: never give up. Ramp up through the backoff
+    // schedule, then steady-state at the last step (5 s) forever. Operator
+    // can still force an immediate retry via the "Återanslut" sidebar
+    // button (POST /api/sessions/reconnect-bridge). Without this clamp the
+    // operator had to restart the stack every time they unplugged the
+    // USB for more than ~9 s.
+    const cappedAttempt = Math.min(this.attempt, BACKOFF_MS.length - 1);
+    const delay = BACKOFF_MS[cappedAttempt]!;
     this.attempt++;
-    this.app.log.info({ delay, attempt: this.attempt }, 'scheduling SI bridge reconnect');
+    // Log dampening: chatter during the ramp (attempts 1..5), then one
+    // line at the moment we cross into steady-state, then one every minute
+    // (12 × 5 s) so journalctl stays readable on a long unplugged stretch.
+    const verbose =
+      this.attempt <= BACKOFF_MS.length ||
+      this.attempt === BACKOFF_MS.length + 1 ||
+      this.attempt % 12 === 0;
+    if (verbose) {
+      this.app.log.info({ delay, attempt: this.attempt }, 'scheduling SI bridge reconnect');
+    }
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       void this.openAttempt();

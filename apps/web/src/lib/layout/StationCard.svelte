@@ -14,6 +14,7 @@
 <script lang="ts">
   import PulseDot from '../ui/PulseDot.svelte';
   import { t } from '../i18n/index.ts';
+  import { reconnectBridge, ApiError } from '../api/client.ts';
 
   type Status = 'online' | 'offline' | 'connecting';
 
@@ -44,6 +45,27 @@
   const labelColor = $derived(
     status === 'online' ? 'var(--ok)' : status === 'connecting' ? 'var(--mp)' : 'var(--dnf)'
   );
+
+  let reconnecting = $state(false);
+  let reconnectError: string | null = $state(null);
+
+  async function doReconnect(): Promise<void> {
+    reconnecting = true;
+    reconnectError = null;
+    try {
+      await reconnectBridge();
+      // Status update arrives via the layout's 2s poll on the next tick;
+      // we don't need to refetch here.
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 503) {
+        reconnectError = t('ro.bridgeNotAttached');
+      } else {
+        reconnectError = (e as Error).message;
+      }
+    } finally {
+      reconnecting = false;
+    }
+  }
 </script>
 
 <div class="station-card">
@@ -60,6 +82,20 @@
     <span class="faint">{devicePath}</span>
     <span class="mono faint">{baud}</span>
   </div>
+  {#if status !== 'online'}
+    <button
+      type="button"
+      class="reconnect-btn"
+      onclick={doReconnect}
+      disabled={reconnecting}
+      data-testid="bridge-reconnect"
+    >
+      {reconnecting ? t('ro.reconnecting') : t('ro.reconnect')}
+    </button>
+    {#if reconnectError}
+      <div class="reconnect-error" role="alert">{reconnectError}</div>
+    {/if}
+  {/if}
 </div>
 
 <style>
@@ -102,5 +138,35 @@
   .mono {
     font-family: var(--font-mono);
     font-feature-settings: 'tnum' 1, 'zero' 1;
+  }
+  .reconnect-btn {
+    margin-top: var(--space-2xs);
+    min-height: 32px;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    color: var(--fg);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    width: 100%;
+  }
+  .reconnect-btn:hover:not(:disabled) {
+    background: var(--bg-hover, var(--bg-elev));
+  }
+  .reconnect-btn:focus-visible {
+    outline: 2px solid var(--mp);
+    outline-offset: 1px;
+  }
+  .reconnect-btn:disabled {
+    opacity: 0.6;
+    cursor: progress;
+  }
+  .reconnect-error {
+    font-size: 11px;
+    color: var(--dnf);
+    margin-top: var(--space-2xs);
+    word-break: break-word;
   }
 </style>
