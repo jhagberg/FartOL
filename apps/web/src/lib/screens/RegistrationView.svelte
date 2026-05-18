@@ -180,17 +180,24 @@
       });
   }
 
-  function onWalkupClose(saved: boolean): void {
-    // Phase 2.1 fix (2026-05-18): if the operator dismisses the modal
-    // without saving (scrim tap, cancel button, escape), push the current
-    // card back into the queue so the in-progress registration isn't lost.
-    // Pre-fix this dropped the card silently when the queue was empty —
-    // a frequent source of operator-cursing at the registration desk.
-    if (!saved && currentCard !== null) {
-      cardQueue.push(currentCard.cardNumber, currentCard.cardHolderHint);
-    }
-    // Auto-advance: pop the next queued card (null if empty → modal
-    // unmounts via {#if currentCard !== null}).
+  function onWalkupClose(_saved: boolean): void {
+    // Cancel = discard, regardless of saved/not-saved. An earlier draft
+    // pushed the current card back into the queue on !saved, which created
+    // an infinite cancel-loop: with an empty queue, push-back + pop just
+    // re-mounted the same card, so the operator couldn't dismiss without
+    // completing the form. With multiple queued cards it cycled between
+    // them indefinitely.
+    //
+    // The data-loss concern (Eventor pre-fill or operator typing being
+    // discarded on a scrim tap) is already handled inside WalkupModal:
+    // its `dirty` $derived covers name / club / classId / cardNumber /
+    // hyrbricka fields, and a scrim tap on a dirty form shows the
+    // 2-step "kasta?" confirm popover. The Avbryt button is the explicit-
+    // discard path and skips the confirm by design — that's the operator
+    // saying "I'm done with this card".
+    //
+    // The saved param stays in the signature so a future flow that wants
+    // to differentiate save-vs-cancel still can.
     const next = cardQueue.pop();
     if (next !== null) {
       mountCard(next);
