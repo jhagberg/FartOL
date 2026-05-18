@@ -46,6 +46,8 @@ import {
 import { competitions, classes, courses, courseControls, controls } from '../db/schema.ts';
 import type { Competition } from '../db/types.ts';
 import { issuesToErrors } from './_zod-errors.ts';
+import { insertEvent } from '../si/eventInserter.ts';
+import { readoutChannel } from '@fartol/shared-types';
 
 // ---------------------------------------------------------------------------
 // Row → DTO mappers. apps/edge owns the boundary translation; shared-types
@@ -80,6 +82,7 @@ function competitionRowToDTO(row: Competition): CompetitionDTO {
     receipt_template: normaliseReceiptTemplate(row.receiptTemplate),
     auto_print: row.autoPrint,
     created_at_ms: row.createdAtMs,
+    race_started_at_ms: row.raceStartedAtMs,
   };
 }
 
@@ -114,6 +117,10 @@ export default async function registerCompetitions(app: FastifyInstance): Promis
       receiptTemplate: parsed.data.receipt_template ?? 'classic',
       autoPrint: parsed.data.auto_print ?? false,
       createdAtMs: now,
+      // Phase 2.1 — new competitions start in pre-race phase. Operator
+      // flips this via POST /api/competitions/:id/start-race when the
+      // race actually begins.
+      raceStartedAtMs: null,
     };
     app.fartolDb.db.insert(competitions).values(row).run();
     return reply.code(201).send(competitionRowToDTO(row));
@@ -225,5 +232,64 @@ export default async function registerCompetitions(app: FastifyInstance): Promis
     // no DELETE in plan 04 — but TS doesn't know that.
     if (!updated) return reply.code(404).send({ error: 'competition not found' });
     return reply.code(200).send(competitionRowToDTO(updated));
+  });
+
+  // POST /api/competitions/:id/start-race — flip the race-phase gate.
+  //
+  // Phase 2.1 (2026-05-18). Pre-race, every card_read is an identity scan
+  // (the reducer skips detectStatus). Calling this endpoint atomically:
+  //   1. inserts a `race_started` event into the log (audit trail)
+  //   2. UPDATEs competitions.race_started_at_ms to the same timestamp
+  //   3. broadcasts a `race_started` envelope on readout:<id> so live UIs
+  //      flip their phase pill without an extra fetch
+  //   4. marks the projection dirty so the reducer re-runs and the WS
+  //      results channel reflects the new gate
+  //
+  // Idempotent: calling twice returns 200 with the EXISTING timestamp
+  // (no second event written) so an operator double-tap can't reset the
+  // race start. 404 if the competition doesn't exist.
+  app.post<{ Params: { id: string } }>('/api/competitions/:id/start-race', async (req, reply) => {
+    const { id: competitionId } = req.params;
+    const existing = app.fartolDb.db
+      .select()
+      .from(competitions)
+      .where(eq(competitions.id, competitionId))
+      .get();
+    if (!existing) return reply.code(404).send({ error: 'competition not found' });
+
+    if (existing.raceStartedAtMs !== null) {
+      // Idempotent: already started, return current state. No new event,
+      // no broadcast — the column is the source of truth.
+      return reply.code(200).send(competitionRowToDTO(existing));
+    }
+
+    const startedAtMs = Date.now();
+    const r = insertEvent(
+      app.fartolDb,
+      app.fartolNodeId,
+      'race_started',
+      startedAtMs,
+      { event_type: 'race_started', started_at_ms: startedAtMs },
+      competitionId
+    );
+    app.fartolDb.db
+      .update(competitions)
+      .set({ raceStartedAtMs: startedAtMs })
+      .where(eq(competitions.id, competitionId))
+      .run();
+    app.wsBroadcast(readoutChannel(competitionId), {
+      type: 'race_started',
+      payload: { started_at_ms: startedAtMs },
+      seq: r.local_seq,
+    });
+    app.projectionStore.markDirty(competitionId);
+
+    const updated = app.fartolDb.db
+      .select()
+      .from(competitions)
+      .where(eq(competitions.id, competitionId))
+      .get();
+    if (!updated) return reply.code(404).send({ error: 'competition not found' });
+    return reply.code(201).send(competitionRowToDTO(updated));
   });
 }

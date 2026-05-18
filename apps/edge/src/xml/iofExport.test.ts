@@ -61,6 +61,7 @@ function makeCompetition(): CompetitionDTO {
     receipt_template: 'classic',
     auto_print: false,
     created_at_ms: 1_716_120_000_000,
+    race_started_at_ms: null,
   };
 }
 

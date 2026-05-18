@@ -133,6 +133,18 @@ export type EventPayload =
       competitor_id: string;
     }
   | {
+      // Phase 2.1 (2026-05-18) — race-phase flip. Emitted by POST
+      // /api/competitions/:id/start-race. The event is the audit-trail
+      // source of truth; the competitions.race_started_at_ms column is a
+      // denormalised cache the reducer reads on every reduce() pass.
+      //
+      // Operator UI guarantees one race_started event per competition by
+      // disabling the button after the flip. The reducer is idempotent on
+      // duplicates: applying it twice just rewrites the same timestamp.
+      event_type: 'race_started';
+      started_at_ms: number;
+    }
+  | {
       event_type: 'frame_error';
       reason: string;
       raw: string;
@@ -163,6 +175,23 @@ export const competitions = sqliteTable('competitions', {
   receiptTemplate: text('receipt_template').notNull().default('classic'),
   autoPrint: integer('auto_print', { mode: 'boolean' }).notNull().default(false),
   createdAtMs: integer('created_at_ms').notNull(),
+  /** Phase 2.1 (2026-05-18) — race-phase gate.
+   *
+   * NULL = pre-race phase. card_read events are kept in the event log
+   * (full audit trail) but the reducer does NOT run dnfMp.detectStatus
+   * against them — they're identity scans, not scoring events. This is
+   * the universal "race zero-time" pattern (MeOS calls it `firstStart`
+   * / "tävlingens nolltid").
+   *
+   * Non-null = race has started. card_read events at or after this
+   * timestamp run through detectStatus normally and produce OK/MP/DNF.
+   *
+   * Flipped by POST /api/competitions/:id/start-race which atomically
+   * inserts a `race_started` event AND updates this column. The event
+   * is the audit-trail source of truth; the column is a denormalised
+   * cache so the reducer + frontend don't have to scan the log to know
+   * the current phase. */
+  raceStartedAtMs: integer('race_started_at_ms'),
 });
 
 // ---------------------------------------------------------------------------

@@ -53,6 +53,21 @@ export type CourseWithControlCodes = Course & { control_codes: readonly number[]
 
 export interface ReduceInput {
   competition_id: string;
+  /** Phase 2.1 (2026-05-18) — race-phase gate. The loader passes the
+   * value of competitions.race_started_at_ms:
+   *   - `null`      → pre-race phase. card_reads are identity scans
+   *                   only — never run detectStatus.
+   *   - `number`    → race has started at that ms-epoch. card_reads at
+   *                   or after this timestamp run through detectStatus
+   *                   normally; reads before stay PEND (audit-trail
+   *                   only, e.g. cards with stale punches from another
+   *                   race scanned at the registration desk).
+   *   - `undefined` → omitted. Treated as "no phase gate" — every
+   *                   card_read scores. This is the back-compat branch
+   *                   for Phase-1 reducer tests that pre-date the
+   *                   phase concept; production callers always set it
+   *                   explicitly via the loader. */
+  race_started_at_ms?: number | null;
   events: readonly Event[];
   competitors: readonly Competitor[];
   classes: readonly Class[];
@@ -135,6 +150,15 @@ export function reduce(input: ReduceInput): CompetitionState {
   }
   const pendingUnknownCards = new Set<number>();
   let lastEventSeq = 0;
+  // Phase 2.1 race-phase gate. Seeded from the loader (competitions.
+  // race_started_at_ms), but a replayed `race_started` event below can
+  // re-seed this mid-walk if the column got out of sync. Three states:
+  //   - undefined: caller omitted the field (Phase-1 test fixture) →
+  //                gate is OFF; every card_read scores.
+  //   - null:      pre-race phase → card_reads are identity scans only.
+  //   - number:    race started at this ms-epoch → card_reads at/after
+  //                this stamp score; earlier ones stay PEND.
+  let raceStartedAtMs: number | null | undefined = input.race_started_at_ms;
 
   for (const e of sortedEvents) {
     if (e.competitionId !== input.competition_id) continue;
@@ -160,9 +184,19 @@ export function reduce(input: ReduceInput): CompetitionState {
         view.latest_punches = payload.punches;
         view.latest_start = payload.start;
         view.latest_finish = payload.finish;
+        // Phase 2.1 race-phase gate: card_reads from before the race
+        // started are identity scans (e.g. registration-desk lookup with
+        // a card that still has punches from a previous race). Append
+        // them to history so the audit trail stays complete, but DON'T
+        // run detectStatus — the runner stays PEND. Manual overrides
+        // applied later still win in the same way. `undefined` here
+        // means the caller (Phase-1 tests) opted out of the gate.
+        const inRacePhase =
+          raceStartedAtMs === undefined ||
+          (raceStartedAtMs !== null && e.eventTimeMs >= raceStartedAtMs);
         // Manual override wins: don't overwrite status/elapsed when an
         // operator-asserted state (DNF/DNS/DQ/CANCEL/MAX) is in force.
-        if (view.manual_status === null) {
+        if (view.manual_status === null && inRacePhase) {
           const course = courseByClass.get(competitor.classId);
           const expected = course?.control_codes ?? [];
           const detected = detectStatus(
@@ -181,6 +215,23 @@ export function reduce(input: ReduceInput): CompetitionState {
         // Once an operator binds a card via walk-up, drop it from the
         // pending set so the modal closes.
         pendingUnknownCards.delete(payload.card_number);
+        break;
+      }
+      case 'race_started': {
+        // Phase 2.1: flip the in-pass race-phase gate so subsequent
+        // card_read events in this same reduce() pass score. The DB
+        // column is the durable source of truth (set by the route);
+        // this event arm keeps the reducer correct under pure replay
+        // when the column happens to be empty (test fixtures that seed
+        // events but not the column). Earliest-wins: if a duplicate
+        // race_started event lands, the first one keeps the column.
+        if (
+          raceStartedAtMs === undefined ||
+          raceStartedAtMs === null ||
+          payload.started_at_ms < raceStartedAtMs
+        ) {
+          raceStartedAtMs = payload.started_at_ms;
+        }
         break;
       }
       case 'manual_dnf': {

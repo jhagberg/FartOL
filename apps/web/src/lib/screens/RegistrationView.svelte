@@ -180,7 +180,15 @@
       });
   }
 
-  function onWalkupClose(): void {
+  function onWalkupClose(saved: boolean): void {
+    // Phase 2.1 fix (2026-05-18): if the operator dismisses the modal
+    // without saving (scrim tap, cancel button, escape), push the current
+    // card back into the queue so the in-progress registration isn't lost.
+    // Pre-fix this dropped the card silently when the queue was empty —
+    // a frequent source of operator-cursing at the registration desk.
+    if (!saved && currentCard !== null) {
+      cardQueue.push(currentCard.cardNumber, currentCard.cardHolderHint);
+    }
     // Auto-advance: pop the next queued card (null if empty → modal
     // unmounts via {#if currentCard !== null}).
     const next = cardQueue.pop();
@@ -263,6 +271,22 @@
     addSheetOpen = false;
     toast(t('registration.addedToast', { name: created.name }));
   }
+
+  /** Skip-ahead from the visible queue list: operator clicked a specific
+   * queued card chip. If a modal is already open with a *different* card,
+   * push the in-flight one back so we don't lose its work, then take the
+   * clicked card and mount it. A no-op when the chip matches the
+   * currently-mounted card. */
+  function onQueueChipClick(cardNumber: number): void {
+    if (currentCard !== null && currentCard.cardNumber === cardNumber) {
+      return;
+    }
+    if (currentCard !== null) {
+      cardQueue.push(currentCard.cardNumber, currentCard.cardHolderHint);
+    }
+    const next = cardQueue.take(cardNumber);
+    if (next !== null) mountCard(next);
+  }
 </script>
 
 <div class="registration" data-testid="registration-view">
@@ -320,7 +344,34 @@
     <span>{t('registration.addManualSheet')}</span>
   </button>
 
-  {#if currentCard === null}
+  {#if cardQueue.count > 0}
+    <section class="reg-queue" data-testid="reg-queue-list">
+      <header class="reg-queue-head">
+        <h2>{t('registration.queueHeading')}</h2>
+        <span class="reg-queue-count mono">{cardQueue.count}</span>
+      </header>
+      <ul class="reg-queue-items">
+        {#each cardQueue.items as q (q.cardNumber)}
+          <li>
+            <button
+              type="button"
+              class="reg-queue-chip"
+              data-testid="reg-queue-chip"
+              onclick={() => onQueueChipClick(q.cardNumber)}
+            >
+              <span class="mono">{q.cardNumber}</span>
+              {#if q.cardHolderHint}
+                <span class="hint">{q.cardHolderHint}</span>
+              {/if}
+              <span class="cta">{t('registration.queue.open')}</span>
+            </button>
+          </li>
+        {/each}
+      </ul>
+    </section>
+  {/if}
+
+  {#if currentCard === null && cardQueue.count === 0}
     <p class="empty" data-testid="reg-empty">{t('registration.empty')}</p>
   {/if}
 
@@ -468,6 +519,83 @@
   }
   .add-manual-btn:hover {
     background: var(--bg-sunken);
+  }
+  /* Visible card queue — operators can click any chip to skip-ahead to
+     that card instead of waiting for FIFO auto-advance. Mirrors the
+     /readout pending-unknown-cards section so muscle memory carries. */
+  .reg-queue {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .reg-queue-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: 1px solid var(--border);
+  }
+  .reg-queue-head h2 {
+    margin: 0;
+    font-size: var(--fs-label);
+    font-weight: 600;
+    color: var(--fg);
+  }
+  .reg-queue-count {
+    display: inline-flex;
+    align-items: center;
+    height: 22px;
+    padding: 0 8px;
+    background: var(--mp-soft);
+    color: oklch(0.45 0.12 70);
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .reg-queue-items {
+    list-style: none;
+    margin: 0;
+    padding: var(--space-xs);
+    display: grid;
+    gap: var(--space-2xs);
+  }
+  .reg-queue-chip {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    height: var(--hit);
+    min-height: var(--hit);
+    padding: 0 var(--space-md);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--fg);
+    font-size: var(--fs-label);
+    text-align: left;
+    cursor: pointer;
+  }
+  .reg-queue-chip:hover {
+    background: var(--bg-sunken);
+    border-color: var(--border-strong);
+  }
+  .reg-queue-chip .mono {
+    font-family: var(--font-mono);
+    font-weight: 600;
+  }
+  .reg-queue-chip .hint {
+    color: var(--fg-muted);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .reg-queue-chip .cta {
+    margin-left: auto;
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 600;
   }
   .toast {
     position: fixed;

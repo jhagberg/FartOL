@@ -11,7 +11,7 @@
 // - .planning/phases/02-4-klubbs-mvp/02-02b-PLAN.md task 1
 
 import { describe, it, expect, afterEach } from 'vitest';
-import { cardQueue } from './cardQueue.svelte.ts';
+import { cardQueue, type QueuedCard } from './cardQueue.svelte.ts';
 
 afterEach(() => {
   cardQueue.clear();
@@ -85,5 +85,41 @@ describe('cardQueue runes store', () => {
     cardQueue.push(2, '');
     expect(cardQueue.pop()?.cardHolderHint).toBeNull();
     expect(cardQueue.pop()?.cardHolderHint).toBe('');
+  });
+
+  // Phase 2.1 (2026-05-18) — skip-ahead pop: operator clicks a specific
+  // chip in the visible queue list to process it next instead of FIFO.
+  it('take(cardNumber) removes + returns the matching card from any position', () => {
+    cardQueue.push(11, 'a');
+    cardQueue.push(22, 'b');
+    cardQueue.push(33, 'c');
+    const taken = cardQueue.take(22);
+    expect(taken?.cardNumber).toBe(22);
+    expect(cardQueue.count).toBe(2);
+    // Remaining order preserved: 11 then 33.
+    expect(cardQueue.pop()?.cardNumber).toBe(11);
+    expect(cardQueue.pop()?.cardNumber).toBe(33);
+  });
+
+  it('take(cardNumber) on a card not in the queue returns null and does not mutate', () => {
+    cardQueue.push(11, null);
+    expect(cardQueue.take(99)).toBeNull();
+    expect(cardQueue.count).toBe(1);
+  });
+
+  it('items returns a read-only snapshot in FIFO order', () => {
+    cardQueue.push(1, 'a');
+    cardQueue.push(2, 'b');
+    const snap = cardQueue.items;
+    expect(snap.map((q) => q.cardNumber)).toEqual([1, 2]);
+    // Mutating the snapshot array must not affect the underlying queue.
+    // (Cast through unknown so we can prove the runtime defense, even
+    // though the type system marks `items` as readonly.)
+    (snap as unknown as QueuedCard[]).push({
+      cardNumber: 99,
+      cardHolderHint: null,
+      enqueuedAtMs: 0,
+    });
+    expect(cardQueue.count).toBe(2);
   });
 });

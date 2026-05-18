@@ -60,8 +60,8 @@ async function boot(): Promise<Ctx> {
 function seedCompetition(handle: DbHandle, id: string): { classId: string; competitorId: string } {
   handle.sqlite
     .prepare(
-      `INSERT INTO competitions (id, name, date, receipt_template, auto_print, created_at_ms)
-       VALUES (?, ?, ?, 'classic', 0, ?)`
+      `INSERT INTO competitions (id, name, date, receipt_template, auto_print, created_at_ms, race_started_at_ms)
+       VALUES (?, ?, ?, 'classic', 0, ?, 0)`
     )
     .run(id, `Comp ${id}`, '2026-05-14', 1_000);
   const classId = `cls-${id}`;

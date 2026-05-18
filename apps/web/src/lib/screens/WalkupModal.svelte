@@ -63,7 +63,11 @@
      * auto-advance to the next queued card without a router round-trip.
      * When null (Phase 1 /readout path), close() falls back to the
      * existing `goto(/competition/<id>/readout)` URL-strip behavior. */
-    onClose?: (() => void) | null;
+    /** Close handler. The `saved` arg lets the parent distinguish a
+     * successful save (true) from an operator-cancelled close (scrim tap,
+     * cancel button, escape key — all false). Used by RegistrationView to
+     * push the unsaved card back into the queue instead of dropping it. */
+    onClose?: ((saved: boolean) => void) | null;
   }
 
   let {
@@ -191,13 +195,15 @@
     confirmingClose = false;
   }
 
-  function close(): void {
+  function close(saved: boolean = false): void {
     // Phase 2.0 Plan 02-02b: when the parent supplies onClose (the
-    // registration desk drives auto-advance), invoke it instead of
-    // round-tripping through the router. The Phase 1 /readout path
-    // leaves onClose null and falls through to the URL-strip goto.
+    // registration desk drives auto-advance), invoke it with the saved
+    // flag so the parent can decide whether to push the card back into
+    // the queue (saved=false) or drop it (saved=true). The Phase 1
+    // /readout path leaves onClose null and falls through to the
+    // URL-strip goto; the saved flag is irrelevant there.
     if (onClose !== null) {
-      onClose();
+      onClose(saved);
       return;
     }
     void goto(`/competition/${competitionId}/readout`);
@@ -279,8 +285,10 @@
             }
           : { hired_contact: null }),
       });
-      // Success — back to readout, query param cleared.
-      close();
+      // Success — back to readout, query param cleared. Pass saved=true so
+      // a parent that tracks unsaved cards (RegistrationView) drops this
+      // one rather than re-queueing it.
+      close(true);
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) {
         const body = e.body as { error?: string; existing_competitor_id?: string } | undefined;
@@ -352,7 +360,9 @@
         hired_card: hiredCard,
         replace_card_for_competitor_id: cardTakenExistingId,
       });
-      close();
+      // Same as the main save path — saved=true so the parent's queue
+      // logic drops this card.
+      close(true);
     } catch (e) {
       fieldError = (e as Error).message ?? t('err.network');
     } finally {
@@ -520,7 +530,7 @@
               variant="danger"
               size="sm"
               type="button"
-              onclick={close}
+              onclick={() => close(false)}
               data-testid="walkup-discard-confirm-btn"
             >
               {t('walk.discard.discard')}
@@ -533,7 +543,7 @@
         <Button
           variant="ghost"
           type="button"
-          onclick={close}
+          onclick={() => close(false)}
           disabled={saving}
           data-testid="walkup-cancel"
         >

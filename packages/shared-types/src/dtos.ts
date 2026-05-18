@@ -89,6 +89,11 @@ export const CompetitionDTO = z.object({
   receipt_template: RECEIPT_TEMPLATE,
   auto_print: z.boolean(),
   created_at_ms: z.number().int().nonnegative(),
+  /** Phase 2.1 race-phase gate. NULL = pre-race (card_reads are
+   * identity scans only); ms-epoch = race has started at that wall
+   * clock instant. Frontend uses this to render the phase pill and
+   * enable/disable the "Starta tävling" CTA. */
+  race_started_at_ms: z.number().int().nonnegative().nullable(),
 });
 export type CompetitionDTO = z.infer<typeof CompetitionDTO>;
 

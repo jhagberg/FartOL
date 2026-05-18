@@ -146,6 +146,16 @@ export function patchCompetition(id: string, body: CompetitionPatchInput): Promi
   });
 }
 
+/** Phase 2.1 — flip the race-phase gate. Idempotent: returns the existing
+ * competition row (with race_started_at_ms already set) on a duplicate
+ * call instead of resetting the start time. */
+export function startRace(id: string): Promise<CompetitionDTO> {
+  return apiFetch<CompetitionDTO>(`/api/competitions/${encodeURIComponent(id)}/start-race`, {
+    method: 'POST',
+    body: {},
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Wizard atomic create + XML ingest (C-H3 LOCKED — plan 12)
 // ---------------------------------------------------------------------------

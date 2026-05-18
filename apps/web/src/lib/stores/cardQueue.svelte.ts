@@ -38,6 +38,12 @@ export const cardQueue = {
   get current(): QueuedCard | null {
     return _queue[0] ?? null;
   },
+  /** Read-only snapshot of the queue contents for rendering. Returns a
+   * fresh array so mutations of the result can't punch through into the
+   * store. Order matches FIFO pop order (index 0 = next to pop). */
+  get items(): readonly QueuedCard[] {
+    return [..._queue];
+  },
   /** FIFO push. Returns false if the same card_number is already in
    * the queue — the caller (RegistrationView) is expected to surface a
    * dedupe toast on the false branch. */
@@ -49,6 +55,15 @@ export const cardQueue = {
   /** FIFO pop. Returns null on an empty queue. */
   pop(): QueuedCard | null {
     return _queue.shift() ?? null;
+  },
+  /** Skip-ahead pop: remove + return the queued card matching the given
+   * number, regardless of its position. Returns null if not found. Used
+   * by the operator UI when an operator clicks a specific queued chip
+   * to process it next instead of the FIFO head. */
+  take(cardNumber: number): QueuedCard | null {
+    const idx = _queue.findIndex((q) => q.cardNumber === cardNumber);
+    if (idx < 0) return null;
+    return _queue.splice(idx, 1)[0] ?? null;
   },
   /** Drain the queue. Called on RegistrationView unmount so stale
    * queue entries don't carry across navigation to /readout. */

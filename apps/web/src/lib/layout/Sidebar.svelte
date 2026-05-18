@@ -13,6 +13,7 @@
   import NavItem from './NavItem.svelte';
   import StationCard from './StationCard.svelte';
   import ActiveCompetitionPill from './ActiveCompetitionPill.svelte';
+  import RacePhaseControl from './RacePhaseControl.svelte';
   import Icon from '../ui/Icon.svelte';
   import { t } from '../i18n/index.ts';
 
@@ -57,6 +58,7 @@
   </div>
 
   <ActiveCompetitionPill />
+  <RacePhaseControl />
 
   <NavItem active={route === 'home'} onclick={() => onNavigate?.('home')}>
     {#snippet icon()}<Icon name="home" />{/snippet}

@@ -1,0 +1,1 @@
+ALTER TABLE `competitions` ADD `race_started_at_ms` integer;
