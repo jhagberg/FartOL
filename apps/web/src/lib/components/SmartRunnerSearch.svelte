@@ -230,7 +230,7 @@
     autocorrect="off"
     autocapitalize="off"
     spellcheck="false"
-    data-testid="smart-search-input"
+    data-testid={id}
     aria-expanded={open}
     aria-haspopup="listbox"
     aria-controls={open ? `${id}-listbox` : undefined}
