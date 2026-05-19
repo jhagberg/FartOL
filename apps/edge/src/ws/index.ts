@@ -88,6 +88,13 @@ const ORIGIN_ALLOW_LIST = new Set([
   'http://localhost:3000',
   'http://127.0.0.1:3000',
   'http://[::1]:3000',
+  // Playwright e2e sandbox web port (b1a47e7 moved the test web off the
+  // dev 5173 to avoid prod-DB pollution via reuseExistingServer). The
+  // page loads at :5174, the WS handshake's Origin header is the same,
+  // and without this entry every e2e WS upgrade gets a 403.
+  'http://localhost:5174',
+  'http://127.0.0.1:5174',
+  'http://[::1]:5174',
 ]);
 
 // Phase 2.0 — RFC1918 LAN + IPv6 link-local + .local mDNS regexes. Only

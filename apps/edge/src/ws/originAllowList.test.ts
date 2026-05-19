@@ -32,6 +32,11 @@ describe('isOriginAllowed', () => {
       'http://[::1]:3000',
       'http://localhost:4173',
       'http://127.0.0.1:4173',
+      // Playwright e2e sandbox port (b1a47e7) — must pass so the e2e
+      // suite's WS handshake doesn't 403.
+      'http://localhost:5174',
+      'http://127.0.0.1:5174',
+      'http://[::1]:5174',
     ];
     for (const o of loopback) {
       assert.equal(isOriginAllowed(o, false), true, `${o} (allowLan=false)`);

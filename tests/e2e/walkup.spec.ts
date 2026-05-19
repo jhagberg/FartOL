@@ -97,6 +97,13 @@ async function setup(request: import('@playwright/test').APIRequestContext): Pro
   });
   expect(setActive.status()).toBe(200);
 
+  // 4b) Phase 2.1 race-phase gate (9f5781f): start the race so simulate-
+  // reads surface in the readout history → the consent toast logic in
+  // ReadoutView only fires when top.competitor_id is set on the latest
+  // history row.
+  const startRace = await request.post(`${BASE}/api/competitions/${competitionId}/start-race`);
+  expect([200, 201]).toContain(startRace.status());
+
   // 5) Look up ids.
   const compsRes = await request.get(`${BASE}/api/competitions/${competitionId}/competitors`);
   const comps = (await compsRes.json()) as {

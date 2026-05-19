@@ -79,6 +79,12 @@ async function setup(request: import('@playwright/test').APIRequestContext): Pro
   });
   expect(setActive.status()).toBe(200);
 
+  // 3b) Phase 2.1 race-phase gate (9f5781f): start the race so the
+  // hyrbricka finish-readout toast can fire on a simulate-read instead
+  // of the read landing as a quiet pre-race identity scan.
+  const startRace = await request.post(`${BASE}/api/competitions/${competitionId}/start-race`);
+  expect([200, 201]).toContain(startRace.status());
+
   // 4) Look up H21's class id.
   const classesRes = await request.get(`${BASE}/api/competitions/${competitionId}/classes`);
   const classes = (await classesRes.json()) as { classes: Array<{ id: string; name: string }> };

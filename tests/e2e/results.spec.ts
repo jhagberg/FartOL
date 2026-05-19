@@ -69,6 +69,13 @@ async function setup(
   });
   expect(setActive.status()).toBe(200);
 
+  // Phase 2.1 race-phase gate (9f5781f): flip out of pre-race so the
+  // simulate-read events trigger the results_update broadcast we assert
+  // on. Pre-race reads land in history as identity-only scans (status
+  // PEND) and the projection's results channel stays quiet.
+  const startRace = await request.post(`${BASE}/api/competitions/${competitionId}/start-race`);
+  expect([200, 201]).toContain(startRace.status());
+
   return { competitionId };
 }
 

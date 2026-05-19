@@ -74,6 +74,12 @@ async function setup(
     data: { competition_id: competitionId },
   });
 
+  // 3b) Phase 2.1 race-phase gate (9f5781f): without start-race, simulate-
+  // read events are identity-only scans that don't surface in the readout
+  // history → the unknown-card walkup redirect never fires.
+  const startRace = await request.post(`${BASE}/api/competitions/${competitionId}/start-race`);
+  expect([200, 201]).toContain(startRace.status());
+
   return { competitionId };
 }
 
