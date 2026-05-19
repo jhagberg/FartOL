@@ -47,7 +47,16 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: `pnpm --filter @fartol/edge dev -- --port=${TEST_EDGE_PORT}`,
+      // Bypass the `pnpm run dev` script wrapper here on purpose: pnpm 10
+      // forwards the `--` separator INTO the script's argv instead of
+      // consuming it (caught in CI 2026-05-19), so
+      //   `pnpm --filter @fartol/edge dev -- --port=3001`
+      // ends up as
+      //   `tsx watch src/bin/fartol.ts -- --port=3001`
+      // and similarly the web's vite invocation gets two competing --port
+      // flags (vite binds 5173, playwright waits on 5174 → timeout). Using
+      // `pnpm exec` invokes the tool directly with the exact argv we want.
+      command: `pnpm --filter @fartol/edge exec tsx watch src/bin/fartol.ts --port=${TEST_EDGE_PORT}`,
       port: TEST_EDGE_PORT,
       reuseExistingServer: !process.env['CI'],
       timeout: 60_000,
@@ -66,8 +75,9 @@ export default defineConfig({
     {
       // Custom Vite port + FARTOL_EDGE_PORT env so the web proxy routes
       // /api and /ws to the sandbox edge instead of whatever happens to
-      // be on :3000. vite.config.ts reads FARTOL_EDGE_PORT.
-      command: `pnpm --filter @fartol/web dev -- --port=${TEST_WEB_PORT}`,
+      // be on :3000. vite.config.ts reads FARTOL_EDGE_PORT. Direct
+      // `pnpm exec vite` for the same reason as the edge entry above.
+      command: `pnpm --filter @fartol/web exec vite dev --port ${TEST_WEB_PORT}`,
       port: TEST_WEB_PORT,
       reuseExistingServer: !process.env['CI'],
       timeout: 60_000,
