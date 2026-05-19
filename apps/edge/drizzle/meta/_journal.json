@@ -43,6 +43,13 @@
       "when": 1779104456409,
       "tag": "0005_busy_iron_monger",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1779177600000,
+      "tag": "0006_eventor_fts_update_triggers",
+      "breakpoints": true
     }
   ]
 }

@@ -264,19 +264,26 @@ export default async function registerCompetitions(app: FastifyInstance): Promis
     }
 
     const startedAtMs = Date.now();
-    const r = insertEvent(
-      app.fartolDb,
-      app.fartolNodeId,
-      'race_started',
-      startedAtMs,
-      { event_type: 'race_started', started_at_ms: startedAtMs },
-      competitionId
-    );
-    app.fartolDb.db
-      .update(competitions)
-      .set({ raceStartedAtMs: startedAtMs })
-      .where(eq(competitions.id, competitionId))
-      .run();
+    // Wrap event INSERT + competition UPDATE in a single transaction so a
+    // crash between the two writes can't leave the audit log and the
+    // denormalised column out of sync (mirrors the hired-cards PATCH fix
+    // for G-001). The broadcast lands AFTER commit per PATTERNS S-4.
+    const r = app.fartolDb.sqlite.transaction(() => {
+      const inserted = insertEvent(
+        app.fartolDb,
+        app.fartolNodeId,
+        'race_started',
+        startedAtMs,
+        { event_type: 'race_started', started_at_ms: startedAtMs },
+        competitionId
+      );
+      app.fartolDb.db
+        .update(competitions)
+        .set({ raceStartedAtMs: startedAtMs })
+        .where(eq(competitions.id, competitionId))
+        .run();
+      return inserted;
+    })();
     app.wsBroadcast(readoutChannel(competitionId), {
       type: 'race_started',
       payload: { started_at_ms: startedAtMs },
@@ -323,19 +330,22 @@ export default async function registerCompetitions(app: FastifyInstance): Promis
 
     const previousStartedAtMs = existing.raceStartedAtMs;
     const now = Date.now();
-    const r = insertEvent(
-      app.fartolDb,
-      app.fartolNodeId,
-      'race_reset',
-      now,
-      { event_type: 'race_reset', previous_started_at_ms: previousStartedAtMs },
-      competitionId
-    );
-    app.fartolDb.db
-      .update(competitions)
-      .set({ raceStartedAtMs: null })
-      .where(eq(competitions.id, competitionId))
-      .run();
+    const r = app.fartolDb.sqlite.transaction(() => {
+      const inserted = insertEvent(
+        app.fartolDb,
+        app.fartolNodeId,
+        'race_reset',
+        now,
+        { event_type: 'race_reset', previous_started_at_ms: previousStartedAtMs },
+        competitionId
+      );
+      app.fartolDb.db
+        .update(competitions)
+        .set({ raceStartedAtMs: null })
+        .where(eq(competitions.id, competitionId))
+        .run();
+      return inserted;
+    })();
     app.wsBroadcast(readoutChannel(competitionId), {
       type: 'race_reset',
       payload: { previous_started_at_ms: previousStartedAtMs },

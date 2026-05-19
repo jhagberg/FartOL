@@ -38,19 +38,22 @@
  *   - `*.body.value` — catches handlers that log a nested object whose
  *     immediate child is a `body` envelope (e.g. `{ req: { body: ... } }`
  *     when the pino req-serializer is bypassed).
- *   - `request.body.value` — explicit fastify request-style key.
- *   - `value` — defensive catch-all for handlers that log the parsed
- *     payload directly (e.g. `app.log.info({ key, value }, 'saving')`).
+ *   - `request.body.value` / `req.body.value` — explicit fastify
+ *     request-style keys.
+ *
+ * Intentionally scoped to the `body.value` shape — a bare top-level
+ * `value` would mask unrelated debug data (e.g. `log.info({ value: 42 },
+ * 'count')`) which costs more in observability than it buys in defense.
  *
  * Phase-3 expansion: when LIVELOX_API_KEY / LIVERESULTAT_API_KEY land,
- * no change needed here — the redact is on the FIELD NAME (`value`),
- * not the key name. New integrations using the same { key, value }
- * payload shape inherit the redaction automatically. */
+ * no change needed here — the redact is on the FIELD NAME (`body.value`),
+ * not the integration key name. New integrations using the same
+ * { key, value } payload shape inherit the redaction automatically. */
 export const LOGGER_REDACT_PATHS: readonly string[] = [
   'body.value',
   '*.body.value',
+  'req.body.value',
   'request.body.value',
-  'value',
 ];
 
 /** Default pino redact config for buildServer. Censor matches the pino

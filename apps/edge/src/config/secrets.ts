@@ -37,7 +37,7 @@ function readConfigSecret(handle: DbHandle, key: string): string | null {
     .from(configTable)
     .where(eq(configTable.key, key))
     .get();
-  if (!row || row.value.length === 0) return null;
+  if (!row || !row.value || row.value.length === 0) return null;
   return row.value;
 }
 

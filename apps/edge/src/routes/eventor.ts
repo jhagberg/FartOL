@@ -32,7 +32,7 @@
 //   from routes/clubs.ts + Querystring Zod parsing template)
 
 import type { FastifyInstance } from 'fastify';
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import {
@@ -43,7 +43,6 @@ import {
 } from '../eventor/lookup.ts';
 import { listEventorEvents } from '../eventor/events.ts';
 import { eventorCompetitors, config as configTable } from '../db/schema.ts';
-import { eq } from 'drizzle-orm';
 import { issuesToErrors } from './_zod-errors.ts';
 import { resolveSecret, resolveSecretSource } from '../config/secrets.ts';
 

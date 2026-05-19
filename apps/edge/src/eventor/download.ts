@@ -50,6 +50,7 @@ import { createGunzip } from 'node:zlib';
 import { createWriteStream, promises as fsp } from 'node:fs';
 import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
+import { setTimeout as setTimer, clearTimeout as clearTimer } from 'node:timers';
 import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
@@ -127,7 +128,18 @@ function unzipFirstXmlEntry(zipPath: string, destPath: string): Promise<void> {
       zipfile.on('entry', (entry: yauzl.Entry) => {
         // Skip directories and non-XML entries (the Eventor archive ships a
         // single competitors.xml today, but we defend against future siblings).
-        if (/\/$/.test(entry.fileName) || !/\.xml$/i.test(entry.fileName)) {
+        // Reject traversal sequences and absolute paths even though the caller-
+        // supplied destPath is what we actually write to — defense-in-depth so
+        // a future refactor that derives the path from entry.fileName can't
+        // silently escape the tmp dir. yauzl's docs recommend this guard.
+        const name = entry.fileName;
+        if (
+          /\/$/.test(name) ||
+          !/\.xml$/i.test(name) ||
+          name.includes('..') ||
+          name.startsWith('/') ||
+          /^[A-Za-z]:[\\/]/.test(name)
+        ) {
           zipfile.readEntry();
           return;
         }
@@ -159,7 +171,7 @@ async function fetchAndUnzipTo(
   abortSignal: AbortSignal | undefined
 ): Promise<void> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const timer = setTimer(() => controller.abort(), timeoutMs);
   // Compose external abort with internal timeout.
   if (abortSignal) {
     if (abortSignal.aborted) controller.abort();
@@ -214,7 +226,7 @@ async function fetchAndUnzipTo(
       );
     }
   } finally {
-    clearTimeout(timer);
+    clearTimer(timer);
     await fsp.unlink(rawPath).catch(() => undefined);
   }
 }

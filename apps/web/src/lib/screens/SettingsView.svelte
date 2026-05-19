@@ -228,6 +228,8 @@
               <p
                 class="toast"
                 class:toast-err={state.toast === 'error'}
+                role="status"
+                aria-live="polite"
                 data-testid="settings-row-toast"
               >
                 {toastLabel(state.toast)}

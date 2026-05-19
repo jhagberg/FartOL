@@ -24,7 +24,7 @@
 // - .planning/phases/02-4-klubbs-mvp/02-01-PLAN.md (provides the
 //   eventor_competitors / eventor_clubs tables + the indexes used here)
 
-import { and, eq, like, asc } from 'drizzle-orm';
+import { eq, asc, sql } from 'drizzle-orm';
 
 import type { DbHandle } from '../db/index.ts';
 import { eventorCompetitors, eventorClubs } from '../db/schema.ts';
@@ -92,6 +92,11 @@ export function lookupByNamePrefix(
   const trimmed = prefix.trim();
   if (trimmed.length === 0) return [];
 
+  // Escape SQLite LIKE wildcards (% _) and the escape char itself so an
+  // operator typing literal `%` or `_` doesn't accidentally expand the
+  // match set. `\` is declared as the ESCAPE clause below.
+  const escaped = trimmed.replace(/[\\%_]/g, (c) => `\\${c}`);
+
   const rows = handle.db
     .select({
       person_id: eventorCompetitors.personId,
@@ -102,7 +107,7 @@ export function lookupByNamePrefix(
     })
     .from(eventorCompetitors)
     .leftJoin(eventorClubs, eq(eventorCompetitors.clubId, eventorClubs.clubId))
-    .where(like(eventorCompetitors.familyName, `${trimmed}%`))
+    .where(sql`${eventorCompetitors.familyName} LIKE ${`${escaped}%`} ESCAPE '\\'`)
     .orderBy(asc(eventorCompetitors.familyName), asc(eventorCompetitors.givenName))
     .limit(limit)
     .all();
@@ -274,7 +279,3 @@ export function searchClubsByName(
     media_name: r.media_name,
   }));
 }
-
-// `and` is imported above to satisfy the Drizzle pattern's preferred
-// chained-where idiom for future extensions (e.g. club filter).
-void and;

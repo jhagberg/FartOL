@@ -108,6 +108,15 @@ export default async function registerSettingsRoutes(app: FastifyInstance): Prom
         errors: [{ path: 'value', code: 'invalid', message: 'string required' }],
       });
     }
+    // Cap at 512 bytes — real Eventor/Livelox/Liveresultat keys are <100
+    // chars; the cap prevents a LAN attacker from inflating the config
+    // table with multi-MB writes via this surface.
+    if (body.value.length > 512) {
+      return reply.code(400).send({
+        error: 'invalid_body',
+        errors: [{ path: 'value', code: 'too_long', message: 'value exceeds 512 bytes' }],
+      });
+    }
     if (!isAllowedKey(body.key)) {
       // Allowlist gate — prevents arbitrary config writes via this
       // surface. Without it, a CSRF-style POST could plant whatever

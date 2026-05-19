@@ -313,13 +313,17 @@ describe('PUT /api/settings/integrations — pino log redaction (Test 7)', () =>
     // handler (or a debug-paste from a stressed operator) explicitly
     // logs the payload via `app.log.info({ body: ... }, 'msg')`, the
     // redact path list MUST scrub the `value` field before it hits
-    // stdout. The next two log lines exercise the two most common
-    // patterns operators reach for.
+    // stdout. The next two log lines exercise the `body.value` envelopes
+    // the redact list covers (after Gemini review #10 narrowed the
+    // contract — a bare top-level `value` field is intentionally NOT
+    // redacted so unrelated debug data like `log.info({ value: 42 })`
+    // stays observable).
 
     // Pattern A: log the inbound payload as `{ body }`.
     ctx.app.log.info({ body: { key: 'EVENTOR_API_KEY', value: CANARY } }, 'pattern A');
-    // Pattern B: log the parsed payload object directly.
-    ctx.app.log.info({ key: 'EVENTOR_API_KEY', value: CANARY }, 'pattern B');
+    // Pattern B: nested under a `request` envelope (matches the
+    // `request.body.value` redact path).
+    ctx.app.log.info({ request: { body: { key: 'EVENTOR_API_KEY', value: CANARY } } }, 'pattern B');
 
     const res = await ctx.app.inject({
       method: 'PUT',
@@ -339,9 +343,9 @@ describe('PUT /api/settings/integrations — pino log redaction (Test 7)', () =>
       `pino log MUST NOT contain canary value. Captured logs:\n${joined}`
     );
     // Sanity: redaction marker SHOULD appear at least twice (once per
-    // synthetic log line that contains a `value` field). If it doesn't,
-    // the redact paths are wrong and the canary-absence test above is
-    // probably succeeding by coincidence.
+    // synthetic log line that contains a `body.value` field). If it
+    // doesn't, the redact paths are wrong and the canary-absence test
+    // above is probably succeeding by coincidence.
     const redactCount = (joined.match(/\[REDACTED\]/g) ?? []).length;
     assert.ok(
       redactCount >= 2,
