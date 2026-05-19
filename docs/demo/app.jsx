@@ -27,9 +27,7 @@ function App() {
   const [walkupOpen, setWalkupOpen] = useState(false);
   const [walkupCard, setWalkupCard] = useState(null);
   const [editingCompetitor, setEditingCompetitor] = useState(null);
-  const [consentToast, setConsentToast] = useState(null);
   const [resultsFullscreen, setResultsFullscreen] = useState(false);
-  const [dismissedConsent, setDismissedConsent] = useState(() => new Set());
 
   // Live state
   const [currentRead, setCurrentRead] = useState(window.MOCK_READS[0]);
@@ -58,7 +56,7 @@ function App() {
   const simRef = useRef(0);
   const simulateRead = () => {
     const candidates = [
-      window.MOCK_READS[1], // Anna — D21 OK — has pending_first_read → triggers consent toast
+      window.MOCK_READS[1], // Anna — D21 OK
       window.MOCK_READS[2], // Mikael — H45 MP
       // walk-up unknown card
       { cardNumber: 9128344, unknown: true, readTime: clock, status: 'PEND' },
@@ -73,16 +71,8 @@ function App() {
     if (next.unknown) {
       setPendingUnknown(p => p.includes(next.cardNumber) ? p : [next.cardNumber, ...p]);
       setTimeout(() => { setWalkupCard(next.cardNumber); setWalkupOpen(true); }, 600);
-    } else {
-      // C-M4 consent toast: surface on first card_read for runners whose
-      // consent_status is 'pending_first_read'.
-      const consent = (window.CONSENT_BY_CARD || {})[next.cardNumber];
-      if (consent === 'pending_first_read' && !dismissedConsent.has(next.cardNumber)) {
-        setConsentToast({ cardNumber: next.cardNumber, name: next.name, className: next.cls });
-      }
-      if (autoPrint && next.punches) {
-        setTimeout(() => onPrint(), 400);
-      }
+    } else if (autoPrint && next.punches) {
+      setTimeout(() => onPrint(), 400);
     }
   };
 
@@ -144,17 +134,6 @@ function App() {
   const onPickPending = (cardNumber) => {
     setWalkupCard(cardNumber);
     setWalkupOpen(true);
-  };
-
-  const onConsentConfirm = () => {
-    setConsentToast(null);
-    showSavedToast();
-  };
-  const onConsentDismiss = () => {
-    if (consentToast) {
-      setDismissedConsent(s => new Set(s).add(consentToast.cardNumber));
-    }
-    setConsentToast(null);
   };
 
   const rootClass = [
@@ -313,16 +292,6 @@ function App() {
           classes={window.MOCK_CLASSES}
           onCancel={() => setEditingCompetitor(null)}
           onSave={onEditSave}
-        />
-      )}
-
-      {consentToast && (
-        <ConsentConfirmationToast
-          t={t}
-          name={consentToast.name}
-          className={consentToast.className}
-          onConfirm={onConsentConfirm}
-          onDismiss={onConsentDismiss}
         />
       )}
 

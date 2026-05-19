@@ -541,11 +541,11 @@
   <section class="hero">
     <div class="wrap hero-inner">
       <div>
-        <span class="eyebrow">● Phase 2 · 4-klubbs MVP · MeOS-bridge · 2026-05-20</span>
+        <span class="eyebrow">● Phase 2.0 · 4-klubbs MVP · MeOS-bridge · PR #20 i landning</span>
         <h1>Tidtagning för orientering, byggd för <span class="accent">klubben och skogen</span>.</h1>
         <p class="hero-tagline">Full fart från start till mål — eller slipp skit i resultatlistan.</p>
         <p class="lede">
-          FartOL är ett tävlingssystem som funkar i webbläsaren på Linux, Mac, Windows och Android. Varje SI-stämpling sparas som en händelse i en lokal logg<sup>*</sup>, så resultaten kan räknas fram (och räknas om) när som helst. <b>Phase 2 lägger till MeOS-bryggan</b> (MIP/MOP) så klubbar kan köra FartOL parallellt med en befintlig MeOS-installation, plus Eventor-cache för deltagar­autocompletion och Hyrbricka-flöde för uthyrda SI-kort.
+          FartOL är ett tävlingssystem som funkar i webbläsaren på Linux, Mac, Windows och Android. Varje SI-stämpling sparas som en händelse i en lokal logg<sup>*</sup>, så resultaten kan räknas fram (och räknas om) när som helst. <b>Phase 2 lägger till MeOS-bryggan</b> (MIP/MOP) så klubbar kan köra FartOL parallellt med en befintlig MeOS-installation, plus Eventor-cache för 252 000+ löpare med FTS5-sökning, statusmodell i linje med IOF/Eventor (OK · MP · DNF · DNS · DQ · MAX) och tävlingsfas-grind (Förtävling → Tävling pågår) så ingen registrerar löpare när målet redan är öppet.
         </p>
         <p class="hero-foot">
           <b>*Tekniskt:</b> append-only event log med idempotenta händelser — samma stämpling kan skickas in tio gånger utan att räknas dubbelt.
@@ -671,7 +671,7 @@
       <div class="callout" style="margin-top: 8px;">
         <span class="callout-icon">!</span>
         <div>
-          <b>Var det står:</b> Phase 2.0 (4-klubbs MVP) levereras till en riktig träning hos Stora Tuna OK <b>onsdag 2026-05-20</b>. Bryggan mot MeOS (MIP/MOP), Eventor-cachen och Hyrbricka-flödet är klara — bench-smoke kör grönt.
+          <b>Var det står:</b> Phase 2.0 (4-klubbs MVP) testas mot en riktig träning hos Stora Tuna OK <b>onsdag 2026-05-20</b>. Bryggan mot MeOS (MIP/MOP), Eventor-cachen (cachedcompetitors + startlista-import), Hyrbricka-flödet, FTS5-smartsök, race-phase-grind, utökad statusmodell och Inställningar-UI är klara — Gemini-review #20 igenom, bench-smoke kör grönt. Kommer det inte i mål till onsdag kör vi MeOS — kvalitet före datum.
         </div>
       </div>
     </div>
@@ -737,14 +737,18 @@
         <ul class="demo-bullets">
           <li>3-klicks tävlingsguide · <b>importera IOF XML (Condes, Purple Pen, OCAD)</b></li>
           <li>Live-avläsning · <b>simulera SI-kort</b> · auto-print-toggle</li>
-          <li>Walk-up med <b>Eventor-autocomplete</b> + samtyckesruta (REQ-PRIV-001)</li>
-          <li><b>Hyrbricka-flöde</b> · kontaktuppgifter · återlämnings-toast</li>
+          <li>Walk-up med <b>FTS5 smart-sök</b> över Eventor-cache · diakritik-tolerant</li>
+          <li><b>Hyrbricka-flöde</b> · kontaktuppgifter · återlämnings-toast · 30d PII-scrub</li>
           <li>Registreringsdisk · <b>kö av bricka-pipningar</b> · auto-advance</li>
+          <li><b>Race-phase-grind</b> · Förtävling → Tävling pågår · ingen registrering efter start</li>
+          <li>Utökad statusmodell · <b>OK · MP · DNF · DNS · DQ · CANCEL · MAX</b> (IOF/Eventor-konvention)</li>
+          <li>Workspace-switcher · sticky aktiv tävling · flera arrangemang på samma laptop</li>
           <li><b>Mobil-vänlig</b> · flera volontärer registrerar parallellt från telefonen</li>
-          <li>MeOS-brygga · <b>MIP/MOP-statusremsa</b> · parallell drift</li>
+          <li>MeOS-brygga · <b>MIP/MOP-statusremsa</b> · parallell drift · transactional snapshots</li>
+          <li>Inställningar-UI · maskerade API-nycklar · 512 B-tak · env > config-precedens</li>
           <li>Sex kvittomallar · Klassisk · <b>Skogis</b> för barn</li>
-          <li>Liveresultat per klass · helskärmsläge</li>
-          <li>IOF XML 3.0 export · <b>XSD-validerad</b></li>
+          <li>Liveresultat per klass · helskärmsläge · per-position grön/röd punch-grid</li>
+          <li>IOF XML 3.0 export · <b>XSD-validerad</b> · PKZIP-säkrad import (path-traversal-skydd)</li>
           <li>Sv/En · täthet · accentfärg · hög kontrast</li>
         </ul>
       </div>
@@ -809,16 +813,21 @@
           <span class="ord">Phase 2.0</span>
           <div>
             <h4>4-klubbs MVP — parallell med MeOS</h4>
-            <p>Klubben kör befintlig MeOS-installation och FartOL parallellt över LAN. MIP (FartOL → MeOS) skickar walk-ups + bricka-bindningar; MOP (MeOS → FartOL) tar emot mål-event och resultat. Eventor-cachen ger 252 000+ deltagar­autocompletion offline. Hyrbricka-flödet håller koll på 200+ uthyrda SI-kort med kontaktinfo + retur. Registreringsdisken pipar in barn i en kö och advancerar automatiskt.</p>
+            <p>Klubben kör befintlig MeOS-installation och FartOL parallellt över LAN. MIP (FartOL → MeOS) skickar walk-ups + bricka-bindningar; MOP (MeOS → FartOL) tar emot mål-event och resultat. Eventor-cachen ger 252 000+ deltagare offline med FTS5-smartsök (diakritik-tolerant, klubb-scope). Eventor startlista-import (REST) lägger upp anmälda i förväg. Hyrbricka-flödet håller koll på 200+ uthyrda SI-kort med kontaktinfo + retur + 30 d PII-scrub. Registreringsdisken pipar in barn i en kö och advancerar automatiskt. Race-phase-grind (Förtävling → Tävling pågår) hindrar registrering efter start. Statusmodellen är utökad till OK · MP · DNF · DNS · DQ · CANCEL · MAX i linje med IOF/Eventor.</p>
             <div class="crit">
               <span>MeOS MIP v3.0 + MOP v2.0</span>
-              <span>Eventor cachedcompetitors</span>
-              <span>Hyrbricka + retention scrub</span>
-              <span>Registreringsdisk-kö</span>
+              <span>Eventor cachedcompetitors + startlista-import</span>
+              <span>FTS5 smart-sök · diakritik-tolerant</span>
+              <span>Hyrbricka + 30d retention scrub</span>
+              <span>Race-phase-grind · pre-race/race-started</span>
+              <span>Statusmodell · OK/MP/DNF/DNS/DQ/CANCEL/MAX</span>
+              <span>Registreringsdisk-kö · auto-advance</span>
+              <span>Workspace-switcher · sticky tävling</span>
               <span>Course-only fallback (Condes)</span>
               <span>Mobil registrering · flera telefoner parallellt</span>
-              <span>Inställningar UI · API-nycklar maskerade</span>
-              <span>7 planer i mål + mobil-MVP</span>
+              <span>Inställningar UI · 512 B-tak · env > config</span>
+              <span>Bridge: aldrig-ge-upp-reconnect</span>
+              <span>10 planer i mål + Gemini PR #20 ✓</span>
             </div>
           </div>
           <span class="pill live">▶ Onsdag 2026-05-20</span>
@@ -828,16 +837,17 @@
           <span class="ord">Phase 2.1</span>
           <div>
             <h4>Sanktionerad tävling — flera operatörer</h4>
-            <p>100–200 startande på en sanktionerad tävling. Eventor entries pull + results push, tre+ samtidiga sekretariat med Yjs-CRDT samredigering, åskådar-resultatsida på arena-WiFi, bridge överlever process-kill. Bygger på MIP/MOP-substratet och Inställningar-UI:n från 2.0.</p>
+            <p>100–200 startande på en sanktionerad tävling. Eventor results push, tre+ samtidiga sekretariat med Yjs-CRDT samredigering, åskådar-resultatsida på arena-WiFi, bridge överlever process-kill, race-reset + tävlingsinfo-modal + course-compare. Bygger på MIP/MOP-substratet, Eventor entries och Inställningar-UI:n från 2.0.</p>
             <div class="crit">
-              <span>Eventor entries + results (REST)</span>
+              <span>Eventor results push (REST)</span>
+              <span>Race-reset · tävlingsinfo · course-compare</span>
               <span>Yjs CRDT samredigering</span>
               <span>3+ klienter</span>
               <span>Spectator-sida arena-WiFi</span>
               <span>Bridge: process-kill recovery</span>
             </div>
           </div>
-          <span class="pill next">↗ Härnäst</span>
+          <span class="pill next">↗ Påbörjad</span>
         </div>
 
         <div class="phase">
@@ -915,8 +925,8 @@
           <p>Operatörer jobbar i stress, i solljus, på 13"-laptop. Inga 12px-grå-på-vita texter. 44px minsta träffyta, högkontrast-läge.</p>
         </div>
         <div class="principle">
-          <h4>Samtycke skrivs ner</h4>
-          <p>REQ-PRIV-001: personuppgifter kräver bekräftat samtycke, tidstämplat. 30 dagars retention för kontaktinfo. GDPR art. 20/17 i Phase 4.</p>
+          <h4>Dataminimering</h4>
+          <p>Federationen (Eventor) äger deltagar-PII — vi cachar bara person-id + namn för matchning. Hyrbricka-kontakter (REQ-PRIV-002) scrubbas efter 30 dagar. GDPR art. 20/17 i Phase 4.</p>
         </div>
         <div class="principle">
           <h4>Öppen källkod</h4>
