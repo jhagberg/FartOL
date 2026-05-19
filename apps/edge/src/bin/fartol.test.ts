@@ -3,7 +3,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { resolvePrinterConfig } from './fartol.ts';
+import { parseArgs, resolvePrinterConfig } from './fartol.ts';
 
 describe('resolvePrinterConfig', () => {
   test('defaults to the Star CUPS queue', () => {
@@ -29,5 +29,20 @@ describe('resolvePrinterConfig', () => {
       kind: 'cups',
       queueName: 'Star',
     });
+  });
+});
+
+describe('parseArgs', () => {
+  // CI 2026-05-19 regression: `pnpm --filter X dev -- --port=3001` forwarded
+  // the bare `--` separator into the script's argv on the runner's pnpm 9,
+  // which made parseArgs throw "Unknown argument: --" before the bridge ever
+  // bound a port → playwright webServer timed out.
+  test('treats POSIX `--` end-of-options as a no-op', () => {
+    const opts = parseArgs(['--', '--port=3001']);
+    assert.equal(opts.port, 3001);
+  });
+
+  test('still rejects truly unknown flags', () => {
+    assert.throws(() => parseArgs(['--bogus']), /Unknown argument: --bogus/);
   });
 });

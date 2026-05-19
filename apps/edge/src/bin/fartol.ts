@@ -165,6 +165,13 @@ export function parseArgs(argv: string[]): CliOpts {
 
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i] as string;
+    // POSIX `--` end-of-options separator. pnpm 9+ forwards a bare `--` from
+    // `pnpm run dev -- --port=3001` into the script's argv on some platforms
+    // (caught in CI 2026-05-19); we treat it as a no-op so the CLI stays
+    // portable across pnpm versions.
+    if (a === '--') {
+      continue;
+    }
     if (a === '--port' || a.startsWith('--port=')) {
       const { value, consumed } = valueFor('--port', a, i);
       const parsed = Number.parseInt(value, 10);
