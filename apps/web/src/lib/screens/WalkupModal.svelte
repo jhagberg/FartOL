@@ -335,7 +335,10 @@
     if (typeof cardNumberLocal !== 'number' || cardNumberLocal < 1) return;
     try {
       const r = await lookupEventorBySiCard(cardNumberLocal);
-      if (r.hit) {
+      // Only auto-fill on an unambiguous single match. 'many' (duplicate
+      // si_card in cache — see EventorLookupResult docs) leaves the form
+      // untouched; operator types the name into the smart search instead.
+      if (r.hit === true) {
         if (name.trim() === '') name = `${r.family_name}, ${r.given_name}`;
         if (club.trim() === '' && r.club_name) club = r.club_name;
         eventorFillNote = t('walk.eventor.fill');

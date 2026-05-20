@@ -165,11 +165,13 @@
     void (async () => {
       try {
         const r = await lookupEventorBySiCard(n);
-        if (r.hit) {
-          eventorHint = r;
-        } else {
-          eventorHint = null;
-        }
+        // Only auto-fill the modal when the cache resolves to exactly one
+        // candidate. 'many' shapes (family-shared / replacement / rental
+        // cards) must NOT auto-prefill — picking one arbitrarily would
+        // silently mis-attribute the runner. The operator can still type
+        // the name into the SmartRunnerSearch box, which surfaces a
+        // disambiguation list against the same card number.
+        eventorHint = r.hit === true ? r : null;
       } catch {
         eventorHint = null;
       }

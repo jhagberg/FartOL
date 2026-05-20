@@ -20,12 +20,13 @@
   Save → POST /api/competitors with consent: true / consent_status: 'explicit'
   → onSaved(newCompetitor) → parent closes sheet + refreshes list.
 
-  Hyrbricka note: this sheet stays scoped to the simple toggle. The full
-  hired-card contact flow (D-HB-3 — phone/email required when hired) lives
-  in WalkupModal because that's the high-flow desk surface. If the
-  operator ticks Hyrbricka here, the row is marked but contact details
-  can be added later via the /hyrbrickor screen — operators here are
-  usually adding a runner-without-bricka, not a bricka-without-runner.
+  Hyrbricka note: ticking Hyrbricka expands a small contact block
+  (phone + email). D-HB-3 — the server requires at least one of the two
+  whenever hired_card=true; submitting without contact otherwise produces
+  a guaranteed 400 hyrbricka_contact_required. We keep the surface lean
+  (just phone + email, no contact-name / note) since the full management
+  view lives at /hyrbrickor; the goal here is enough to chase a
+  non-returner.
 -->
 <script lang="ts">
   import { t } from '$lib/i18n/index.ts';
@@ -67,6 +68,8 @@
   let classId = $state('');
   let cardNumber = $state('');
   let hiredCard = $state(false);
+  let contactPhone = $state('');
+  let contactEmail = $state('');
 
   let eventorFillNote = $state(false);
   let saving = $state(false);
@@ -83,6 +86,8 @@
     classId = '';
     cardNumber = '';
     hiredCard = false;
+    contactPhone = '';
+    contactEmail = '';
     eventorFillNote = false;
     error = null;
     saving = false;
@@ -147,6 +152,9 @@
   function validate(): string | null {
     if (name.trim().length < 2) return t('runners.addSheet.err.name');
     if (!classId) return t('runners.addSheet.err.classRequired');
+    if (hiredCard && contactPhone.trim() === '' && contactEmail.trim() === '') {
+      return t('runners.addSheet.err.hireContact');
+    }
     return null;
   }
 
@@ -175,7 +183,14 @@
         consent: true,
         consent_status: 'explicit',
         hired_card: hiredCard,
-        hired_contact: null,
+        hired_contact: hiredCard
+          ? {
+              name: null,
+              phone: contactPhone.trim() === '' ? null : contactPhone.trim(),
+              email: contactEmail.trim() === '' ? null : contactEmail.trim(),
+              note: null,
+            }
+          : null,
       });
       onSaved(created);
     } catch (e) {
@@ -314,6 +329,36 @@
           <span class="toggle-label">{t('runners.addSheet.hireToggle')}</span>
           <span class="toggle-hint">{t('runners.addSheet.hireHint')}</span>
         </label>
+
+        {#if hiredCard}
+          <div class="hired-fields" data-testid="add-runner-hired-fields">
+            <Field label={t('runners.addSheet.hirePhoneLabel')} htmlFor="add-runner-hc-phone">
+              <input
+                id="add-runner-hc-phone"
+                class="input"
+                type="tel"
+                inputmode="tel"
+                bind:value={contactPhone}
+                placeholder={t('runners.addSheet.hirePhonePlaceholder')}
+                autocomplete="tel"
+                data-testid="add-runner-hc-phone"
+              />
+            </Field>
+            <Field label={t('runners.addSheet.hireEmailLabel')} htmlFor="add-runner-hc-email">
+              <input
+                id="add-runner-hc-email"
+                class="input"
+                type="email"
+                inputmode="email"
+                bind:value={contactEmail}
+                placeholder={t('runners.addSheet.hireEmailPlaceholder')}
+                autocomplete="email"
+                data-testid="add-runner-hc-email"
+              />
+            </Field>
+            <p class="hint">{t('runners.addSheet.hireContactHint')}</p>
+          </div>
+        {/if}
       </section>
 
       {#if error}
@@ -440,6 +485,14 @@
     margin: 0;
     font-size: 12px;
     color: var(--fg-muted);
+  }
+  .hired-fields {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    padding: var(--space-sm);
+    background: var(--bg-sunken);
+    border-radius: var(--radius);
   }
   .ok-note {
     margin: 0;

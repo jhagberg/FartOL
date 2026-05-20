@@ -5,11 +5,13 @@
 // Two pure SQL functions over the Plan-01 cache tables:
 //
 //   - lookupBySiCard(handle, siCard)
-//     Single-row SELECT against eventor_competitors with a LEFT JOIN onto
-//     eventor_clubs. Returns a discriminated union { hit: true, ... } |
-//     { hit: false }. Uses the partial UNIQUE index idx_eventor_si_card
-//     for an O(log N) hit, which matters because the table is ~252k rows
-//     after a full Eventor refresh.
+//     Multi-row SELECT against eventor_competitors with a LEFT JOIN onto
+//     eventor_clubs. Returns a discriminated union { hit: true, ... single }
+//     | { hit: 'many', candidates } | { hit: false }. si_card is non-unique
+//     in the cache (family-shared cards, replacement cards, rental pool —
+//     schema.ts §eventor_competitors) so a card number can resolve to >1
+//     row. Callers MUST handle the 'many' shape rather than auto-picking
+//     one row, or they will silently prefill the wrong runner.
 //
 //   - lookupByNamePrefix(handle, prefix, limit)
 //     Returns up to `limit` matches using `family_name LIKE prefix || '%'`.
@@ -29,8 +31,7 @@ import { eq, asc, sql } from 'drizzle-orm';
 import type { DbHandle } from '../db/index.ts';
 import { eventorCompetitors, eventorClubs } from '../db/schema.ts';
 
-export interface EventorLookupHit {
-  hit: true;
+export interface EventorLookupCandidate {
   person_id: number;
   family_name: string;
   given_name: string;
@@ -38,11 +39,20 @@ export interface EventorLookupHit {
   club_name: string | null;
 }
 
+export interface EventorLookupHit extends EventorLookupCandidate {
+  hit: true;
+}
+
+export interface EventorLookupMany {
+  hit: 'many';
+  candidates: EventorLookupCandidate[];
+}
+
 export interface EventorLookupMiss {
   hit: false;
 }
 
-export type EventorLookupResult = EventorLookupHit | EventorLookupMiss;
+export type EventorLookupResult = EventorLookupHit | EventorLookupMany | EventorLookupMiss;
 
 export interface EventorNameSuggestion {
   person_id: number;
@@ -52,11 +62,19 @@ export interface EventorNameSuggestion {
   si_card: number | null;
 }
 
-/** Single-row lookup by SI card number. Returns the hit shape with the
- * resolved club_name (LEFT JOIN — null when the competitor row's club_id
- * is itself null OR points at an unknown club). */
+/** Lookup by SI card number. Returns
+ *
+ *   - { hit: true, ... } when exactly one candidate matches,
+ *   - { hit: 'many', candidates } when the cache holds duplicates for the
+ *     card number (real Eventor data has them — see schema.ts), or
+ *   - { hit: false } on no match.
+ *
+ * club_name is resolved via LEFT JOIN — null when the competitor row's
+ * club_id is itself null OR points at an unknown club. Ordering is stable
+ * (family_name, given_name) so a 'many' response renders deterministically
+ * across calls. */
 export function lookupBySiCard(handle: DbHandle, siCard: number): EventorLookupResult {
-  const row = handle.db
+  const rows = handle.db
     .select({
       person_id: eventorCompetitors.personId,
       family_name: eventorCompetitors.familyName,
@@ -67,15 +85,30 @@ export function lookupBySiCard(handle: DbHandle, siCard: number): EventorLookupR
     .from(eventorCompetitors)
     .leftJoin(eventorClubs, eq(eventorCompetitors.clubId, eventorClubs.clubId))
     .where(eq(eventorCompetitors.siCard, siCard))
-    .get();
-  if (!row) return { hit: false };
+    .orderBy(asc(eventorCompetitors.familyName), asc(eventorCompetitors.givenName))
+    .all();
+
+  if (rows.length === 0) return { hit: false };
+  if (rows.length === 1) {
+    const r = rows[0]!;
+    return {
+      hit: true,
+      person_id: r.person_id,
+      family_name: r.family_name,
+      given_name: r.given_name,
+      club_id: r.club_id,
+      club_name: r.club_name ?? null,
+    };
+  }
   return {
-    hit: true,
-    person_id: row.person_id,
-    family_name: row.family_name,
-    given_name: row.given_name,
-    club_id: row.club_id,
-    club_name: row.club_name ?? null,
+    hit: 'many',
+    candidates: rows.map((r) => ({
+      person_id: r.person_id,
+      family_name: r.family_name,
+      given_name: r.given_name,
+      club_id: r.club_id,
+      club_name: r.club_name ?? null,
+    })),
   };
 }
 

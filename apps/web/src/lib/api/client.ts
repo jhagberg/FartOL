@@ -550,8 +550,10 @@ export function listClubs(prefix?: string, limit?: number): Promise<{ clubs: Clu
 // Eventor walk-up autocomplete (Phase 2.0 Plan 02-02).
 // ---------------------------------------------------------------------------
 
-/** GET /api/eventor/lookup?si_card=N — single-row cache lookup for the
- * bricka-scan pre-fill flow. Returns { hit: true, ... } | { hit: false }. */
+/** GET /api/eventor/lookup?si_card=N — cache lookup for the bricka-scan
+ * pre-fill flow. Returns { hit: true, ... } for a unique match,
+ * { hit: 'many', candidates } when the cache holds duplicate rows for the
+ * card (family-shared / replacement / rental pool), or { hit: false }. */
 export function lookupEventorBySiCard(siCard: number): Promise<EventorLookupResult> {
   return apiFetch<EventorLookupResult>('/api/eventor/lookup', {
     query: { si_card: siCard },

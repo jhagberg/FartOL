@@ -98,7 +98,7 @@
       try {
         const hit = await lookupEventorBySiCard(Number(trimmed));
         if (lastQuery !== trimmed) return; // stale response — caller typed more
-        if (hit.hit) {
+        if (hit.hit === true) {
           suggestions = [
             {
               person_id: hit.person_id,
@@ -108,6 +108,20 @@
               si_card: Number(trimmed),
             },
           ];
+          highlight = 0;
+          open = true;
+        } else if (hit.hit === 'many') {
+          // si_card resolved to >1 candidate (family-shared / replacement
+          // cards). Surface all of them so the operator picks the right
+          // one — auto-picking the first row would silently mis-attribute.
+          const card = Number(trimmed);
+          suggestions = hit.candidates.map((c) => ({
+            person_id: c.person_id,
+            family_name: c.family_name,
+            given_name: c.given_name,
+            club_name: c.club_name,
+            si_card: card,
+          }));
           highlight = 0;
           open = true;
         } else {

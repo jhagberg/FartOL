@@ -351,25 +351,40 @@ export type ClubDTO = z.infer<typeof ClubDTO>;
 // Phase 2.0 Plan 02-02 — Eventor walk-up autocomplete shapes.
 //
 // GET /api/eventor/lookup?si_card=N → EventorLookupResult (discriminated
-//   on { hit: true | false } so callers can destructure cleanly).
+//   on hit: true (single) | 'many' (ambiguous) | false (miss)).
 // GET /api/eventor/lookup?prefix=S → { suggestions: EventorNameSuggestion[] }.
 // GET /api/eventor/status → EventorStatusDTO.
+//
+// 2026-05-20: si_card is non-unique in the cache schema (family-shared
+// cards, replacement cards, rental pool) so the API can return >1 candidate
+// for one number. Callers MUST disambiguate before pre-filling — auto-
+// picking one row would silently fill the wrong runner.
 // ---------------------------------------------------------------------------
 
-export const EventorLookupHit = z.object({
-  hit: z.literal(true),
+export const EventorLookupCandidate = z.object({
   person_id: z.number().int().positive(),
   family_name: z.string(),
   given_name: z.string(),
   club_id: z.number().int().nullable(),
   club_name: z.string().nullable(),
 });
+export type EventorLookupCandidate = z.infer<typeof EventorLookupCandidate>;
+
+export const EventorLookupHit = EventorLookupCandidate.extend({
+  hit: z.literal(true),
+});
 export type EventorLookupHit = z.infer<typeof EventorLookupHit>;
+
+export const EventorLookupMany = z.object({
+  hit: z.literal('many'),
+  candidates: z.array(EventorLookupCandidate),
+});
+export type EventorLookupMany = z.infer<typeof EventorLookupMany>;
 
 export const EventorLookupMiss = z.object({ hit: z.literal(false) });
 export type EventorLookupMiss = z.infer<typeof EventorLookupMiss>;
 
-export type EventorLookupResult = EventorLookupHit | EventorLookupMiss;
+export type EventorLookupResult = EventorLookupHit | EventorLookupMany | EventorLookupMiss;
 
 export const EventorNameSuggestion = z.object({
   person_id: z.number().int().positive(),

@@ -243,7 +243,9 @@
         // (operator hit Spara before the lookup resolved). Only apply
         // the hint if we still own this card.
         if (currentCard?.cardNumber !== card.cardNumber) return;
-        if (res.hit) currentEventorHint = res;
+        // Only auto-fill on a single match (see ReadoutView equivalent
+        // comment). 'many' falls through to the firmware/hand-fill path.
+        if (res.hit === true) currentEventorHint = res;
       })
       .catch(() => {
         /* offline / 5xx — leave the firmware-hint path active */

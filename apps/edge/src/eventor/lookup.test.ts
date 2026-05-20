@@ -22,6 +22,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { openDatabase, type DbHandle } from '../db/index.ts';
+import { eventorCompetitors } from '../db/schema.ts';
 import { ingestEventorCache } from './cache.ts';
 import {
   lookupBySiCard,
@@ -29,6 +30,7 @@ import {
   searchCompetitorsByName,
   searchClubsByName,
   type EventorLookupHit,
+  type EventorLookupMany,
 } from './lookup.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -66,6 +68,39 @@ describe('eventor lookup module', () => {
     await withSeededDb((handle) => {
       const res = lookupBySiCard(handle, 99999999);
       assert.equal(res.hit, false);
+    });
+  });
+
+  test("lookupBySiCard returns 'many' shape when the cache holds duplicate si_card rows", async () => {
+    // Schema explicitly tolerates duplicate si_card values (family-shared,
+    // replacement, rental pool — schema.ts §eventor_competitors).
+    // Auto-picking one row would silently mis-attribute the runner;
+    // assert the caller-facing shape exposes ALL candidates so the UI can
+    // disambiguate.
+    await withSeededDb((handle) => {
+      handle.db
+        .insert(eventorCompetitors)
+        .values({
+          personId: 9_999_999,
+          familyName: 'Hagberg',
+          givenName: 'Anna',
+          clubId: 637,
+          siCard: 8535005,
+          emitCard: null,
+          modifyDateMs: 1_700_000_000_000,
+        })
+        .run();
+
+      const res = lookupBySiCard(handle, 8535005);
+      assert.equal(res.hit, 'many');
+      const many = res as EventorLookupMany;
+      assert.equal(many.candidates.length, 2);
+      // Family-name asc, given-name asc — deterministic ordering so the UI
+      // renders the same list across calls.
+      assert.equal(many.candidates[0]!.given_name, 'Anna');
+      assert.equal(many.candidates[1]!.given_name, 'Jonas');
+      assert.equal(many.candidates[0]!.club_name, 'Stora Tuna OK');
+      assert.equal(many.candidates[1]!.club_name, 'Stora Tuna OK');
     });
   });
 
