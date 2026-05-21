@@ -112,32 +112,29 @@ export async function ingestEventorCache(
     }
 
     // 3. Bulk-insert competitors. Map snake_case parser shape to camelCase
-    //    Drizzle field names; skip rows whose club_id doesn't exist in the
-    //    just-loaded clubs set (orphan rows are common — see fixture row 1002).
+    //    Drizzle field names *inside* the batch slice so we never hold a
+    //    second ~250k-row array alongside `allRecords`. FK-safety: null the
+    //    club_id rather than fail the transaction when the competitor
+    //    references a club we don't have in the just-loaded set (orphan
+    //    rows are common — see fixture row 1002). Count nullings for
+    //    observability (code-review F-005) — boot.ts surfaces this.
     const knownClubIds = new Set(allClubs.map((c) => c.club_id));
-    const mappedCompetitors = allRecords.map((r) => {
-      // FK-safety: if the competitor references a club we don't have in
-      // our just-loaded set, null the FK rather than fail the whole
-      // transaction. The runner is still searchable by si_card and by
-      // name; the missing club is recoverable by adding the org to the
-      // next clubs.xml refresh. Count nullings for observability
-      // (code-review F-005) — boot.ts surfaces this to the operator.
-      const hasClubMatch = r.club_id !== null && knownClubIds.has(r.club_id);
-      if (r.club_id !== null && !hasClubMatch) nulledClubs++;
-      return {
-        personId: r.person_id,
-        familyName: r.family_name,
-        givenName: r.given_name,
-        birthYear: r.birth_year,
-        sex: r.sex,
-        clubId: hasClubMatch ? r.club_id : null,
-        siCard: r.si_card,
-        emitCard: r.emit_card,
-        modifyDateMs: r.modify_date_ms,
-      };
-    });
-    for (let i = 0; i < mappedCompetitors.length; i += BATCH_SIZE) {
-      const chunk = mappedCompetitors.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < allRecords.length; i += BATCH_SIZE) {
+      const chunk = allRecords.slice(i, i + BATCH_SIZE).map((r) => {
+        const hasClubMatch = r.club_id !== null && knownClubIds.has(r.club_id);
+        if (r.club_id !== null && !hasClubMatch) nulledClubs++;
+        return {
+          personId: r.person_id,
+          familyName: r.family_name,
+          givenName: r.given_name,
+          birthYear: r.birth_year,
+          sex: r.sex,
+          clubId: hasClubMatch ? r.club_id : null,
+          siCard: r.si_card,
+          emitCard: r.emit_card,
+          modifyDateMs: r.modify_date_ms,
+        };
+      });
       handle.db.insert(eventorCompetitors).values(chunk).run();
       competitorsInserted += chunk.length;
     }

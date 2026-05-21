@@ -54,7 +54,7 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { XMLBuilder } from 'fast-xml-parser';
 import { z } from 'zod';
-import { and, asc, eq, gt } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray } from 'drizzle-orm';
 
 import {
   events,
@@ -195,23 +195,43 @@ export default async function registerMipRoute(app: FastifyInstance): Promise<vo
       return sendEmpty(reply, builder, lastid);
     }
 
-    // (5) Hydrate competitor + class + hired_card data for each event.
-    // Competitor/class lookups stay per-row (class cached below; 5 classes
-    // for 4-klubbs and ~100 entries makes the loop a non-issue), but
-    // hired_cards is pre-fetched into a Set so we don't issue one SELECT
-    // per card_bound event.
+    // (5) Hydrate competitor + class + hired_card data via three batched
+    // queries (one inArray per table) instead of a SELECT per card_bound
+    // event. Class name "cache" is now just the pre-built Map.
     const entries: MipEntryNode[] = [];
     let maxSeq = lastid;
 
-    // Cache class lookups within this request — the same class will repeat
-    // across many entries (4-klubbs has 5 classes max).
-    const classNameCache = new Map<string, string>();
+    const competitorIds = rows
+      .map((r) => {
+        const p = r.payload as EventPayload;
+        return p.event_type === 'card_bound' ? p.competitor_id : null;
+      })
+      .filter((id): id is string => id !== null);
 
-    // Pre-fetch hired-card numbers for the active competition. The set is
-    // small (≤200 rentals at 4-klubbs scale, headroom for sanctioned events)
-    // and replaces what would otherwise be one SELECT per card_bound event.
-    // A row counts as "open" regardless of returned_at — MeOS wants
-    // hired=true throughout the rental lifecycle.
+    const competitorRows =
+      competitorIds.length === 0
+        ? []
+        : app.fartolDb.db
+            .select()
+            .from(competitors)
+            .where(inArray(competitors.id, competitorIds))
+            .all();
+    const competitorMap = new Map(competitorRows.map((c) => [c.id, c]));
+
+    const classIds = Array.from(new Set(competitorRows.map((c) => c.classId)));
+    const classRows =
+      classIds.length === 0
+        ? []
+        : app.fartolDb.db
+            .select({ id: classes.id, name: classes.name })
+            .from(classes)
+            .where(inArray(classes.id, classIds))
+            .all();
+    const classNameMap = new Map(classRows.map((c) => [c.id, c.name]));
+
+    // Pre-fetch hired-card numbers for the active competition. A row counts
+    // as "open" regardless of returned_at — MeOS wants hired=true
+    // throughout the rental lifecycle.
     const hiredCardRows = app.fartolDb.db
       .select({ cardNumber: hiredCards.cardNumber })
       .from(hiredCards)
@@ -226,26 +246,12 @@ export default async function registerMipRoute(app: FastifyInstance): Promise<vo
       // Defensive — events.payload is typed but the DB only enforces JSON.
       if (payload.event_type !== 'card_bound') continue;
 
-      const competitor = app.fartolDb.db
-        .select()
-        .from(competitors)
-        .where(eq(competitors.id, payload.competitor_id))
-        .get();
+      const competitor = competitorMap.get(payload.competitor_id);
       // Skip rows whose competitor was deleted between event-emit and now.
       // The events row is immutable but the competitors row is mutable.
       if (!competitor) continue;
 
-      // Class name lookup with per-request cache.
-      let className: string | undefined = classNameCache.get(competitor.classId);
-      if (className === undefined) {
-        const classRow = app.fartolDb.db
-          .select({ name: classes.name })
-          .from(classes)
-          .where(eq(classes.id, competitor.classId))
-          .get();
-        className = classRow?.name ?? '';
-        classNameCache.set(competitor.classId, className);
-      }
+      const className = classNameMap.get(competitor.classId) ?? '';
       // Landmine: MeOS rejects entries with empty <classname> (falls back
       // to <classid> which we don't emit — D-MIP-4). Skip rather than
       // emit something MeOS will reject. Log at warn so operator can
