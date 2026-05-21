@@ -196,14 +196,28 @@ export default async function registerMipRoute(app: FastifyInstance): Promise<vo
     }
 
     // (5) Hydrate competitor + class + hired_card data for each event.
-    // N+1 SELECTs are fine at 4-klubbs scale (~100 starters); RESEARCH
-    // Pattern 3 endorses this. Phase 2.1 can batch via IN-clause.
+    // Competitor/class lookups stay per-row (class cached below; 5 classes
+    // for 4-klubbs and ~100 entries makes the loop a non-issue), but
+    // hired_cards is pre-fetched into a Set so we don't issue one SELECT
+    // per card_bound event.
     const entries: MipEntryNode[] = [];
     let maxSeq = lastid;
 
     // Cache class lookups within this request — the same class will repeat
     // across many entries (4-klubbs has 5 classes max).
     const classNameCache = new Map<string, string>();
+
+    // Pre-fetch hired-card numbers for the active competition. The set is
+    // small (≤200 rentals at 4-klubbs scale, headroom for sanctioned events)
+    // and replaces what would otherwise be one SELECT per card_bound event.
+    // A row counts as "open" regardless of returned_at — MeOS wants
+    // hired=true throughout the rental lifecycle.
+    const hiredCardRows = app.fartolDb.db
+      .select({ cardNumber: hiredCards.cardNumber })
+      .from(hiredCards)
+      .where(eq(hiredCards.competitionId, activeCompetitionId))
+      .all();
+    const hiredCardSet = new Set<number>(hiredCardRows.map((h) => h.cardNumber));
 
     for (const row of rows) {
       if (row.localSeq > maxSeq) maxSeq = row.localSeq;
@@ -249,25 +263,8 @@ export default async function registerMipRoute(app: FastifyInstance): Promise<vo
         continue;
       }
 
-      // Hired-card lookup: open rental row for this card in this competition.
-      let hired = false;
-      if (competitor.cardNumber !== null) {
-        const hcRow = app.fartolDb.db
-          .select({ markedAtMs: hiredCards.markedAtMs })
-          .from(hiredCards)
-          .where(
-            and(
-              eq(hiredCards.competitionId, activeCompetitionId),
-              eq(hiredCards.cardNumber, competitor.cardNumber)
-            )
-          )
-          .get();
-        // A row in hired_cards counts as "open" for MIP purposes; the
-        // returned_at flag is a FartOL-internal lifecycle hint and MeOS
-        // wants to see hired=true throughout the rental. (If we wanted
-        // to flip hired=false on returnedAtMs we'd add `IS NULL` here.)
-        hired = !!hcRow;
-      }
+      // Hired-card lookup against the pre-fetched set (see above).
+      const hired = competitor.cardNumber !== null && hiredCardSet.has(competitor.cardNumber);
 
       const entry: MipEntryNode = {
         '@_id': row.localSeq,

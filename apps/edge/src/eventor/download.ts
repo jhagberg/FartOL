@@ -47,7 +47,7 @@
 // - .planning/research/eventor-api-smoke.md §"Download pipeline"
 
 import { createGunzip } from 'node:zlib';
-import { createWriteStream, promises as fsp } from 'node:fs';
+import { createReadStream, createWriteStream, promises as fsp } from 'node:fs';
 import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
 import { setTimeout as setTimer, clearTimeout as clearTimer } from 'node:timers';
@@ -212,11 +212,9 @@ async function fetchAndUnzipTo(
     if (format === 'zip') {
       await unzipFirstXmlEntry(rawPath, destPath);
     } else if (format === 'gzip') {
-      await pipeline(
-        Readable.from(await fsp.readFile(rawPath)),
-        createGunzip(),
-        createWriteStream(destPath)
-      );
+      // Stream from disk — the uncompressed Eventor XML can be ~86 MB, so
+      // a `readFile` here would hold the entire raw body in memory.
+      await pipeline(createReadStream(rawPath), createGunzip(), createWriteStream(destPath));
     } else if (format === 'xml') {
       await fsp.rename(rawPath, destPath);
     } else {
