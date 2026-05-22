@@ -168,7 +168,8 @@ export async function generateKidsBitmap(input: KidsBitmapInput): Promise<KidsBi
     sharp = require('sharp') as (input: Buffer | string) => any;
   } catch (err) {
     throw new Error(
-      `sharp (libvips) is not available for kids-template rasterisation: ${err instanceof Error ? err.message : String(err)}`
+      `sharp (libvips) is not available for kids-template rasterisation: ${err instanceof Error ? err.message : String(err)}`,
+      { cause: err }
     );
   }
   const png: Buffer = await sharp(Buffer.from(svg))
