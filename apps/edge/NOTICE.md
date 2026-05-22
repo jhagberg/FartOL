@@ -14,7 +14,7 @@ separate publish step. Their licenses still apply to the bundled code:
 
 ### @fartola/sportident — MIT
 
-- **Repository:** <https://github.com/jonashagberg/fartOLa> (this monorepo,
+- **Repository:** <https://github.com/jhagberg/fartOLa> (this monorepo,
   `packages/sportident/`)
 - **License:** MIT (see `packages/sportident/LICENSE`)
 - **Provenance:** Ported from `allestuetsmerweh/sportident.js` (MIT). Per-file
@@ -25,7 +25,7 @@ separate publish step. Their licenses still apply to the bundled code:
 
 ### @fartola/shared-types — AGPL-3.0-or-later
 
-- **Repository:** <https://github.com/jonashagberg/fartOLa> (this monorepo,
+- **Repository:** <https://github.com/jhagberg/fartOLa> (this monorepo,
   `packages/shared-types/`)
 - **License:** AGPL-3.0-or-later (same as the application).
 
