@@ -170,7 +170,7 @@ Worth surfacing in the runbook as a sequencing rule.
 
 ## Refs
 
-- MeOS source: `/home/jonas/src/meos/code/`
+- MeOS source (local clone of `https://github.com/melinsoftware/MeOS` under `code/`):
   - `restserver.cpp:1372-1375` — the bug
   - `onlineinput.cpp:985-1014` — MIP entry processor + name fallback
   - `RestService.cpp:33,82` — Informationsserver automat + port default
