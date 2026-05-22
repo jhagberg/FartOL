@@ -4,12 +4,12 @@ title: Research no-cloud public reachability for laptop (Tailscale Funnel / Clou
 area: ops
 files:
   - apps/edge/src/server.ts
-  - apps/edge/src/bin/fartol.ts
+  - apps/edge/src/bin/fartola.ts
 ---
 
 ## Problem
 
-The FartOL edge is a single-laptop server. To let parents scan a QR
+The fartOLa edge is a single-laptop server. To let parents scan a QR
 code and self-sign-up their kids (see sibling todo
 `2026-05-15-parent-self-signup-qr-flow.md`), the laptop needs to be
 reachable from the parents' phones — ideally from outside the venue's
@@ -44,7 +44,7 @@ Three viable approaches, ordered by likely fit:
 
 3. **Local mDNS + LAN-only QR** (lowest-tech fallback)
    - If the laptop runs its own WiFi AP or is on the venue WiFi,
-     advertise `fartol.local` via avahi/bonjour and put `https://fartol.local/signup/...`
+     advertise `fartola.local` via avahi/bonjour and put `https://fartola.local/signup/...`
      in the QR.
    - Parents must be on the same WiFi. No public internet needed.
    - **Catch:** browser HTTPS / cert pain on `.local` without
@@ -71,7 +71,7 @@ Three viable approaches, ordered by likely fit:
   doesn't fight the tunnel.
 - **Logging.** All three approaches put a third party (Tailscale,
   Cloudflare, or none) in the request path. Anonymous-aggregate
-  logging is fine for FartOL but worth documenting.
+  logging is fine for fartOLa but worth documenting.
 
 ## Priority
 

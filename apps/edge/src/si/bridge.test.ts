@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for the SI bridge — the adapter between Phase 0's
 // SiMainStation and Phase 1's SQLite event log + WS broadcast. All tests run
@@ -39,15 +39,15 @@ import * as path from 'node:path';
 import * as url from 'node:url';
 import { EventEmitter } from 'node:events';
 
-import { SiMainStation } from '@fartol/sportident';
-import type { ISerialTransport } from '@fartol/sportident';
+import { SiMainStation } from '@fartola/sportident';
+import type { ISerialTransport } from '@fartola/sportident';
 import { eq, isNull } from 'drizzle-orm';
 
 import { openDatabase } from '../db/index.ts';
 import type { DbHandle } from '../db/index.ts';
 import { events } from '../db/schema.ts';
 import { attachBridge, type BridgeOpts } from './bridge.ts';
-import type { ChannelName } from '@fartol/shared-types';
+import type { ChannelName } from '@fartola/shared-types';
 import type { ProjectionStore } from '../projection/store.ts';
 import type { CompetitionState } from '../projection/types.ts';
 import type { PrinterSink, PrintEnvelope } from '../print/sink.ts';

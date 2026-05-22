@@ -1,9 +1,9 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { parseArgs, resolvePrinterConfig } from './fartol.ts';
+import { parseArgs, resolvePrinterConfig } from './fartola.ts';
 
 describe('resolvePrinterConfig', () => {
   test('defaults to the Star CUPS queue', () => {
@@ -14,21 +14,24 @@ describe('resolvePrinterConfig', () => {
   });
 
   test('supports stdout sink for dev and CI', () => {
-    assert.deepEqual(resolvePrinterConfig({ FARTOL_PRINTER: 'stdout' }), { kind: 'stdout' });
+    assert.deepEqual(resolvePrinterConfig({ FARTOLA_PRINTER: 'stdout' }), { kind: 'stdout' });
   });
 
   test('supports direct raw sink for compatible ESC/POS devices', () => {
     assert.deepEqual(
-      resolvePrinterConfig({ FARTOL_PRINTER: 'direct', FARTOL_PRINTER_TYPE: 'epson' }),
+      resolvePrinterConfig({ FARTOLA_PRINTER: 'direct', FARTOLA_PRINTER_TYPE: 'epson' }),
       { kind: 'direct', printerType: 'epson' }
     );
   });
 
   test('supports overriding the CUPS queue name', () => {
-    assert.deepEqual(resolvePrinterConfig({ FARTOL_PRINTER: 'cups', FARTOL_CUPS_QUEUE: 'Star' }), {
-      kind: 'cups',
-      queueName: 'Star',
-    });
+    assert.deepEqual(
+      resolvePrinterConfig({ FARTOLA_PRINTER: 'cups', FARTOLA_CUPS_QUEUE: 'Star' }),
+      {
+        kind: 'cups',
+        queueName: 'Star',
+      }
+    );
   });
 });
 

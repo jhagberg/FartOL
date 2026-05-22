@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Svelte 5 runes FIFO store of pending card_read events for the
 // registration-desk surface (/competition/:id/registration). Buffers

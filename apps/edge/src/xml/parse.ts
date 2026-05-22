@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Single XML importer for the Phase 1 single-laptop training MVP. Parses
 // either an IOF XML 3.0 CourseData document (the format Purple Pen emits

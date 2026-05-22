@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Shared props type for the 6 receipt templates (Classic, Standing,
 // Detailed, Top4, Minimal, Kids). The shape mirrors the `read` object

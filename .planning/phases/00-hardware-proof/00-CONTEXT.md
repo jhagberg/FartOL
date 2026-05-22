@@ -14,6 +14,7 @@ standalone MIT-licensed library. CRC16-CCITT-0x8005 validation runs
 on every incoming frame; malformed frames are logged and rejected.
 
 **In scope:**
+
 - Read SI5 + SI8/9/10/11 cards via the SportIdent extended protocol.
 - SIAC accidentally covered (BSM readout uses the same `0xEF` command
   as SI8-11).
@@ -23,6 +24,7 @@ on every incoming frame; malformed frames are logged and rejected.
   before tagging `v0.0.1-handshake`.
 
 **Out of scope (deferred to later phases):**
+
 - Web UI, HTTP server, SQLite event log (Phase 1).
 - Autosend / control-station punch mode `0xD3` (REQ-HW-005, Phase 4).
 - SRR / SIAC beacon path (REQ-HW-003 via SRR, Phase 4).
@@ -88,7 +90,7 @@ on every incoming frame; malformed frames are logged and rejected.
 - **D-15:** JSON field names: **snake_case** end-to-end. Same style as
   the SQL table that will hold these events in Phase 1.
 - **D-16:** Invocation: package exposes a **bin** (e.g.
-  `fartol-readout`) **AND** a pnpm script (e.g. `pnpm dev:readout`).
+  `fartola-readout`) **AND** a pnpm script (e.g. `pnpm dev:readout`).
   Devs prefer pnpm; the bin is the supported public entry point.
 
 ### Test strategy
@@ -127,6 +129,7 @@ where Claude has flexibility (planner-territory):
 </decisions>
 
 <canonical_refs>
+
 ## Canonical References
 
 **Downstream agents MUST read these before planning or implementing.**
@@ -156,7 +159,7 @@ where Claude has flexibility (planner-territory):
   `0xD3`, etc.), CRC polynomial.
 - `.planning/research/architecture.md` §"Event log schema" — SQLite
   `events` table schema (`node_id, local_seq, event_type,
-  event_time_ms, recorded_at_ms, payload`). Phase 0 NDJSON output
+event_time_ms, recorded_at_ms, payload`). Phase 0 NDJSON output
   should map cleanly onto this.
 
 ### Port source (MIT-licensed, primary)
@@ -185,6 +188,7 @@ where Claude has flexibility (planner-territory):
 </canonical_refs>
 
 <code_context>
+
 ## Existing Code Insights
 
 ### Reusable Assets
@@ -265,5 +269,5 @@ None — no matching todos for Phase 0 in the GSD todo registry.
 
 ---
 
-*Phase: 0-Hardware-proof*
-*Context gathered: 2026-05-12*
+_Phase: 0-Hardware-proof_
+_Context gathered: 2026-05-12_

@@ -1,4 +1,4 @@
-// Authored for fartol. NDJSON output unit tests for Plan 00-05 Task 1.
+// Authored for fartola. NDJSON output unit tests for Plan 00-05 Task 1.
 //
 // Covers (per .planning/phases/00-hardware-proof/00-05-PLAN.md §"Task 1"):
 //   - connection_changed:  schema_version=1, event, ts_ms, device_path, state

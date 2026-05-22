@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Walk-up modal + C-M4 consent toast e2e (plan 01-14).
 //

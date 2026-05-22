@@ -2,8 +2,8 @@
 
 **Status:** queued for Phase 2.1.
 **Author:** jonas, 2026-05-21.
-**Provenance:** 4-klubbs 2026-05-20 ran on MeOS, not FartOL. Too many
-late-binding pieces were missing for FartOL to be primary system. This
+**Provenance:** 4-klubbs 2026-05-20 ran on MeOS, not fartOLa. Too many
+late-binding pieces were missing for fartOLa to be primary system. This
 doc captures the gaps so Phase 2.1 closes them before the next real
 training.
 
@@ -23,7 +23,7 @@ several pieces only visible at the registration desk on race day:
 
 These are not bugs in the shipped Phase 2.0 code — they are scope that
 was never planned. The 4-klubbs format leaned on MeOS's lottning +
-start-list + arena-finish features that FartOL doesn't implement.
+start-list + arena-finish features that fartOLa doesn't implement.
 
 ## Phase 2.1 scope items
 
@@ -32,7 +32,7 @@ start-list + arena-finish features that FartOL doesn't implement.
 This is the main missing piece. MeOS handles the full create-edit-publish
 loop in-app (see `oEvent::drawList` / `oClass::drawList` in
 `/home/jonas/src/meos/code/oEvent.cpp` for prior-art on the algorithm).
-FartOL should match that level of functionality before relying on
+fartOLa should match that level of functionality before relying on
 external imports.
 
 - Schema: `competitors.start_time_ms INTEGER NULL` (epoch ms or
@@ -56,7 +56,7 @@ external imports.
 - Manual edit: per-row inline "ändra starttid" so the operator can shift
   a single runner without re-lotta-ing the class
 - Export: round-trip through IOF XML 3.0 `<StartList>` so MeOS /
-  Eventor can consume what FartOL drew
+  Eventor can consume what fartOLa drew
 - Receipt: thermal print start-list per class for the secretariat board
 
 ### 2. Start list import (secondary)

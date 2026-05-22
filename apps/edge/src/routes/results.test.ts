@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for GET /api/competitions/:id/results (plan 08 task 1).
 //

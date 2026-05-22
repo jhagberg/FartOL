@@ -1,8 +1,8 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Bench-fixture replay regression test — Plan 06 Task 4. Drives each of the
 // four committed Jonas fixtures (SI5/SI9/SI10/SIAC, captured 2026-05-13 on
-// /dev/ttyUSB0 via fartol-readout --record --once) through the production
+// /dev/ttyUSB0 via fartola-readout --record --once) through the production
 // replayFixture pipeline and asserts the produced wire-protocol NDJSON events
 // (card_inserted, card_read, card_removed, frame_error) match the captured
 // .expected.json byte-for-byte (ts_ms normalised to 0).

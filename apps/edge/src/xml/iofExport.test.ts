@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for the IOF XML 3.0 ResultList builder (plan 16 task 1).
 //
@@ -32,7 +32,7 @@ import {
   type ExportInput,
 } from './iofExport.ts';
 import type { CompetitionState, CompetitorView, ResultView } from '../projection/types.ts';
-import type { CompetitionDTO, ClassDTO } from '@fartol/shared-types';
+import type { CompetitionDTO, ClassDTO } from '@fartola/shared-types';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 // PATTERNS S-5: HERE-based path resolution. The frozen-fixture lives next to
@@ -182,7 +182,7 @@ function makeInput(overrides: Partial<ExportInput> = {}): ExportInput {
     courses: [],
     state: makeSeededState(),
     status: 'Final',
-    creator: 'FartOL test v0.0',
+    creator: 'fartOLa test v0.0',
     now: () => FIXED_CREATE_TIME,
     ...overrides,
   };

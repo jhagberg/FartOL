@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // DNF/MP detection over a card_read payload. Per codex review C-H2
 // (revision 2):
@@ -32,7 +32,7 @@
 //   DNF override"
 // - .planning/phases/01-single-laptop-training-mvp/01-REVIEWS.md §C-H2
 
-import type { NdjsonPunch, HalfDayClock } from '@fartol/sportident';
+import type { NdjsonPunch, HalfDayClock } from '@fartola/sportident';
 import { diffMs } from './halfDayClockMath.ts';
 
 export interface DetectInput {

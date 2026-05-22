@@ -1,7 +1,7 @@
 {
-  "name": "@fartol/shared-types",
+  "name": "@fartola/shared-types",
   "version": "0.0.0",
-  "description": "Shared TS types for the FartOL workspace (NDJSON events, REST DTOs, WS envelopes)",
+  "description": "Shared TS types for the fartOLa workspace (NDJSON events, REST DTOs, WS envelopes)",
   "license": "MIT",
   "private": true,
   "type": "module",
@@ -16,7 +16,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@fartol/sportident": "workspace:*",
+    "@fartola/sportident": "workspace:*",
     "zod": "^4.4.3"
   },
   "devDependencies": {

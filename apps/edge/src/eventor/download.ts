@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Eventor download module (Plan 02-01 task 3). Pure HTTP + gunzip; no DB
 // writes (cache.ts owns the SQLite side).

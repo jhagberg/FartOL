@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // XSD validator for IOF XML 3.0 documents (CourseData + EntryList). Backed
 // by xmllint-wasm — a pure-WebAssembly libxml2 build that runs on Node
@@ -59,7 +59,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 // PATTERNS S-5: HERE-based path resolution. Under `tsx` the source lives at
 // apps/edge/src/xml/validate.ts so IOF.xsd is in the same directory. Under
 // the published tarball produced by scripts/build-tarball.sh, validate.ts
-// is bundled into dist/bin/fartol.cjs and dist/server.{cjs,mjs}, while the
+// is bundled into dist/bin/fartola.cjs and dist/server.{cjs,mjs}, while the
 // XSD lives at dist/xml/IOF.xsd. Plan 18 — probe both layouts so a single
 // bundled binary works whether HERE is the source tree, dist/, or dist/bin/.
 import { existsSync } from 'node:fs';

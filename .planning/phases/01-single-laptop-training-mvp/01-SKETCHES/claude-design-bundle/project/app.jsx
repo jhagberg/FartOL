@@ -1,4 +1,4 @@
-// FartOL Phase 1 prototype — app shell, routing, state
+// fartOLa Phase 1 prototype — app shell, routing, state
 const { useState, useEffect, useMemo, useRef } = React;
 
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
@@ -143,9 +143,9 @@ function App() {
       <main className="main">
         <div className="topbar">
           <div className="crumb">
-            {route === 'home' && <>FartOL / <strong>{t('nav.competitions')}</strong></>}
-            {route === 'readout' && <>FartOL / Tisdagsträning v.20 / <strong>{t('nav.readout')}</strong></>}
-            {route === 'results' && <>FartOL / Tisdagsträning v.20 / <strong>{t('nav.results')}</strong></>}
+            {route === 'home' && <>fartOLa / <strong>{t('nav.competitions')}</strong></>}
+            {route === 'readout' && <>fartOLa / Tisdagsträning v.20 / <strong>{t('nav.readout')}</strong></>}
+            {route === 'results' && <>fartOLa / Tisdagsträning v.20 / <strong>{t('nav.results')}</strong></>}
           </div>
           <div className="spacer"></div>
           {route === 'readout' && (

@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Embedded Drizzle migrator for the apps/edge bridge. Runs at every cold
 // start; idempotent. drizzle-orm's migrator walks meta/_journal.json
@@ -10,7 +10,7 @@
 // Locked by:
 // - .planning/phases/01-single-laptop-training-mvp/01-CONTEXT.md
 //   "Claude's Discretion" — embedded migrator at bridge startup so
-//   `npm install -g fartol && fartol` Just Works on an empty data dir.
+//   `npm install -g fartola && fartola` Just Works on an empty data dir.
 // - .planning/phases/01-single-laptop-training-mvp/01-RESEARCH.md
 //   §"Pattern 2: Embedded migrator at bridge cold start" (verbatim).
 // - .planning/phases/01-single-laptop-training-mvp/01-REVIEWS.md §C-H1

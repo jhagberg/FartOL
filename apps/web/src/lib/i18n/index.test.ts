@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Unit tests for the i18n bootstrap. Verifies:
 // - The Swedish default resolves on first import (Pitfall 10: no flash of English).
@@ -16,7 +16,7 @@ beforeEach(() => {
   localStorage.clear();
 });
 
-describe('@fartol/web i18n bootstrap', () => {
+describe('@fartola/web i18n bootstrap', () => {
   it('renders the Swedish home.new label by default (Pitfall 10)', async () => {
     // Fresh import each test — vitest module isolation is per-file, so we
     // use `await import()` and trust the first call to hit the sync init.
@@ -34,7 +34,7 @@ describe('@fartol/web i18n bootstrap', () => {
   it('persists the chosen locale to localStorage', async () => {
     const mod = await import('./index.ts');
     mod.setLocale('en');
-    const raw = localStorage.getItem('fartol.tweaks.v1');
+    const raw = localStorage.getItem('fartola.tweaks.v1');
     expect(raw).not.toBeNull();
     const parsed = JSON.parse(raw!);
     expect(parsed.locale).toBe('en');

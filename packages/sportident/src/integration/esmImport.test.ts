@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // CR-001 regression: codex review (post-bench) flagged that ESM consumers
 // could not construct `SerialTransport` from the built ESM bundle because

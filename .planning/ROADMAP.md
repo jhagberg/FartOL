@@ -1,4 +1,4 @@
-# Roadmap: fartol
+# Roadmap: fartola
 
 ## Overview
 
@@ -12,7 +12,7 @@ orienteer at a real event (training counts).
 - [x] **Phase 0: Hardware proof** — Node.js script reads SI cards via BSM7/BSM8 on Linux, logs structured JSON. (Completed 2026-05-13, tagged `v0.0.1-handshake`.)
 - [x] **Phase 1: Single-laptop training MVP** — Run a real club training using only this software on one laptop. (Merged to main 2026-05-16 via PR #3.)
 - [x] **Phase 1.5: Public demo + landing page** — GitHub Pages site with a clickable mock so anyone can test the UI and leave feedback. (Merged to main 2026-05-15.)
-- [ ] **Phase 2.0: 4-klubbs MVP (parallel with MeOS)** — Run FartOL as primary registration + readout at a 4-klubbs training on 2026-05-20, with MeOS as parallel safety backup via MIP+MOP sync.
+- [ ] **Phase 2.0: 4-klubbs MVP (parallel with MeOS)** — Run fartOLa as primary registration + readout at a 4-klubbs training on 2026-05-20, with MeOS as parallel safety backup via MIP+MOP sync.
 - [ ] **Phase 2.1: Sanctioned-competition foundations** — Yjs collaborative editing, Eventor entries pull, Eventor results push, spectator live results page, bridge crash recovery hardening, MIP/MOP polish.
 - [ ] **Phase 3: Children's finish, public engagement** — Kids' finish screen, parent notifications, embeddable live widget.
 - [ ] **Phase 4: Multi-arena, radio controls** — Radio controls feeding live punches, multiple WiFi cells, peer-to-peer sync.
@@ -37,7 +37,7 @@ orienteer at a real event (training counts).
   - [x] 00-02-PLAN.md — Port siProtocol (CRC16 + parse + parseAll + render) + constants + utils; 10 frozen CRC vectors green; synthetic frame fixtures
   - [x] 00-03-PLAN.md — Port storage primitives + BaseSiCard + ModernSiCard + SiCard5/9/10/SIAC; upstream-fixture-driven decoder tests
   - [x] 00-04-PLAN.md — SerialTransport (node serialport@13) + simplified SiTargetMultiplexer (Direct-only) + BaseSiStation/SiMainStation handshake; FakeSerialTransport-driven tests
-  - [x] 00-05-PLAN.md — NDJSON output layer + bin/fartol-readout + index.ts public API + end-to-end fixture-replay integration test
+  - [x] 00-05-PLAN.md — NDJSON output layer + bin/fartola-readout + index.ts public API + end-to-end fixture-replay integration test
   - [x] 00-06-PLAN.md — --record/--replay modes + hardware-smoke.sh + 4 bench fixtures (SI5/SI9/SI10/SIAC, captured 2026-05-13 in `packages/sportident/tests/fixtures/jonas/`) + v0.0.1-handshake tag
 
 - Phase 0.1 (gap-closure 2026-05-13): closed 6 of 7 codex review findings — see .planning/phases/00-hardware-proof/00-1-SUMMARY.md
@@ -76,7 +76,7 @@ This is the hardest single technical milestone. Everything else is
   - [x] 01-15-PLAN.md — Wave 4: ESC/POS thermal driver (node-thermal-printer) + 6 template renderers + auto-print wiring
   - [x] 01-16-PLAN.md — Wave 5: IOF XML 3.0 ResultList export + XSD validation + export page + export e2e
   - [x] 01-17-PLAN.md — Wave 5: Daily SQLite backup (cron-in-process) + 30-day REQ-PRIV-002 retention scrub + admin endpoints
-  - [x] 01-18-PLAN.md — Wave 5: Single-binary packaging (npm install -g fartol) + systemd + udev + install-smoke + manual bench checkpoint
+  - [x] 01-18-PLAN.md — Wave 5: Single-binary packaging (npm install -g fartola) + systemd + udev + install-smoke + manual bench checkpoint
 
 Phase 1 deferrals (explicit per CONTEXT.md):
 - REQ-STD-003 (IOF XML 2.0.3 read) → Phase 2 — Purple Pen + IOF 3.0 EntryList cover Phase 1 needs
@@ -84,15 +84,15 @@ Phase 1 deferrals (explicit per CONTEXT.md):
 
 ### Phase 1.5: Public demo + landing page
 
-**Goal**: Anyone with a browser can click through the FartOL UI end-to-end and leave feedback before Phase 2 ships.
+**Goal**: Anyone with a browser can click through the fartOLa UI end-to-end and leave feedback before Phase 2 ships.
 **Depends on**: Phase 1
 **Requirements**: (no new REQ-IDs — derived from Phase 1's REQ-UI surface)
 
 **Scope decision (2026-05-15)**: ship `.planning/phases/01-single-laptop-training-mvp/01-SKETCHES/claude-design-bundle/project/` as the demo. It's already a standalone React+Babel SPA with mock data, no backend required, and covers wizard / home / readout / results / walk-up / 6 receipt templates / tweaks panel. The sketches were the *design* the implementation was built from — minor drift between sketch and built app IS itself feedback. Avoid a separate "mock service mode" for the SvelteKit app unless v1 feedback shows the drift is too large.
 
 **Success Criteria** (what must be TRUE):
-  1. GitHub Pages site live at a stable URL (e.g. `https://jhagberg.github.io/FartOL/`).
-  2. Landing page (single static HTML) explains what FartOL is, who it's for, and links to the demo + repo + feedback channel.
+  1. GitHub Pages site live at a stable URL (e.g. `https://jhagberg.github.io/fartOLa/`).
+  2. Landing page (single static HTML) explains what fartOLa is, who it's for, and links to the demo + repo + feedback channel.
   3. The sketches bundle is reachable at `/demo/` on the same site — clicking through works in modern browsers (Chrome / Firefox / Safari current).
   4. Feedback path is clickable from the page (pre-filled GitHub issue template, or a Tally/Google Form embed) — feedback in <60 seconds.
   5. Deploy is automatic on push to `main` via GitHub Actions (`actions/upload-pages-artifact` + `actions/deploy-pages`).
@@ -108,16 +108,16 @@ Phase 1.5 is explicitly non-blocking for Phase 2 — if the StorTuna club is rea
 
 ### Phase 2.0: 4-klubbs MVP (parallel with MeOS)
 
-**Goal**: Run a real 4-klubbs training at Stora Tuna OK on Wednesday 2026-05-20 with FartOL as the primary registration + readout system, MeOS running in parallel as a safety backup. Each registration in FartOL pushes to MeOS via MIP so MeOS has the runner if it ever does its own card readback; FartOL receives MeOS's MOP feed so we can recover from a FartOL crash.
+**Goal**: Run a real 4-klubbs training at Stora Tuna OK on Wednesday 2026-05-20 with fartOLa as the primary registration + readout system, MeOS running in parallel as a safety backup. Each registration in fartOLa pushes to MeOS via MIP so MeOS has the runner if it ever does its own card readback; fartOLa receives MeOS's MOP feed so we can recover from a fartOLa crash.
 **Depends on**: Phase 1
 **Requirements**: Phase 1 + REQ-STD-004 (partial — runner DB only, no entries pull/push), REQ-EXT-MEOS-001 (new — MIP/MOP coexistence; entry added to REQUIREMENTS.md by Plan 02-01)
 **Success Criteria** (what must be TRUE):
-  1. 4-klubbs 2026-05-20 runs end-to-end on FartOL; MeOS is alive but never needed.
+  1. 4-klubbs 2026-05-20 runs end-to-end on fartOLa; MeOS is alive but never needed.
   2. Eventor löpardatabasen import works: typing or reading a known SI bricka auto-fills name + klubb in walk-up.
-  3. Every walk-up registration in FartOL shows up in MeOS within ~5 seconds via MIP `<entry>`.
-  4. Hyrbricka flag survives the round-trip: FartOL toast at finish-readout AND MeOS reminder both fire for hired cards.
+  3. Every walk-up registration in fartOLa shows up in MeOS within ~5 seconds via MIP `<entry>`.
+  4. Hyrbricka flag survives the round-trip: fartOLa toast at finish-readout AND MeOS reminder both fire for hired cards.
   5. Course-only model (no Klasser) works for 4-klubbs's 5-course bundle (Vit / Grön / Gul / Orange / Violett).
-  6. If FartOL is killed mid-event, MeOS-side registrations done during the outage are picked up via MOP on FartOL restart.
+  6. If fartOLa is killed mid-event, MeOS-side registrations done during the outage are picked up via MOP on fartOLa restart.
 **Plans**: 10 plans (7 active for 4-klubbs; 2 deferred to Phase 2.1; 1 added 2026-05-17 as a 4-klubbs blocker fix)
   - [x] 02-01-PLAN.md — Wave 0 [BLOCKING]: Drizzle migration 0002 (6 new tables + competitors.source) + Eventor saxes streaming parser + ingest cache + scheduleEventorBoot + admin refresh route + ADR-0009 + REQ-EXT-MEOS-001 entry
   - [x] 02-02-PLAN.md — Wave 1: WalkupModal Bana label + Hyrbricka checkbox + Eventor autocomplete (si_card pre-fill + name prefix) + competitors transactional hired_cards write + TweaksPanel Eventor status + walkup-eventor e2e

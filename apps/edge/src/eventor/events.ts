@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Eventor event-list query — public REST endpoint documented by Svenska
 // Orienteringsförbundet (SOFT). Sources:

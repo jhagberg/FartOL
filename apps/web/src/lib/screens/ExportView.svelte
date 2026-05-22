@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Export view (/competition/[id]/export). The dedicated page the operator
   reaches via the Export nav. Layout (UI-SPEC §"Export IOF XML 3.0

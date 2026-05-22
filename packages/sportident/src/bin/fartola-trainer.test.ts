@@ -1,6 +1,6 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
-// Unit tests for fartol-trainer's pure functions: the --course parser and
+// Unit tests for fartola-trainer's pure functions: the --course parser and
 // the lenient subsequence course-matcher. The full station-pipeline is
 // already exercised by replay-jonas-fixtures.test.ts; this file just guards
 // the trainer-specific logic so a refactor doesn't quietly break what an
@@ -9,8 +9,8 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { matchCourse, parseTrainerArgs, toCardSummary } from './fartol-trainer.ts';
-import type { CardSummary } from './fartol-trainer.ts';
+import { matchCourse, parseTrainerArgs, toCardSummary } from './fartola-trainer.ts';
+import type { CardSummary } from './fartola-trainer.ts';
 
 const complete = (punches: number[]): CardSummary => ({
   punches,

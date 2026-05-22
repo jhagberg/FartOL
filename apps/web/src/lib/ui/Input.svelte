@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Native <input> wrapper. UI-SPEC §"Inputs" — height pinned to var(--hit)
   for the operator's tap-target contract, 16px font so iOS Safari doesn't

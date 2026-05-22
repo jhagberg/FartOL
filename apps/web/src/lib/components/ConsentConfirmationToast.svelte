@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   C-M4 consent-confirmation toast. Surfaces on the FIRST card_read for a
   competitor whose consent_status === 'pending_first_read' (the default

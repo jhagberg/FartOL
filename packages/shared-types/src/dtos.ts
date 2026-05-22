@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // REST DTOs for the Phase 1 edge<->web contract. Real Zod schemas + inferred
 // TS types live here so SvelteKit forms (plan 12 wizard + plan 14 walk-up
@@ -412,13 +412,13 @@ export const EventorStatusDTO = z.object({
   ageDays: z.number().int().nullable(),
   competitorCount: z.number().int().nonnegative(),
   /** Phase 2.0 Plan 02-07 task 2 — source of the resolved EVENTOR_API_KEY.
-   * 'env' = process.env wins (~/.env.fartol / CLI export); 'config' = UI
+   * 'env' = process.env wins (~/.env.fartola / CLI export); 'config' = UI
    * wrote it via PUT /api/settings/integrations; 'absent' = neither set
    * (paired with state='no_key'). SettingsView reads this to render the
-   * "Värdet kommer från ~/.env.fartol …" banner so the operator knows
+   * "Värdet kommer från ~/.env.fartola …" banner so the operator knows
    * env will trump any UI save on next boot. */
   source: z.enum(['env', 'config', 'absent']),
-  fartol_dev: z.boolean(),
+  fartola_dev: z.boolean(),
 });
 export type EventorStatusDTO = z.infer<typeof EventorStatusDTO>;
 

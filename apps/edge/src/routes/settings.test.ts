@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for GET + PUT /api/settings/integrations (Plan
 // 02-07 task 1). Validates the 7 behaviors locked in the plan:

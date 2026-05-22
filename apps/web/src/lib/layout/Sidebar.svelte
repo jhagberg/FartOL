@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Left sidebar — brand + nav + station card + version footer. Per
   01-UI-SPEC.md §"Layout shell" / sketches/app.jsx lines 102-141.

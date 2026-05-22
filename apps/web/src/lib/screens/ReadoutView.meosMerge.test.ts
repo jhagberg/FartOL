@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Vitest coverage for the Plan 02-04 meos_merge envelope handling in
 // ReadoutView. The Svelte component itself isn't mounted (the web package

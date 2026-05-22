@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Authored for fartol. Not ported from upstream.
+# Authored for fartola. Not ported from upstream.
 #
 # scripts/dev.sh — one-shot dev stack launcher.
 #
 # When run inside a kitty terminal with remote control enabled (the
 # default, see ~/.config/kitty/kitty.conf `allow_remote_control yes`),
 # this opens TWO new kitty tabs in the current window:
-#   - fartol-edge   : FARTOL_DEV=1 pnpm --filter @fartol/edge dev
-#   - fartol-web    : pnpm --filter @fartol/web dev
+#   - fartola-edge   : FARTOLA_DEV=1 pnpm --filter @fartola/edge dev
+#   - fartola-web    : pnpm --filter @fartola/web dev
 #
 # When run outside kitty, prints the two commands so the operator can
 # paste them into separate terminals manually.
@@ -19,18 +19,18 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
-EDGE_CMD='FARTOL_DEV=1 pnpm --filter @fartol/edge dev'
-WEB_CMD='pnpm --filter @fartol/web dev'
+EDGE_CMD='FARTOLA_DEV=1 pnpm --filter @fartola/edge dev'
+WEB_CMD='pnpm --filter @fartola/web dev'
 
 show_status() {
-  echo "== fartol dev processes =="
-  pgrep -af 'tsx watch.*fartol\.ts' || echo "  (no edge dev process)"
-  pgrep -af 'vite dev.*5173|vite.*fartol/web' || echo "  (no web dev process)"
+  echo "== fartola dev processes =="
+  pgrep -af 'tsx watch.*fartola\.ts' || echo "  (no edge dev process)"
+  pgrep -af 'vite dev.*5173|vite.*fartola/web' || echo "  (no web dev process)"
 }
 
 stop_all() {
-  echo "Stopping fartol dev processes..."
-  pkill -f 'tsx watch.*fartol\.ts' 2>/dev/null || true
+  echo "Stopping fartola dev processes..."
+  pkill -f 'tsx watch.*fartola\.ts' 2>/dev/null || true
   pkill -f 'vite dev.*5173' 2>/dev/null || true
   sleep 0.5
   show_status
@@ -93,13 +93,13 @@ if ! kitten @ ls >/dev/null 2>&1; then
   exit 0
 fi
 
-spawn_in_kitty 'fartol-edge' "$EDGE_CMD"
-spawn_in_kitty 'fartol-web' "$WEB_CMD"
+spawn_in_kitty 'fartola-edge' "$EDGE_CMD"
+spawn_in_kitty 'fartola-web' "$WEB_CMD"
 
 cat <<EOF
 Spawned two kitty tabs:
-  - fartol-edge  (HTTP :3000 + SI bridge on /dev/ttyUSB0)
-  - fartol-web   (Vite dev :5173)
+  - fartola-edge  (HTTP :3000 + SI bridge on /dev/ttyUSB0)
+  - fartola-web   (Vite dev :5173)
 
 Open http://localhost:5173 once both have logged "Ready" / "Server listening".
 Stop both with:    bash scripts/dev.sh --stop

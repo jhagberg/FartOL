@@ -1,12 +1,12 @@
-# @fartol/sportident
+# @fartola/sportident
 
 NDJSON-emitting reader for SPORTident BSM7/8-USB readout stations on
 Linux. Reads SI5, SI9, SI10 and SIAC Air+ cards and writes one JSON
 object per line to stdout for downstream consumption.
 
-This package is the hardware-bridge layer of FartOL. It is MIT-licensed
+This package is the hardware-bridge layer of fartOLa. It is MIT-licensed
 (see `LICENSE`) so it can eventually be published as a standalone library
-independent of FartOL's AGPL application code. See `NOTICE.md` for
+independent of fartOLa's AGPL application code. See `NOTICE.md` for
 upstream attribution.
 
 ## Phase 0 scope
@@ -22,11 +22,11 @@ After `pnpm install` at the repo root:
 
 ```sh
 # from packages/sportident/
-pnpm dev:readout          # runs src/bin/fartol-readout.ts via Node 22 type-stripping
-pnpm exec fartol-readout  # runs the built dist/bin/fartol-readout.cjs (after pnpm build)
+pnpm dev:readout          # runs src/bin/fartola-readout.ts via Node 22 type-stripping
+pnpm exec fartola-readout  # runs the built dist/bin/fartola-readout.cjs (after pnpm build)
 ```
 
-The reader opens the serial device given by `FARTOL_DEVICE` (default
+The reader opens the serial device given by `FARTOLA_DEVICE` (default
 `/dev/ttyUSB0`). Set the variable to a different path if your reader
 enumerates elsewhere.
 
@@ -45,8 +45,8 @@ asserts each card's NDJSON shape.
    `sudo usermod -aG dialout $USER` and log out + in.
 3. **Node 22.18+** — the bin relies on Node-native TS stripping
    (`node --version`).
-4. **Build the dist bundle** — `pnpm --filter @fartol/sportident exec tsup`
-   produces `dist/bin/fartol-readout.cjs`; the smoke spawns the built
+4. **Build the dist bundle** — `pnpm --filter @fartola/sportident exec tsup`
+   produces `dist/bin/fartola-readout.cjs`; the smoke spawns the built
    bundle, not the source.
 
 ### Linux gotchas
@@ -65,7 +65,7 @@ asserts each card's NDJSON shape.
 ```
 
 The script prompts you to insert SI5, then SI9, then SI10, then SIAC in
-turn. For each card it runs `pnpm exec fartol-readout --record
+turn. For each card it runs `pnpm exec fartola-readout --record
 packages/sportident/tests/fixtures/jonas/<card>-jonas-001 --once`. The
 bin exits after a single `card_read` event. The script then parses the
 emitted NDJSON via `node -e` and asserts `card_type` matches the
@@ -78,7 +78,7 @@ under `packages/sportident/tests/fixtures/jonas/`.
 
 ### `--record` / `--replay` workflow
 
-- `pnpm exec fartol-readout --record <basename> --once` — captures one
+- `pnpm exec fartola-readout --record <basename> --once` — captures one
   card as `<basename>.expected.json` (NDJSON) AND `<basename>.bytes.hex`
   (directional wire transcript). `<basename>` resolves under either the
   current working directory or `/tmp`; any other path is rejected
@@ -88,7 +88,7 @@ under `packages/sportident/tests/fixtures/jonas/`.
   to the station) or `in <hex>` (bytes the station sent back), in
   chronological order. The replay engine asserts the station-side send
   order matches when replaying (codex review #6).
-- `pnpm exec fartol-readout --replay <basename>` — drives the SiMain
+- `pnpm exec fartola-readout --replay <basename>` — drives the SiMain
   Station pipeline against the recorded transcript via a deterministic
   playback transport and compares the produced NDJSON to
   `<basename>.expected.json` (with `ts_ms` normalised). Exits 0 on byte-

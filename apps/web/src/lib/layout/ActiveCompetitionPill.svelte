@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Sidebar workspace switcher. Renders the operator's currently-active
   competition (name + date) as a tappable pill; clicking opens a dropdown

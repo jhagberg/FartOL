@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Sidebar nav row. Active state adds an accent left-bar + soft background
   per 01-UI-SPEC sketch (.nav-item.active). Tap-target pinned to

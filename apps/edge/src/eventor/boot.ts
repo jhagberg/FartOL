@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // scheduleEventorBoot — the staleness-gated, fire-and-forget Eventor
 // cache refresher (Plan 02-01 task 4). Mirrors the BackupHandle shape

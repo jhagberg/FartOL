@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Authored for fartol. Not ported from upstream.
+# Authored for fartola. Not ported from upstream.
 #
-# Repo-root convenience wrapper for the FartOL tarball build. Delegates to
+# Repo-root convenience wrapper for the fartOLa tarball build. Delegates to
 # apps/edge/scripts/build-tarball.sh so the build chain lives next to the
 # package being packed.
 #

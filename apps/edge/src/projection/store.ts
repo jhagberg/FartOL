@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // ProjectionStore — Map-backed cache of the last reduce() output per
 // competition_id + a debounced markDirty + recompute + broadcast loop. Plan
@@ -29,7 +29,7 @@ import { reduce } from './reduce.ts';
 import { loadCompetitionInputs } from './loader.ts';
 import type { DbHandle } from '../db/index.ts';
 import type { CompetitionState } from './types.ts';
-import { resultsChannel, type ChannelName } from '@fartol/shared-types';
+import { resultsChannel, type ChannelName } from '@fartola/shared-types';
 
 export interface ProjectionStore {
   /** Get the last cached state for this competition. Returns null if no

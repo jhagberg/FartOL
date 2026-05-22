@@ -10,8 +10,8 @@ requires:
     provides: |
       plan 02 DbHandle + competitors/competitions Drizzle schema (with
         scrubbedAtMs column already in place);
-      plan 03 routes/dev.ts FARTOL_DEV gate pattern (mirrored for /api/__admin/*);
-      plan 06 bin/fartol.ts lifecycle structure + SIGINT shutdown chain;
+      plan 03 routes/dev.ts FARTOLA_DEV gate pattern (mirrored for /api/__admin/*);
+      plan 06 bin/fartola.ts lifecycle structure + SIGINT shutdown chain;
       plan 11 typed REST client wrapper (unused here — admin endpoints are
         operator-only, not surfaced through apps/web).
 provides:
@@ -24,15 +24,15 @@ provides:
     competitors.club while preserving card_number (hardware ID) and
     consent_at_ms/consent_status (audit trail); idempotent.
   - POST /api/__admin/run-backup-now + /run-retention-now
-    (apps/edge/src/routes/admin.ts): FARTOL_DEV-gated operator endpoints
+    (apps/edge/src/routes/admin.ts): FARTOLA_DEV-gated operator endpoints
     that drive one-off runs of the scheduled chains; same gate pattern as
     plan 03's /api/__dev/*.
-  - CLI flags --backup-dir + --retention-days (apps/edge/src/bin/fartol.ts)
+  - CLI flags --backup-dir + --retention-days (apps/edge/src/bin/fartola.ts)
     with defaults './backups' / 30; SIGINT teardown stops both schedulers.
 affects:
   - Phase 1 plan 18 (packaging) — backup directory now part of the install
     layout; --backup-dir flag must be documented in the install README.
-  - Phase 2 admin auth — replaces FARTOL_DEV gate on /api/__admin/* with
+  - Phase 2 admin auth — replaces FARTOLA_DEV gate on /api/__admin/* with
     real admin-token auth (REQ-AUTH-*).
   - Phase 2 disk-space monitoring (REQ-OPS-004) — backup directory is the
     canonical place to surface "disk filling up" warnings.
@@ -48,7 +48,7 @@ tech-stack:
     - "testClock injection (PATTERNS S-2) for time-driven schedulers —
       tests pass `{ now: () => fixedMs }` so delay math + ISO-date stamps
       are deterministic without sleeping wall-clock hours."
-    - "FARTOL_DEV gate mirrored from plan 03's routes/dev.ts onto
+    - "FARTOLA_DEV gate mirrored from plan 03's routes/dev.ts onto
       routes/admin.ts — same plugin-mounts-but-routes-don't-register
       pattern, same T-*-ENDPOINT mitigation surface."
     - "Module augmentation lives next to the consumer (admin.ts) rather
@@ -65,7 +65,7 @@ key-files:
     - apps/edge/src/routes/admin.ts
     - apps/edge/src/routes/admin.test.ts
   modified:
-    - apps/edge/src/bin/fartol.ts
+    - apps/edge/src/bin/fartola.ts
     - apps/edge/src/server.ts
     - .gitignore
 
@@ -75,18 +75,18 @@ key-decisions:
     runs before Task 2 (retention.ts exists), so a direct import would
     break the per-task atomicity. The local interface is structurally
     identical to the exported one; TypeScript's structural typing makes
-    `app.fartolRetention = scheduleDailyRetention(...)` compatible at the
-    bin/fartol.ts assignment site."
-  - "Module augmentation for fartolBackup + fartolRetention lives in
+    `app.fartolaRetention = scheduleDailyRetention(...)` compatible at the
+    bin/fartola.ts assignment site."
+  - "Module augmentation for fartolaBackup + fartolaRetention lives in
     routes/admin.ts (the consumer), NOT server.ts (the plan's text
     suggested server.ts). Co-locating the augmentation with the consumer
     keeps the type adjacent to the route handler that depends on it and
     avoids server.ts becoming a kitchen-sink declaration file."
-  - "Both fartolBackup + fartolRetention typed as `optional` (using `?`)
+  - "Both fartolaBackup + fartolaRetention typed as `optional` (using `?`)
     instead of `BackupHandle | null`. The plan said `| null` but `optional`
     is more idiomatic for a Fastify decoration that may be absent in tests
     that build the server without a bin (see admin.test.ts test 3) — the
-    route handler reads `if (!app.fartolBackup)` which works for both
+    route handler reads `if (!app.fartolaBackup)` which works for both
     undefined and null."
   - "Added `backups/` to .gitignore so the default snapshot directory
     doesn't accidentally get committed during development. Rule 3 scope
@@ -116,7 +116,7 @@ patterns-established:
     is idempotent + cancels the in-flight timer. Pattern reusable for
     any future midnight-anchored job (e.g., Phase 2 event-log compaction)."
   - "Admin endpoint gating: registerAdminRoutes mirrors registerDevRoutes
-    structurally (early `if (process.env.FARTOL_DEV !== '1') return;`);
+    structurally (early `if (process.env.FARTOLA_DEV !== '1') return;`);
     keeps T-*-ENDPOINT surface uniform across all dev-mode-only routes.
     Phase 2 will replace both with admin-token auth in a single swap."
 
@@ -131,7 +131,7 @@ completed: 2026-05-15
 
 # Phase 1 Plan 17: Daily backup + 30-day PII retention Summary
 
-**Cron-in-process daily SQLite backup via better-sqlite3 db.backup() (WAL-consistent) + 30-day competitor PII scrub preserving hardware IDs and consent audit trail — both wired through 2 FARTOL_DEV-gated admin endpoints for operator-driven one-off runs.**
+**Cron-in-process daily SQLite backup via better-sqlite3 db.backup() (WAL-consistent) + 30-day competitor PII scrub preserving hardware IDs and consent audit trail — both wired through 2 FARTOLA_DEV-gated admin endpoints for operator-driven one-off runs.**
 
 ## Performance
 
@@ -145,7 +145,7 @@ completed: 2026-05-15
 
 - `scheduleDailyBackup(handle, { backupDir, keepLast, testClock })` runs
   the SQLite online backup API at next local midnight + every 24h after;
-  produces `fartol.db.bak-YYYY-MM-DD` snapshots; retains the most recent
+  produces `fartola.db.bak-YYYY-MM-DD` snapshots; retains the most recent
   7 by mtime, prunes older.
 - `scheduleDailyRetention(handle, { retentionDays, testClock })` scrubs
   competitor PII (name → 'Anonymiserad', club → NULL) for competitions
@@ -153,11 +153,11 @@ completed: 2026-05-15
   consent_status, consent_at_ms. Idempotent via `scrubbed_at_ms IS NULL`
   WHERE-clause gate.
 - Two admin endpoints (`POST /api/__admin/run-backup-now` + `/run-
-retention-now`) gated on `FARTOL_DEV=1` (same pattern as plan 03's
+retention-now`) gated on `FARTOLA_DEV=1` (same pattern as plan 03's
   `/api/__dev/*`); operator-driven one-off triggers for manual ops +
   Phase 2 admin-token migration target.
 - CLI flags `--backup-dir <path>` (default `./backups`) and
-  `--retention-days <int>` (default 30) on `fartol` bin.
+  `--retention-days <int>` (default 30) on `fartola` bin.
 - 15 new tests total (5 backup + 5 retention + 5 admin route);
   full edge suite goes 269 → 274 tests passing.
 
@@ -188,22 +188,22 @@ Each task was committed atomically:
   card_number/consent_status/consent_at_ms preserved); within-window
   non-scrub (25-day-old); idempotency (re-run returns 0); cross-
   competition isolation; events table untouched (REQ-EVT-002 append-only).
-- `apps/edge/src/routes/admin.ts` — `registerAdminRoutes`. FARTOL_DEV
+- `apps/edge/src/routes/admin.ts` — `registerAdminRoutes`. FARTOLA_DEV
   gate mirrors `routes/dev.ts`. Both endpoints return 200 ok=false /
   no_backup or no_retention when scheduler not wired (tests). Module
-  augmentation declares `fartolBackup?` + `fartolRetention?`. Local
+  augmentation declares `fartolaBackup?` + `fartolaRetention?`. Local
   forward-declared `RetentionHandle` interface (structurally compatible
   with Task 2's exported version).
-- `apps/edge/src/routes/admin.test.ts` — 5 tests: FARTOL_DEV gate on
+- `apps/edge/src/routes/admin.test.ts` — 5 tests: FARTOLA_DEV gate on
   both routes (404 when unset), backup happy path with scheduler
   attached + dest file exists on disk, no-scheduler fallback, retention
   endpoint maps `runNow()` result correctly via a recording stub.
 - `apps/edge/src/server.ts` — register `registerAdminRoutes` after
   `registerExportRoutes` (preserves plan 16's export route ordering).
-- `apps/edge/src/bin/fartol.ts` — added `--backup-dir` + `--retention-
+- `apps/edge/src/bin/fartola.ts` — added `--backup-dir` + `--retention-
 days` CLI flags with validation (positive integer for days); start
-  both schedulers after `buildServer()`; decorate `app.fartolBackup` +
-  `app.fartolRetention`; SIGINT shutdown stops both.
+  both schedulers after `buildServer()`; decorate `app.fartolaBackup` +
+  `app.fartolaRetention`; SIGINT shutdown stops both.
 - `.gitignore` — add `backups/` so the default snapshot directory
   doesn't get committed.
 
@@ -232,14 +232,14 @@ load-bearing are:
 to allow Task 1 to typecheck without Task 2's retention.ts file**
 
 - **Found during:** Task 1 (admin.ts compilation)
-- **Issue:** The plan's Task 1 wires `app.fartolRetention` typed as
+- **Issue:** The plan's Task 1 wires `app.fartolaRetention` typed as
   `RetentionHandle | null` in the FastifyInstance module augmentation,
   but `RetentionHandle` is exported from `privacy/retention.ts` which
   doesn't exist until Task 2. Importing from a not-yet-created file
   breaks Task 1's typecheck.
 - **Fix:** Inline-declared a local `interface RetentionHandle` in
   admin.ts with the structurally-identical shape. TypeScript's
-  structural typing makes the bin's `app.fartolRetention =
+  structural typing makes the bin's `app.fartolaRetention =
 scheduleDailyRetention(...)` assignment work at Task 2's typecheck
   even though the local + exported types are nominally separate.
 - **Files modified:** apps/edge/src/routes/admin.ts
@@ -251,14 +251,14 @@ scheduleDailyRetention(...)` assignment work at Task 2's typecheck
 
 - **Found during:** Task 1 (first typecheck run)
 - **Issue:** The worktree was spawned without `node_modules` populated.
-  `tsc --noEmit` failed with "Cannot find module '@fartol/sportident'"
+  `tsc --noEmit` failed with "Cannot find module '@fartola/sportident'"
   - 25 related errors because the workspace symlinks weren't materialised.
 - **Fix:** Ran `pnpm install --frozen-lockfile` followed by
-  `pnpm --filter @fartol/sportident build` to produce the `dist/` that
+  `pnpm --filter @fartola/sportident build` to produce the `dist/` that
   `apps/edge/tsconfig.json`'s `paths` (via `package.json` "exports")
   resolves to.
 - **Files modified:** None (build artefacts not committed).
-- **Verification:** `pnpm --filter @fartol/edge typecheck` exits 0
+- **Verification:** `pnpm --filter @fartola/edge typecheck` exits 0
   after both commands.
 - **Committed in:** N/A — environment fix, no code change.
 
@@ -271,12 +271,12 @@ scheduleDailyRetention(...)` assignment work at Task 2's typecheck
   the repo root that `git status` reports as untracked. Without a
   `.gitignore` entry the snapshots could accidentally get staged and
   committed (especially via `git add -A` in CI). Snapshots are runtime
-  artefacts, not source — mirrors the existing `fartol.db / fartol.db-
-wal / fartol.db-shm` entries.
+  artefacts, not source — mirrors the existing `fartola.db / fartola.db-
+wal / fartola.db-shm` entries.
 - **Fix:** Added `backups/` to `.gitignore` next to the existing edge-
   bridge runtime block.
 - **Files modified:** .gitignore
-- **Verification:** `git check-ignore -v backups/fartol.db.bak-2026-05-15`
+- **Verification:** `git check-ignore -v backups/fartola.db.bak-2026-05-15`
   reports the new rule matches.
 - **Committed in:** `dc271df` (Task 2 commit).
 
@@ -320,11 +320,11 @@ verbatim.
   doesn't auto-install workspace dependencies. Resolved by running
   `pnpm install --frozen-lockfile` once at executor start; future
   worktree spawns may want this as an explicit setup step.
-- **`@fartol/sportident` not built**: even after install, the consuming
+- **`@fartola/sportident` not built**: even after install, the consuming
   packages couldn't resolve the sportident types because the workspace
   package emits its `dist/` artefacts via `tsup` and `tsconfig` resolves
   through `"exports"` rather than `"main"` -> `src/`. Resolved by
-  `pnpm --filter @fartol/sportident build`.
+  `pnpm --filter @fartola/sportident build`.
 
 ## Known Stubs
 
@@ -359,11 +359,11 @@ One additional surface introduced but not in the threat register:
 
 - **threat_flag: dev-mode-only-admin-endpoints**: `routes/admin.ts`
   registers two POST endpoints that can run arbitrary backups or PII
-  scrubs. Currently gated on `FARTOL_DEV=1` which is the same single-
+  scrubs. Currently gated on `FARTOLA_DEV=1` which is the same single-
   laptop owner-trust boundary the `/api/__dev/*` routes use. Phase 2
   MUST replace this gate with admin-token auth (REQ-AUTH-\*) before
   multi-laptop deployments — otherwise a host that accidentally sets
-  `FARTOL_DEV=1` in production exposes destructive operations on its
+  `FARTOLA_DEV=1` in production exposes destructive operations on its
   loopback.
 
 ## Self-Check
@@ -377,7 +377,7 @@ One additional surface introduced but not in the threat register:
 - FOUND: apps/edge/src/routes/admin.ts
 - FOUND: apps/edge/src/routes/admin.test.ts
 - FOUND: apps/edge/src/server.ts (modified — registerAdminRoutes added)
-- FOUND: apps/edge/src/bin/fartol.ts (modified — CLI flags + scheduler wiring)
+- FOUND: apps/edge/src/bin/fartola.ts (modified — CLI flags + scheduler wiring)
 - FOUND: .gitignore (modified — backups/)
 
 ### Commits
@@ -390,7 +390,7 @@ One additional surface introduced but not in the threat register:
 ## Next Phase Readiness
 
 - Phase 1 plan 18 (packaging) is unblocked. The two new CLI flags
-  (`--backup-dir`, `--retention-days`) are documented in `fartol --help`
+  (`--backup-dir`, `--retention-days`) are documented in `fartola --help`
   output and need to be surfaced in the install README that plan 18 will
   produce.
 - Backup snapshots provide the operational rollback target for the

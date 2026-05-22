@@ -213,18 +213,18 @@ CRC arrays are always exactly 2 bytes by construction (CRC16's contract), so the
 
 ## Self-Check: PASSED
 
-- `/home/jonas/src/FartOL/packages/sportident/src/constants.ts` — FOUND (93 LOC, MIT NOTICE header present)
-- `/home/jonas/src/FartOL/packages/sportident/src/siProtocol.ts` — FOUND (356 LOC, all 9 required exports + types)
-- `/home/jonas/src/FartOL/packages/sportident/src/utils/bytes.ts` — FOUND (87 LOC)
-- `/home/jonas/src/FartOL/packages/sportident/src/utils/general.ts` — FOUND (59 LOC)
-- `/home/jonas/src/FartOL/packages/sportident/src/utils/events.ts` — FOUND (27 LOC)
-- `/home/jonas/src/FartOL/packages/sportident/src/siProtocol.test.ts` — FOUND (263 LOC, ≥10 CRC tests)
-- `/home/jonas/src/FartOL/packages/sportident/src/integration/frameError.test.ts` — FOUND (100 LOC)
-- `/home/jonas/src/FartOL/packages/sportident/tests/fixtures/synthetic/crc-mismatch.bytes.hex` — FOUND
-- `/home/jonas/src/FartOL/packages/sportident/tests/fixtures/synthetic/truncated-frame.bytes.hex` — FOUND
-- `/home/jonas/src/FartOL/packages/sportident/tests/fixtures/synthetic/partial-then-complete.bytes.hex` — FOUND
-- `/home/jonas/src/FartOL/packages/sportident/tests/fixtures/synthetic/bad-stx.bytes.hex` — FOUND
-- `/home/jonas/src/FartOL/packages/sportident/tests/fixtures/synthetic/back-to-back-frames.bytes.hex` — FOUND
+- `/home/jonas/src/fartOLa/packages/sportident/src/constants.ts` — FOUND (93 LOC, MIT NOTICE header present)
+- `/home/jonas/src/fartOLa/packages/sportident/src/siProtocol.ts` — FOUND (356 LOC, all 9 required exports + types)
+- `/home/jonas/src/fartOLa/packages/sportident/src/utils/bytes.ts` — FOUND (87 LOC)
+- `/home/jonas/src/fartOLa/packages/sportident/src/utils/general.ts` — FOUND (59 LOC)
+- `/home/jonas/src/fartOLa/packages/sportident/src/utils/events.ts` — FOUND (27 LOC)
+- `/home/jonas/src/fartOLa/packages/sportident/src/siProtocol.test.ts` — FOUND (263 LOC, ≥10 CRC tests)
+- `/home/jonas/src/fartOLa/packages/sportident/src/integration/frameError.test.ts` — FOUND (100 LOC)
+- `/home/jonas/src/fartOLa/packages/sportident/tests/fixtures/synthetic/crc-mismatch.bytes.hex` — FOUND
+- `/home/jonas/src/fartOLa/packages/sportident/tests/fixtures/synthetic/truncated-frame.bytes.hex` — FOUND
+- `/home/jonas/src/fartOLa/packages/sportident/tests/fixtures/synthetic/partial-then-complete.bytes.hex` — FOUND
+- `/home/jonas/src/fartOLa/packages/sportident/tests/fixtures/synthetic/bad-stx.bytes.hex` — FOUND
+- `/home/jonas/src/fartOLa/packages/sportident/tests/fixtures/synthetic/back-to-back-frames.bytes.hex` — FOUND
 - Commit `1b0095d` (Task 1) — FOUND in git log
 - Commit `2102dea` (Task 2) — FOUND in git log
 - `pnpm lint && pnpm typecheck && pnpm test` — green (28 pass / 6 skipped Wave 0 placeholders / 0 fail)

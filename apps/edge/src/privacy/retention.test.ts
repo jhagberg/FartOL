@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for scheduleDailyRetention. Covers:
 //   - test 1 (REQ-PRIV-002 happy path): 35-day-old competition → scrub

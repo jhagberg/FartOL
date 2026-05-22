@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Vitest coverage for SettingsView (Plan 02-07 Task 3). Pure-helper
 // style — no svelte-testing-library mount (matches the project
@@ -57,9 +57,9 @@ describe('Plan 02-07 — i18n keys for SettingsView + TweaksPanel link', () => {
     expect(sv['settings.integrations.masked']).toBe('••••••••');
     expect(sv['settings.integrations.show']).toBe('Visa');
     expect(sv['tweaks.settings.manageKeys']).toBe('Hantera nycklar');
-    // sourceEnvBanner must mention ~/.env.fartol so operators recognise
+    // sourceEnvBanner must mention ~/.env.fartola so operators recognise
     // the override warning.
-    expect(sv['settings.integrations.sourceEnvBanner']).toContain('~/.env.fartol');
+    expect(sv['settings.integrations.sourceEnvBanner']).toContain('~/.env.fartola');
   });
 
   it('en.json mirrors all settings.* + tweaks.settings.manageKeys keys', async () => {

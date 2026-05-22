@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for the embedded Drizzle migrator:
 // - Idempotency on the same handle (REQ-EVT-004 mirror at infra layer).
@@ -107,7 +107,7 @@ describe('migrator: idempotency + cold-start coverage', () => {
   });
 
   test('test 3: file-based db survives close + reopen', () => {
-    const dir = mkdtempSync(path.join(tmpdir(), 'fartol-migrate-test-'));
+    const dir = mkdtempSync(path.join(tmpdir(), 'fartola-migrate-test-'));
     const dbPath = path.join(dir, `${crypto.randomUUID()}.db`);
     try {
       const h1 = openDatabase(dbPath);
@@ -143,7 +143,7 @@ describe('migrator: idempotency + cold-start coverage', () => {
   });
 
   test('test 4 (REQ-OPS-002): node_id is stable across openDatabase close/reopen cycles', () => {
-    const dir = mkdtempSync(path.join(tmpdir(), 'fartol-nodeid-test-'));
+    const dir = mkdtempSync(path.join(tmpdir(), 'fartola-nodeid-test-'));
     const dbPath = path.join(dir, `${crypto.randomUUID()}.db`);
     try {
       const h1 = openDatabase(dbPath);

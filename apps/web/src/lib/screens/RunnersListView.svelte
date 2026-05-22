@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   RunnersListView — the canonical "Anmälda" surface. Operators land here
   from the sidebar to verify imports, find/edit a specific runner, and
@@ -27,7 +27,7 @@
     listClasses,
     listHiredCards,
   } from '$lib/api/client.ts';
-  import type { CompetitorDTO, ClassDTO } from '@fartol/shared-types';
+  import type { CompetitorDTO, ClassDTO } from '@fartola/shared-types';
   import Button from '$lib/ui/Button.svelte';
   import Input from '$lib/ui/Input.svelte';
   import Icon from '$lib/ui/Icon.svelte';

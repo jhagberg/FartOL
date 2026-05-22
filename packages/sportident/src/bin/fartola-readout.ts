@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
-// Public entry point — `fartol-readout`. Opens a SerialTransport against the
-// device path (`--device <path>`, env var `FARTOL_DEVICE`, default
+// Public entry point — `fartola-readout`. Opens a SerialTransport against the
+// device path (`--device <path>`, env var `FARTOLA_DEVICE`, default
 // `/dev/ttyUSB0`), drives SiMainStation through the handshake, and pipes the
 // 5 station events into NdjsonEmitter on stdout (NDJSON, schema_version=1)
 // plus one-line human diagnostics on stderr (RESEARCH §"NDJSON Output Schema",
@@ -38,7 +38,7 @@ import { replayFixture } from './replay.ts';
 
 // ---------------------------------------------------------------------------
 // CLI arg parsing — minimal hand-rolled (no commander/yargs dep). Flags:
-//   --device <path>          Serial device (overrides $FARTOL_DEVICE)
+//   --device <path>          Serial device (overrides $FARTOLA_DEVICE)
 //   --once                   Read one card then exit
 //   --include-raw-pages      Include raw_pages_b64 in card_read events
 //   --record <basename>      Tee NDJSON + directional wire transcript to disk.
@@ -55,13 +55,13 @@ export interface CliOpts {
   replay?: string;
 }
 
-const HELP = `fartol-readout: stream SportIdent card reads as NDJSON.
+const HELP = `fartola-readout: stream SportIdent card reads as NDJSON.
 
 Usage:
-  fartol-readout [options]
+  fartola-readout [options]
 
 Options:
-  --device <path>          Serial device (overrides $FARTOL_DEVICE, default /dev/ttyUSB0)
+  --device <path>          Serial device (overrides $FARTOLA_DEVICE, default /dev/ttyUSB0)
   --once                   Read a single card then exit cleanly
   --include-raw-pages      Include raw_pages_b64 in card_read events
   --record <basename>      Tee NDJSON to <basename>.expected.json AND capture
@@ -85,7 +85,7 @@ Exit codes:
 
 export const parseArgs = (argv: string[]): CliOpts => {
   const opts: CliOpts = {
-    device: process.env.FARTOL_DEVICE ?? '/dev/ttyUSB0',
+    device: process.env.FARTOLA_DEVICE ?? '/dev/ttyUSB0',
     once: false,
     includeRawPages: false,
   };
@@ -340,7 +340,7 @@ if (isEntrypoint)
     // failure may have happened before construction (e.g. invalid --device).
     try {
       const emitter = new NdjsonEmitter({
-        device_path: process.env.FARTOL_DEVICE ?? '/dev/ttyUSB0',
+        device_path: process.env.FARTOLA_DEVICE ?? '/dev/ttyUSB0',
       });
       emitter.connection_changed({ state: 'error', error: message });
     } catch {

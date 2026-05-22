@@ -1,6 +1,6 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
-// Development-only routes — registered ONLY when process.env.FARTOL_DEV
+// Development-only routes — registered ONLY when process.env.FARTOLA_DEV
 // equals '1'. In production builds the plugin is still mounted by
 // server.ts but the route registration short-circuits at the env check
 // (T-DEV-ENDPOINT mitigation). The Fastify @fastify/sensible 404 handler
@@ -27,7 +27,7 @@
 //
 // Walking-skeleton convenience: if `competition_id` is unknown the route
 // auto-seeds the competition row so the FK accepts the events insert. Plan
-// 11's three-click wizard + plan 06's bin/fartol.ts replace this with a
+// 11's three-click wizard + plan 06's bin/fartola.ts replace this with a
 // "competition must exist" check on the real path.
 //
 // Locked by:
@@ -44,10 +44,10 @@ import { fileURLToPath } from 'node:url';
 import { competitions } from '../db/schema.ts';
 import { insertEvent } from '../si/eventInserter.ts';
 import { ingestEventorCache } from '../eventor/cache.ts';
-import { readoutChannel } from '@fartol/shared-types';
+import { readoutChannel } from '@fartola/shared-types';
 import { eq } from 'drizzle-orm';
 import type { EventPayload } from '../db/schema.ts';
-import type { NdjsonPunch, HalfDayClock } from '@fartol/sportident';
+import type { NdjsonPunch, HalfDayClock } from '@fartola/sportident';
 
 interface SimulateReadBody {
   competition_id?: unknown;
@@ -131,7 +131,7 @@ export default async function registerDevRoutes(app: FastifyInstance): Promise<v
   // T-DEV-ENDPOINT: refuse to register routes outside of dev. The plugin
   // mounts but adds no handlers, so /api/__dev/* paths return the standard
   // 404. Test 2 in dev.test.ts asserts this gate.
-  if (process.env['FARTOL_DEV'] !== '1') return;
+  if (process.env['FARTOLA_DEV'] !== '1') return;
 
   app.post('/api/__dev/simulate-read', async (req, reply) => {
     const validated = validateBody(req.body as SimulateReadBody);
@@ -145,13 +145,13 @@ export default async function registerDevRoutes(app: FastifyInstance): Promise<v
     // the operator hasn't run the three-click wizard yet. Without this
     // the events.competition_id FK fails. Plan 11's wizard replaces this
     // with a real "competition must exist" check.
-    const existing = app.fartolDb.db
+    const existing = app.fartolaDb.db
       .select({ id: competitions.id })
       .from(competitions)
       .where(eq(competitions.id, validated.competition_id))
       .get();
     if (!existing) {
-      app.fartolDb.db
+      app.fartolaDb.db
         .insert(competitions)
         .values({
           id: validated.competition_id,
@@ -188,8 +188,8 @@ export default async function registerDevRoutes(app: FastifyInstance): Promise<v
 
     // Single insertion path — same helper the real SI bridge uses.
     const inserted = insertEvent(
-      app.fartolDb,
-      app.fartolNodeId,
+      app.fartolaDb,
+      app.fartolaNodeId,
       'card_read',
       eventTimeMs,
       payload,
@@ -226,7 +226,7 @@ export default async function registerDevRoutes(app: FastifyInstance): Promise<v
 
   // Phase 2.0 Plan 02-02 task 5 — seed the Eventor cache from the bundled
   // Plan-01 fixture so e2e specs have deterministic data without
-  // round-tripping the Eventor API. Same FARTOL_DEV gate as the rest of
+  // round-tripping the Eventor API. Same FARTOLA_DEV gate as the rest of
   // /api/__dev/*.
   app.post('/api/__dev/eventor-seed', async (_req, reply) => {
     try {
@@ -235,7 +235,7 @@ export default async function registerDevRoutes(app: FastifyInstance): Promise<v
       const fixDir = path.resolve(here, '..', 'eventor', '__fixtures__');
       const competitorsXml = path.join(fixDir, 'competitors-sample.xml');
       const clubsXml = path.join(fixDir, 'clubs-sample.xml');
-      const result = await ingestEventorCache(app.fartolDb, competitorsXml, clubsXml, Date.now());
+      const result = await ingestEventorCache(app.fartolaDb, competitorsXml, clubsXml, Date.now());
       return reply.code(200).send({ ok: true, ...result });
     } catch (err) {
       app.log.error({ err }, 'eventor-seed failed');

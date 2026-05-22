@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Card primitive matching `.card` from 01-SKETCHES/.../styles.css. Two
   optional named snippets (`head` + `body`); when neither is provided

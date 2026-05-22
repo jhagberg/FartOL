@@ -1,8 +1,8 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
-// Fastify bootstrap for the FartOL edge bridge. Registers @fastify/cors,
+// Fastify bootstrap for the fartOLa edge bridge. Registers @fastify/cors,
 // @fastify/sensible, the WS plugin (when a dbHandle is provided), the
-// health route, and the dev routes (when both a dbHandle AND FARTOL_DEV=1
+// health route, and the dev routes (when both a dbHandle AND FARTOLA_DEV=1
 // are set — registration itself is a no-op in production builds).
 // Installs a setNotFoundHandler that returns { error: 'Not found' } for
 // API/WS paths and falls through to 200.html for any other path so the
@@ -28,7 +28,7 @@
 // SvelteKit dev server runs on the same loopback origin (port 5173).
 //
 // Pattern S-7: this module exports `buildServer()` as a pure factory — it
-// does NOT call .listen(). The bin (src/bin/fartol.ts) is the only place
+// does NOT call .listen(). The bin (src/bin/fartola.ts) is the only place
 // that opens a listening socket, which lets unit tests inject fastify via
 // app.inject() without consuming a port.
 
@@ -68,7 +68,7 @@ import wsPlugin from './ws/index.ts';
 import type { DbHandle } from './db/index.ts';
 import type { PrinterSink } from './print/sink.ts';
 import { createStdoutPrinterSink } from './print/stdout-sink.ts';
-import type { ChannelName } from '@fartol/shared-types';
+import type { ChannelName } from '@fartola/shared-types';
 import { nextLocalSeq as defaultNextLocalSeq } from './db/seq.ts';
 import { createProjectionStore, type ProjectionStore } from './projection/store.ts';
 
@@ -128,9 +128,9 @@ export interface BuildServerOpts {
   staticRoot?: string;
   /** Phase 2.0 — when true, the CORS allow-list AND the WebSocket origin
    * allow-list both accept non-loopback Origin headers so the MeOS
-   * parallel-run laptop on the same LAN can open the FartOL UI at
-   * `http://<fartol-lan-ip>:3000/...` (D-WS-LAN). Wired from
-   * bin/fartol.ts when `--allow-lan` is set. Default false (loopback only,
+   * parallel-run laptop on the same LAN can open the fartOLa UI at
+   * `http://<fartola-lan-ip>:3000/...` (D-WS-LAN). Wired from
+   * bin/fartola.ts when `--allow-lan` is set. Default false (loopback only,
    * Phase 1 posture). Code-review F-001 (codex) BLOCKER fix. */
   allowLan?: boolean;
 }
@@ -139,7 +139,7 @@ export interface BuildServerOpts {
  * dist/ layout produced by scripts/build-tarball.sh — but probes both
  * `<here>/web` AND `<here>/../web` so the SPA resolves whether server.ts
  * is bundled into `dist/server.{cjs,mjs}` (sibling `dist/web/`) or
- * bundled into `dist/bin/fartol.cjs` (parent `dist/web/`). Plan 18 ships
+ * bundled into `dist/bin/fartola.cjs` (parent `dist/web/`). Plan 18 ships
  * the bin path as the operator entry point; the standalone server entry
  * is kept for Phase 2 programmatic embedding. Returns undefined in dev
  * (the source-tree `apps/edge/src/web/` doesn't exist) so SvelteKit's
@@ -153,7 +153,7 @@ function defaultStaticRoot(): string | undefined {
     const here = path.dirname(fileURLToPath(import.meta.url));
     const candidates = [
       path.resolve(here, 'web'), // dist/server.cjs sibling
-      path.resolve(here, '..', 'web'), // dist/bin/fartol.cjs parent
+      path.resolve(here, '..', 'web'), // dist/bin/fartola.cjs parent
     ];
     for (const candidate of candidates) {
       if (existsSync(candidate)) return candidate;
@@ -218,23 +218,23 @@ export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyIn
   await app.register(cors, { origin: corsOrigin });
 
   // Decorate the FastifyInstance BEFORE wsPlugin / dev routes register.
-  // Both rely on app.fartolDb / app.fartolNodeId being present and the
+  // Both rely on app.fartolaDb / app.fartolaNodeId being present and the
   // dev routes additionally rely on app.printerSink + app.wsBroadcast.
   if (opts.dbHandle) {
     if (!opts.nodeId) {
       throw new Error('buildServer: nodeId is required when dbHandle is provided');
     }
-    app.decorate('fartolDb', opts.dbHandle);
-    app.decorate('fartolNodeId', opts.nodeId);
+    app.decorate('fartolaDb', opts.dbHandle);
+    app.decorate('fartolaNodeId', opts.nodeId);
     app.decorate('printerSink', opts.printerSink ?? createStdoutPrinterSink());
-    app.decorate('fartolNextLocalSeq', opts.nextLocalSeqFn ?? defaultNextLocalSeq);
+    app.decorate('fartolaNextLocalSeq', opts.nextLocalSeqFn ?? defaultNextLocalSeq);
     // Surface the SI bridge connection state to routes (GET /api/bridge/status).
     // The bin's BridgeLifecycle mutates this; --no-bridge boots stay 'closed'.
     app.decorate('bridgeState', 'closed');
     // Phase 2.0 — surface --allow-lan to the WS plugin so its Origin
     // allow-list can permit LAN origins when the operator explicitly
     // opted in. Default false (loopback only). Code-review F-001 fix.
-    app.decorate('fartolAllowLan', opts.allowLan === true);
+    app.decorate('fartolaAllowLan', opts.allowLan === true);
 
     await app.register(wsPlugin);
 
@@ -298,7 +298,7 @@ export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyIn
     // Phase 2.0 Plan 02-07 — Settings REST surface (GET + PUT
     // /api/settings/integrations). Operator-facing API-key management
     // so Windows operators can paste keys via UI without touching
-    // ~/.env.fartol. Boot precedence (env > config > absent) is
+    // ~/.env.fartola. Boot precedence (env > config > absent) is
     // enforced by apps/edge/src/config/secrets.ts (Plan 02-07 task 2).
     await app.register(registerSettingsRoutes);
     // Phase 2.0 Plan 02-03 — MIP server (GET /mip). Mounted at the ROOT,
@@ -346,15 +346,15 @@ export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyIn
   return app;
 }
 
-// Module augmentation for printerSink + fartolNextLocalSeq. wsPlugin already
-// augments fartolDb / fartolNodeId / wsBroadcast.
+// Module augmentation for printerSink + fartolaNextLocalSeq. wsPlugin already
+// augments fartolaDb / fartolaNodeId / wsBroadcast.
 declare module 'fastify' {
   interface FastifyInstance {
     printerSink: PrinterSink;
     /** PATTERNS S-2 — local_seq generator injection point. Routes that
      * insert into events read this instead of importing nextLocalSeq
      * directly so tests can swap in a throwing fn for atomicity coverage. */
-    fartolNextLocalSeq: NextLocalSeqFn;
+    fartolaNextLocalSeq: NextLocalSeqFn;
     /** Plan 08 — projection cache + debounced recompute + broadcast.
      * Bridge + dev simulate-read + walk-up POST all call markDirty after
      * mutations; hello handler reads `get/recomputeNow` for results_full. */

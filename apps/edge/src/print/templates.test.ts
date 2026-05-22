@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

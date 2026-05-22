@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Competition route entry point. Two responsibilities in plan 12:
    1. If `id === '_new'` AND `?wizard=1`, render the new-competition

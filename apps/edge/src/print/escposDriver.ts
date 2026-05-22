@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Production PrinterSink — wraps `node-thermal-printer` (an ESC/POS CLI for
 // Star / Epson / Brother thermal printers) behind plan 03's PrinterSink
@@ -36,7 +36,7 @@ export type PrinterTypeId = 'star' | 'epson' | 'brother';
 
 export interface DriverOpts {
   /** Default 'star' — Phase 1 bench unit is the Star TSP143. Operators can
-   * override via FARTOL_PRINTER_TYPE env var at the bin layer. */
+   * override via FARTOLA_PRINTER_TYPE env var at the bin layer. */
   printerType?: PrinterTypeId;
   /** Override /dev/usb/lp* probing (tests). When undefined, probePath()
    * scans /dev/usb/lp{0..3} at print time. */

@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Vitest coverage for the Eventor walk-up autocomplete API surface
 // (Plan 02-02 task 3). We don't have a svelte-testing-library wired in;
@@ -78,7 +78,7 @@ describe('Eventor walk-up autocomplete behavior', () => {
           state: 'ready',
           ageDays: 2,
           competitorCount: 252919,
-          fartol_dev: false,
+          fartola_dev: false,
         }),
         { status: 200, headers: { 'content-type': 'application/json' } }
       )
@@ -87,7 +87,7 @@ describe('Eventor walk-up autocomplete behavior', () => {
     expect(r.state).toBe('ready');
     expect(r.ageDays).toBe(2);
     expect(r.competitorCount).toBe(252919);
-    expect(r.fartol_dev).toBe(false);
+    expect(r.fartola_dev).toBe(false);
   });
 });
 

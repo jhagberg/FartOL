@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Detailed receipt — per-leg analysis with split time, leg rank, and
 // time-lost-to-leader columns. UI-SPEC §"Receipt templates" detailed row.

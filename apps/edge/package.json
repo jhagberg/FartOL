@@ -1,7 +1,7 @@
 {
-  "name": "@fartol/edge",
+  "name": "@fartola/edge",
   "version": "0.1.0",
-  "description": "FartOL — single-laptop orienteering training MVP (edge bridge + SQLite event log + SPA + SportIdent bridge). Installs the `fartol` binary via `npm install -g`.",
+  "description": "fartOLa — single-laptop orienteering training MVP (edge bridge + SQLite event log + SPA + SportIdent bridge). Installs the `fartola` binary via `npm install -g`.",
   "license": "AGPL-3.0-or-later",
   "private": true,
   "type": "module",
@@ -17,11 +17,11 @@
     }
   },
   "bin": {
-    "fartol": "./dist/bin/fartol.cjs"
+    "fartola": "./dist/bin/fartola.cjs"
   },
   "scripts": {
     "build": "tsup && mkdir -p dist/xml && cp src/xml/IOF.xsd dist/xml/IOF.xsd",
-    "dev": "tsx watch src/bin/fartol.ts",
+    "dev": "tsx watch src/bin/fartola.ts",
     "test": "node --test --test-reporter=spec --import tsx 'src/**/*.test.ts' 'scripts/**/*.test.ts'",
     "test:watch": "node --test --watch --test-reporter=spec --import tsx 'src/**/*.test.ts' 'scripts/**/*.test.ts'",
     "typecheck": "tsc --noEmit",
@@ -57,8 +57,8 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@fartol/shared-types": "workspace:*",
-    "@fartol/sportident": "workspace:*",
+    "@fartola/shared-types": "workspace:*",
+    "@fartola/sportident": "workspace:*",
     "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^22.10.0",
     "@types/ws": "^8.18.1",

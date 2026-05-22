@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   HomeView (`/`) — hero + competition cards grid.
 
@@ -29,7 +29,7 @@
   import { goto } from '$app/navigation';
   import { listCompetitions } from '$lib/api/client.ts';
   import { t } from '$lib/i18n/index.ts';
-  import type { CompetitionDTO } from '@fartol/shared-types';
+  import type { CompetitionDTO } from '@fartola/shared-types';
   import CompetitionCard from '$lib/components/CompetitionCard.svelte';
 
   let competitions: CompetitionDTO[] = $state([]);

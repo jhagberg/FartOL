@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   HistoryRow — single row in the readout HistoryList. 3-column grid:
   card_number, name + class·readTime, elapsed + StatusPill (small).

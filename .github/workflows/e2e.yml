@@ -22,7 +22,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       # Build cross-workspace type deps — see ci.yml for the rationale.
-      - run: pnpm --filter @fartol/sportident build
+      - run: pnpm --filter @fartola/sportident build
       - name: Install Playwright browsers (Chromium only)
         run: pnpm exec playwright install --with-deps chromium
       # webServer entries in playwright.config.ts spawn edge + web dev

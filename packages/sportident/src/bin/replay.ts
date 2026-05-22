@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // `replayFixture(basename)` — reads a directional transcript (`<basename>
 // .bytes.hex`, codex review #6) and drives SiMainStation via a deterministic
@@ -275,7 +275,7 @@ export const replayFixture = async (
   );
   station.on('frameError', (err: FrameError) => emitter.frame_error(err));
 
-  // CR-002 (codex review): mirror fartol-readout.ts's lifecycle. The bin emits
+  // CR-002 (codex review): mirror fartola-readout.ts's lifecycle. The bin emits
   // a manual connection_changed/opening BEFORE transport.open(), then
   // SiMainStation.readCards() emits another opening followed by open. The
   // recorded .expected.json fixtures therefore contain two consecutive

@@ -1,4 +1,4 @@
-// Mock data for FartOL prototype
+// Mock data for fartOLa prototype
 
 window.MOCK_COMPETITIONS = [
   {

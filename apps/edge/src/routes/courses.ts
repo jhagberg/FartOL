@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // REST CRUD for courses — always nested under a competition. Controls are
 // embedded as `{ control_code, order_idx }` pairs at the wire boundary; the
@@ -24,7 +24,7 @@ import type { FastifyInstance } from 'fastify';
 import crypto from 'node:crypto';
 import { asc, eq, and, inArray } from 'drizzle-orm';
 
-import { CourseCreateInput, type CourseDTO, type CourseControlDTO } from '@fartol/shared-types';
+import { CourseCreateInput, type CourseDTO, type CourseControlDTO } from '@fartola/shared-types';
 import { competitions, courses, courseControls, controls, classes } from '../db/schema.ts';
 import { issuesToErrors } from './_zod-errors.ts';
 
@@ -32,14 +32,14 @@ export default async function registerCourses(app: FastifyInstance): Promise<voi
   // GET /api/competitions/:id/courses — list with embedded controls.
   app.get<{ Params: { id: string } }>('/api/competitions/:id/courses', async (req, reply) => {
     const { id } = req.params;
-    const compRow = app.fartolDb.db
+    const compRow = app.fartolaDb.db
       .select({ id: competitions.id })
       .from(competitions)
       .where(eq(competitions.id, id))
       .get();
     if (!compRow) return reply.code(404).send({ error: 'competition not found' });
 
-    const courseRows = app.fartolDb.db
+    const courseRows = app.fartolaDb.db
       .select()
       .from(courses)
       .where(eq(courses.competitionId, id))
@@ -49,7 +49,7 @@ export default async function registerCourses(app: FastifyInstance): Promise<voi
     const controlsByCourse = new Map<string, CourseControlDTO[]>();
     for (const c of courseRows) controlsByCourse.set(c.id, []);
     if (courseRows.length > 0) {
-      const joined = app.fartolDb.db
+      const joined = app.fartolaDb.db
         .select({
           courseId: courseControls.courseId,
           orderIdx: courseControls.orderIdx,
@@ -85,7 +85,7 @@ export default async function registerCourses(app: FastifyInstance): Promise<voi
     if (!parsed.success) {
       return reply.code(400).send(issuesToErrors(parsed.error.issues));
     }
-    const existing = app.fartolDb.db
+    const existing = app.fartolaDb.db
       .select({ id: competitions.id })
       .from(competitions)
       .where(eq(competitions.id, competitionId))
@@ -97,7 +97,7 @@ export default async function registerCourses(app: FastifyInstance): Promise<voi
     // class from competition B, which the projection layer indexes by classId
     // and would misattach/hide course controls in multi-competition databases.
     if (parsed.data.class_id != null) {
-      const classRow = app.fartolDb.db
+      const classRow = app.fartolaDb.db
         .select({ id: classes.id })
         .from(classes)
         .where(and(eq(classes.id, parsed.data.class_id), eq(classes.competitionId, competitionId)))
@@ -119,9 +119,9 @@ export default async function registerCourses(app: FastifyInstance): Promise<voi
     const ccRowsToInsert: { id: string; courseId: string; controlId: string; orderIdx: number }[] =
       [];
 
-    app.fartolDb.sqlite.transaction(() => {
+    app.fartolaDb.sqlite.transaction(() => {
       // Insert the course row.
-      app.fartolDb.db
+      app.fartolaDb.db
         .insert(courses)
         .values({
           id: courseId,
@@ -137,7 +137,7 @@ export default async function registerCourses(app: FastifyInstance): Promise<voi
       // the codes we need; bulk-insert anything missing.
       const wantedCodes = Array.from(new Set(parsed.data.controls.map((c) => c.control_code)));
       const existingControls = wantedCodes.length
-        ? app.fartolDb.db
+        ? app.fartolaDb.db
             .select()
             .from(controls)
             .where(
@@ -156,7 +156,7 @@ export default async function registerCourses(app: FastifyInstance): Promise<voi
         }
       }
       if (newControlRows.length > 0) {
-        app.fartolDb.db.insert(controls).values(newControlRows).run();
+        app.fartolaDb.db.insert(controls).values(newControlRows).run();
       }
 
       // Build the course_controls rows in the requested order.
@@ -173,7 +173,7 @@ export default async function registerCourses(app: FastifyInstance): Promise<voi
         });
       }
       if (ccRowsToInsert.length > 0) {
-        app.fartolDb.db.insert(courseControls).values(ccRowsToInsert).run();
+        app.fartolaDb.db.insert(courseControls).values(ccRowsToInsert).run();
       }
     })();
 

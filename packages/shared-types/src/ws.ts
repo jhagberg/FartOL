@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // WebSocket envelopes + channel name helpers for the Phase 1 edge<->web
 // realtime contract. Channel naming is per CONTEXT.md "Claude's

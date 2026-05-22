@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Top bar — breadcrumb (callers feed via the `crumb` snippet),
   WS-connection PulseDot (variant bound to the prop), and the wall-clock

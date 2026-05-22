@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   HistoryList — vertical list of the last 12 card_reads. Newest first
   (the order of the rows array). Cap is enforced by the parent

@@ -1,4 +1,4 @@
-# Manual workflow: build the FartOL tarball and run install-smoke against it.
+# Manual workflow: build the fartOLa tarball and run install-smoke against it.
 # Triggers ONLY on workflow_dispatch — Phase 1 distributes tarballs to a
 # known operator set (Jonas + StorTuna). Phase 2 will move to a release-
 # triggered publish + provenance signing when REQ-OPS-001 widens to a
@@ -6,7 +6,7 @@
 #
 # Locked by .planning/phases/01-single-laptop-training-mvp/01-18-PLAN.md task 2.
 
-name: build-fartol
+name: build-fartola
 on:
   workflow_dispatch: {}
 
@@ -29,12 +29,12 @@ jobs:
       - run: pnpm -r typecheck
       - run: pnpm -r test
       - name: Build tarball
-        run: bash scripts/build-fartol.sh
+        run: bash scripts/build-fartola.sh
       - name: Run install-smoke against the built tarball
-        run: bash apps/edge/scripts/install-smoke.sh dist/fartol-*.tgz
+        run: bash apps/edge/scripts/install-smoke.sh dist/fartola-*.tgz
       - name: Run C-H4 layout regression test
         run: pnpm test:install
       - uses: actions/upload-artifact@v7
         with:
-          name: fartol-tarball
-          path: dist/fartol-*.tgz
+          name: fartola-tarball
+          path: dist/fartola-*.tgz

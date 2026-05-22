@@ -1,11 +1,11 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for /api/__dev/simulate-read. Exercises the full
 // vertical the walking-skeleton e2e relies on: REST inserts a card_read
 // event, the local_seq counter increments, the WS broadcaster fans out
 // the envelope, and the printer sink receives a print call.
 //
-// T-DEV-ENDPOINT regression gate (test 2): with FARTOL_DEV unset, the
+// T-DEV-ENDPOINT regression gate (test 2): with FARTOLA_DEV unset, the
 // route is not registered and POST returns 404 via the global not-found
 // handler.
 
@@ -51,17 +51,17 @@ async function bootWithDev(printed: PrintEnvelope[]): Promise<Ctx> {
   return { app, handle, nodeId, printed };
 }
 
-describe('/api/__dev/simulate-read — FARTOL_DEV gate', () => {
+describe('/api/__dev/simulate-read — FARTOLA_DEV gate', () => {
   // Snapshot the env var; each test sets/unsets explicitly.
-  const SAVED = process.env['FARTOL_DEV'];
+  const SAVED = process.env['FARTOLA_DEV'];
 
   afterEach(() => {
-    if (SAVED === undefined) delete process.env['FARTOL_DEV'];
-    else process.env['FARTOL_DEV'] = SAVED;
+    if (SAVED === undefined) delete process.env['FARTOLA_DEV'];
+    else process.env['FARTOLA_DEV'] = SAVED;
   });
 
-  test('test 2 (T-DEV-ENDPOINT): without FARTOL_DEV, POST returns 404', async () => {
-    delete process.env['FARTOL_DEV'];
+  test('test 2 (T-DEV-ENDPOINT): without FARTOLA_DEV, POST returns 404', async () => {
+    delete process.env['FARTOLA_DEV'];
     const printed: PrintEnvelope[] = [];
     const ctx = await bootWithDev(printed);
     try {
@@ -84,12 +84,12 @@ describe('/api/__dev/simulate-read — FARTOL_DEV gate', () => {
 });
 
 describe('/api/__dev/simulate-read — happy path', () => {
-  const SAVED = process.env['FARTOL_DEV'];
+  const SAVED = process.env['FARTOLA_DEV'];
   let ctx: Ctx;
   let printed: PrintEnvelope[];
 
   beforeEach(async () => {
-    process.env['FARTOL_DEV'] = '1';
+    process.env['FARTOLA_DEV'] = '1';
     printed = [];
     ctx = await bootWithDev(printed);
   });
@@ -97,8 +97,8 @@ describe('/api/__dev/simulate-read — happy path', () => {
   afterEach(async () => {
     await ctx.app.close();
     ctx.handle.close();
-    if (SAVED === undefined) delete process.env['FARTOL_DEV'];
-    else process.env['FARTOL_DEV'] = SAVED;
+    if (SAVED === undefined) delete process.env['FARTOLA_DEV'];
+    else process.env['FARTOLA_DEV'] = SAVED;
   });
 
   test('test 1: valid body returns 201 with local_seq + broadcasted; events row inserted', async () => {
@@ -182,16 +182,16 @@ describe('/api/__dev/simulate-read — happy path', () => {
 });
 
 describe('/api/__dev/simulate-read — re-register without env (T-DEV-ENDPOINT)', () => {
-  const SAVED = process.env['FARTOL_DEV'];
+  const SAVED = process.env['FARTOLA_DEV'];
 
   afterEach(() => {
-    if (SAVED === undefined) delete process.env['FARTOL_DEV'];
-    else process.env['FARTOL_DEV'] = SAVED;
+    if (SAVED === undefined) delete process.env['FARTOLA_DEV'];
+    else process.env['FARTOLA_DEV'] = SAVED;
   });
 
   test('test 5: route stops responding when env is unset on a fresh build', async () => {
     // First build with env=1 — route registered.
-    process.env['FARTOL_DEV'] = '1';
+    process.env['FARTOLA_DEV'] = '1';
     const printed1: PrintEnvelope[] = [];
     const ctx1 = await bootWithDev(printed1);
     const res1 = await ctx1.app.inject({
@@ -204,7 +204,7 @@ describe('/api/__dev/simulate-read — re-register without env (T-DEV-ENDPOINT)'
     ctx1.handle.close();
 
     // Second build with env unset — route absent.
-    delete process.env['FARTOL_DEV'];
+    delete process.env['FARTOLA_DEV'];
     const printed2: PrintEnvelope[] = [];
     const ctx2 = await bootWithDev(printed2);
     const res2 = await ctx2.app.inject({

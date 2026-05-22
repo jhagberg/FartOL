@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Operator-facing Tweaks panel — 5 LOCKED controls (UI-SPEC §"Tweaks panel"):
     1. Locale     (sv / en)            — onChange via setLocale (i18n)
@@ -254,7 +254,7 @@
           <span class="eventor-label" data-testid="eventor-status-label">
             {eventorLabel()}
           </span>
-          {#if eventorState.fartol_dev}
+          {#if eventorState.fartola_dev}
             <Button
               variant="ghost"
               onclick={() => void onClickRefreshEventor()}
@@ -267,7 +267,7 @@
       </Field>
 
       <!-- Plan 02-07 — Settings deep-link. Operators rotate API keys
-           via /installningar instead of editing ~/.env.fartol. The
+           via /installningar instead of editing ~/.env.fartola. The
            link closes the panel so the route swap is the only
            visible state change. -->
       <Field label={t('settings.integrations.title')}>

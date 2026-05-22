@@ -1,6 +1,6 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
-// Admin-only routes — registered ONLY when process.env.FARTOL_DEV === '1'.
+// Admin-only routes — registered ONLY when process.env.FARTOLA_DEV === '1'.
 // Mirrors the gate pattern from routes/dev.ts (T-DEV-ENDPOINT mitigation):
 // the plugin still mounts in production, but every route registration
 // short-circuits at the env check and the @fastify/sensible 404 handler
@@ -10,7 +10,7 @@
 //
 //   - POST /api/__admin/run-backup-now
 //     → 200 { ok: true, dest: '<path>' } when the daily-backup scheduler is
-//       wired (bin/fartol.ts decorates app.fartolBackup) and the backup
+//       wired (bin/fartola.ts decorates app.fartolaBackup) and the backup
 //       completes successfully.
 //     → 200 { ok: false, error: 'no_backup' } when the scheduler is not
 //       attached (tests that build the server without a bin wiring it up).
@@ -21,14 +21,14 @@
 //     → 200 { ok: false, error: 'no_retention' } when not attached.
 //     → 500 surfaces underlying scrub-query failures.
 //
-// Phase 2 will replace the FARTOL_DEV gate with admin-token auth (REQ-AUTH-*).
+// Phase 2 will replace the FARTOLA_DEV gate with admin-token auth (REQ-AUTH-*).
 // For Phase 1 the dev gate is the same operator/owner trust boundary the
 // /api/__dev/* routes use — single-laptop deployments mean dev-mode = owner.
 //
 // Locked by:
 // - .planning/phases/01-single-laptop-training-mvp/01-17-PLAN.md task 1
 // - .planning/phases/01-single-laptop-training-mvp/01-03-PLAN.md (dev.ts
-//   FARTOL_DEV gate pattern — mirrored here verbatim)
+//   FARTOLA_DEV gate pattern — mirrored here verbatim)
 // - REQ-OPS-003 (run-backup-now is the operator-driven trigger for the same
 //   path the daily cron uses)
 // - REQ-PRIV-002 (run-retention-now is the operator-driven trigger for the
@@ -55,10 +55,10 @@ export default async function registerAdminRoutes(app: FastifyInstance): Promise
   // T-ADMIN-ENDPOINT (analogous to T-DEV-ENDPOINT): refuse to register routes
   // outside of dev. The plugin mounts but adds no handlers, so /api/__admin/*
   // paths return the standard 404.
-  if (process.env['FARTOL_DEV'] !== '1') return;
+  if (process.env['FARTOLA_DEV'] !== '1') return;
 
   app.post('/api/__admin/run-backup-now', async (_req, reply) => {
-    const backup = app.fartolBackup;
+    const backup = app.fartolaBackup;
     if (!backup) {
       return reply.code(200).send({ ok: false, error: 'no_backup' });
     }
@@ -72,7 +72,7 @@ export default async function registerAdminRoutes(app: FastifyInstance): Promise
   });
 
   app.post('/api/__admin/run-retention-now', async (_req, reply) => {
-    const retention = app.fartolRetention;
+    const retention = app.fartolaRetention;
     if (!retention) {
       return reply.code(200).send({ ok: false, error: 'no_retention' });
     }
@@ -94,7 +94,7 @@ export default async function registerAdminRoutes(app: FastifyInstance): Promise
   // is responsible for its own warn-and-run degradation (D-EV-3); the
   // route just surfaces whatever it returns.
   app.post('/api/__admin/eventor/refresh', async (_req, reply) => {
-    const eventor = app.fartolEventor;
+    const eventor = app.fartolaEventor;
     if (!eventor) {
       return reply.code(200).send({ ok: false, error: 'no_eventor' });
     }
@@ -114,16 +114,16 @@ export default async function registerAdminRoutes(app: FastifyInstance): Promise
   });
 }
 
-// FastifyInstance decoration: bin/fartol.ts (Task 2) wires these from the
+// FastifyInstance decoration: bin/fartola.ts (Task 2) wires these from the
 // real scheduleDailyBackup + scheduleDailyRetention. Tests that exercise the
 // admin endpoints decorate them directly with recording stubs. Default
 // is undefined — the route detects that and returns no_backup/no_retention.
 //
-// Phase 2.0 plan 02-01 task 4 adds fartolEventor (wired in bin/fartol.ts).
+// Phase 2.0 plan 02-01 task 4 adds fartolaEventor (wired in bin/fartola.ts).
 declare module 'fastify' {
   interface FastifyInstance {
-    fartolBackup?: BackupHandle | undefined;
-    fartolRetention?: RetentionHandle | undefined;
-    fartolEventor?: EventorHandle | undefined;
+    fartolaBackup?: BackupHandle | undefined;
+    fartolaRetention?: RetentionHandle | undefined;
+    fartolaEventor?: EventorHandle | undefined;
   }
 }

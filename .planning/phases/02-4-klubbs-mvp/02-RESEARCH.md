@@ -15,7 +15,7 @@ Phase 2.0 is mostly **plumbing of already-locked decisions**. Round-2 discuss-ph
 
 1. **MIP `<entry>` carries `<card>` with `maxOccurs="1"`** (mip.xsd line 199). The D-MIP-3 "one re-emit per card-replace" is correct — there is no array semantics. A card_number change = re-emit the whole `<entry>` with the new card. MeOS parser uses `<extId>` to find the existing runner (onlineinput.cpp:1095-1115) → UPDATE rather than INSERT.
 
-2. **MOP `<cmp>` has NO `hired` attribute** (mop.xsd lines 332-377, BaseCompetitor lines 223-306). D-LIM-1 is verified: rentals marked in MeOS during a FartOL outage will NOT auto-import via MOP. Documented in playbook; not fixable in 2.0 without protocol extension.
+2. **MOP `<cmp>` has NO `hired` attribute** (mop.xsd lines 332-377, BaseCompetitor lines 223-306). D-LIM-1 is verified: rentals marked in MeOS during a fartOLa outage will NOT auto-import via MOP. Documented in playbook; not fixable in 2.0 without protocol extension.
 
 3. **The `competition` and `lastid` are HTTP HEADERS, not query params** (input.php line 44-47; MOP PDF "Server Response" table). CONTEXT.md sketched them as query (`?competition=&lastid=`) — the spec wire format is `Competition: 1234` / `Lastid: 100`. Accept BOTH for robustness (the parallel-run playbook should verify MeOS's actual transport against this).
 
@@ -30,9 +30,9 @@ Phase 2.0 is mostly **plumbing of already-locked decisions**. Round-2 discuss-ph
 ### Locked Decisions (round 1 — 7 decisions)
 
 1. **Course-only model for 4-klubbs.** `.reference/2026-05-20 4-klubbs_coursedata.xml` has 5 courses by color (Vit/Grön/Gul/Orange/Violett), no classes. Phase 1's CourseData importer auto-creates 1:1 class-per-course. Walk-up's "Klass" picker relabeled as **"Bana"**. No schema change.
-2. **FartOL is registration primary; MeOS is parallel backup via MIP+MOP.** Single operator UX (FartOL walkup form). Every accepted walk-up is queued for MIP push. MeOS readback is the backup if FartOL crashes; MOP feed pulls MeOS-only registrations back into FartOL on restart.
-3. **No runner double-stamping.** FartOL bridge auto-captures finish punch. MeOS does its own readback. Each system gets its own data through its own path.
-4. **Hyrbricka handled in both systems independently.** FartOL stores `hired_card` and shows Swedish toast on finish-readout. MIP `<card hired="true">` lets MeOS show its own reminder. Belt + braces.
+2. **fartOLa is registration primary; MeOS is parallel backup via MIP+MOP.** Single operator UX (fartOLa walkup form). Every accepted walk-up is queued for MIP push. MeOS readback is the backup if fartOLa crashes; MOP feed pulls MeOS-only registrations back into fartOLa on restart.
+3. **No runner double-stamping.** fartOLa bridge auto-captures finish punch. MeOS does its own readback. Each system gets its own data through its own path.
+4. **Hyrbricka handled in both systems independently.** fartOLa stores `hired_card` and shows Swedish toast on finish-readout. MIP `<card hired="true">` lets MeOS show its own reminder. Belt + braces.
 5. **Eventor is the runner-DATABASE, not the entry source.** One-shot download, cached, queried on bricka-input. Refresh weekly is fine.
 6. **MIP server, not SendPunch TCP, not UDP broadcast.** The two 2014-era binary protocols are skipped entirely.
 7. **`/gsd-plan-phase 2`** is the next workflow step.
@@ -50,7 +50,7 @@ Phase 2.0 is mostly **plumbing of already-locked decisions**. Round-2 discuss-ph
 - **D-MIP-1:** Auth = none for 4-klubbs (closed club LAN).
 - **D-MIP-2:** `lastid` source = reuse `events.local_seq`.
 - **D-MIP-3:** Push scope = `<entry>` on bind + `<entry>` re-emit on card-replace.
-- **D-MIP-4:** Entry shape = `<classname>` (string) + `<extId>` (FartOL competitor UUID). Verified at `/home/jonas/src/meos/code/onlineinput.cpp:989-997`.
+- **D-MIP-4:** Entry shape = `<classname>` (string) + `<extId>` (fartOLa competitor UUID). Verified at `/home/jonas/src/meos/code/onlineinput.cpp:989-997`.
 
 **MOP receiver (Plan 4):**
 
@@ -84,7 +84,7 @@ Phase 2.0 is mostly **plumbing of already-locked decisions**. Round-2 discuss-ph
 
 - **Multi-course-per-card same event** → Phase 2.1.
 - **MIP authentication** → Phase 2.1 sanctioned events.
-- **MeOS-side hired-card visibility on FartOL crash recovery (D-LIM-1)** → Phase 2.1.
+- **MeOS-side hired-card visibility on fartOLa crash recovery (D-LIM-1)** → Phase 2.1.
 - **Yjs collaborative editing** → Phase 2.1.
 - **QR-code self-signup public route** → Phase 2.1+.
 - **Eventor entries pull (REQ-STD-004 read path)** → Phase 2.1.
@@ -117,15 +117,15 @@ Phase 2.0 is mostly **plumbing of already-locked decisions**. Round-2 discuss-ph
 | Eventor cachedcompetitors download        | `apps/edge/eventor/cache.ts` (Node)                                                                 | —                                                                              | Only edge can run a 9.4 MB HTTP fetch + 86 MB XML parse against the local SQLite |
 | Eventor lookup by si_card                 | `apps/edge/` REST (`/api/eventor/lookup`)                                                           | `apps/web/` autocomplete                                                       | Sub-ms SQLite indexed query; browser must NOT have direct SQLite access          |
 | Eventor lookup by name prefix             | `apps/edge/` REST (`/api/eventor/lookup?prefix=`)                                                   | `apps/web/` autocomplete component                                             | Same                                                                             |
-| MIP `/mip` GET (poll)                     | `apps/edge/integrations/meos/mip.ts` (Fastify)                                                      | —                                                                              | FartOL is HTTP server; MeOS is HTTP client                                       |
-| MOP `/mop` POST (push)                    | `apps/edge/integrations/meos/mop.ts` (Fastify)                                                      | —                                                                              | Same role inversion — FartOL is HTTP server                                      |
+| MIP `/mip` GET (poll)                     | `apps/edge/integrations/meos/mip.ts` (Fastify)                                                      | —                                                                              | fartOLa is HTTP server; MeOS is HTTP client                                      |
+| MOP `/mop` POST (push)                    | `apps/edge/integrations/meos/mop.ts` (Fastify)                                                      | —                                                                              | Same role inversion — fartOLa is HTTP server                                     |
 | Hyrbricka write at walkup                 | `apps/web/WalkupModal.svelte` (UI form) → `apps/edge/routes/competitors.ts` (transactional persist) | —                                                                              | Single atomic transaction: competitor row + hired_cards row + card_bound event   |
 | Hyrbricka toast at finish-readout         | `apps/web/ReadoutView.svelte`                                                                       | `apps/edge/routes/readout.ts` (extend with `hired_card_open: boolean` per row) | Browser dispatches the toast; edge supplies the data                             |
 | Hyrbricka "Returnerad" click              | `apps/web/` HyrbrickaToast → `apps/edge/routes/hired-cards.ts` (PATCH endpoint)                     | —                                                                              | UPDATE on `hired_cards.returned_at_ms`                                           |
 | MOP shadow-table writes                   | `apps/edge/integrations/meos/mop.ts`                                                                | —                                                                              | TRUNCATE+INSERT inside `sqlite.transaction()`                                    |
 | Auto-merge MeOS competitors → competitors | `apps/edge/integrations/meos/mop.ts` (same transaction)                                             | `apps/web/` toast via WS `meos_merge` envelope                                 | Server-side INSERT ... WHERE NOT EXISTS; WS notification on count > 0            |
 | Hyrbricka retention scrub                 | `apps/edge/privacy/retention.ts` (extend)                                                           | —                                                                              | Pure SQL UPDATE in the existing scheduler                                        |
-| Boot-time Eventor refresh                 | `apps/edge/eventor/boot.ts` → `apps/edge/bin/fartol.ts` wiring                                      | —                                                                              | Fire-and-forget after `app.listen()`; never blocks startup (D-EV-3)              |
+| Boot-time Eventor refresh                 | `apps/edge/eventor/boot.ts` → `apps/edge/bin/fartola.ts` wiring                                     | —                                                                              | Fire-and-forget after `app.listen()`; never blocks startup (D-EV-3)              |
 
 ---
 
@@ -157,13 +157,13 @@ Phase 2.0 is mostly **plumbing of already-locked decisions**. Round-2 discuss-ph
 | ---------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `saxes`    | `sax` (the original, 1.2.4)     | Older codebase (last meaningful release 2017); known UTF-8 edge cases in CDATA. `saxes` is a strict superset of `sax`'s API. Skip `sax` unless `saxes` install fails.                                                                  |
 | `saxes`    | `fast-xml-parser` stream mode   | `fast-xml-parser` has a `parseToBuilderInChunks` mode but it's not a true SAX surface — it still materialises subtrees. At 86 MB the chunking strategy is awkward (Competitor records aren't aligned to read-buffer boundaries). Skip. |
-| `saxes`    | `node-expat` (libexpat binding) | Native binding (node-gyp). Faster than pure-JS but loses the "fartol installs cleanly via `npm install -g`" property. REQ-OPS-001 deal-breaker. Skip.                                                                                  |
+| `saxes`    | `node-expat` (libexpat binding) | Native binding (node-gyp). Faster than pure-JS but loses the "fartola installs cleanly via `npm install -g`" property. REQ-OPS-001 deal-breaker. Skip.                                                                                 |
 | `saxes`    | DOM parse via `fast-xml-parser` | At 86 MB this peaks at ~500-700 MB heap for the parsed object tree. Workable on a dev laptop, brittle on a 4 GB bench laptop. Skip for cache.ts; KEEP for MIP/MOP where payloads are small (KB to low MB).                             |
 
 **Installation:**
 
 ```bash
-pnpm --filter @fartol/edge add saxes
+pnpm --filter @fartola/edge add saxes
 # Verify the version published is the one expected:
 npm view saxes version
 ```
@@ -195,8 +195,8 @@ npm view saxes version
                                                     │  MeOS install on parallel laptop        │
                                                     │  (HTTP client for BOTH protocols)       │
                                                     │                                          │
-                                                    │  • GET  http://<fartol>:3000/mip    ─┐  │
-                                                    │  • POST http://<fartol>:3000/mop    │  │
+                                                    │  • GET  http://<fartola>:3000/mip    ─┐  │
+                                                    │  • POST http://<fartola>:3000/mop    │  │
                                                     └─────────────────────────────────────┼──┘
                                                                                           │
                                                                                           │ LAN
@@ -229,7 +229,7 @@ npm view saxes version
        │   └──────────────────────────────────────────────────┘                                  │
        │                                                                                          │
        │   ┌────────────────────────────────────────────────────────────────────────────────┐    │
-       │   │ better-sqlite3 (WAL, ./fartol.db) — schema EXTENSIONS                          │    │
+       │   │ better-sqlite3 (WAL, ./fartola.db) — schema EXTENSIONS                          │    │
        │   │  ┌────────────────────────────┐  ┌────────────────────────────────────────┐    │    │
        │   │  │ NEW: eventor_competitors   │  │ NEW: meos_competitors                  │    │    │
        │   │  │  PK person_id              │  │  PK id (MeOS internal id)              │    │    │
@@ -286,7 +286,7 @@ apps/edge/src/
 │   └── retention.ts                  # extend — scrub hired_cards.contact_*
 │
 └── bin/
-    └── fartol.ts                     # extend — wire eventor/boot.ts in main()
+    └── fartola.ts                     # extend — wire eventor/boot.ts in main()
 
 apps/edge/drizzle/
 └── 0002_phase2.sql                   # NEW — drizzle-kit generate output
@@ -317,7 +317,7 @@ docs/ops/
 **Example:**
 
 ```typescript
-// Authored for fartol. Source: saxes README + the live cachedcompetitors.xml shape verified by
+// Authored for fartola. Source: saxes README + the live cachedcompetitors.xml shape verified by
 // the parallel agent at .planning/research/eventor-api-smoke.md.
 //
 // One open record (state machine) at a time. Memory stays O(1) regardless
@@ -531,7 +531,7 @@ export async function ingestEventorCache(
 **Example:**
 
 ```typescript
-// Authored for fartol. Source: mip.xsd v3.0 + onlineinput.cpp:985-1100 +
+// Authored for fartola. Source: mip.xsd v3.0 + onlineinput.cpp:985-1100 +
 // MIP PDF spec "Setting up the Web Server" section.
 //
 // MIP wire conventions (verified):
@@ -545,7 +545,7 @@ export async function ingestEventorCache(
 // D-MIP-1: pwd is silently IGNORED for 4-klubbs.
 // D-MIP-2: lastid = events.local_seq.
 // D-MIP-3: only <entry> on bind + on card-replace (no <p>/<card> punches).
-// D-MIP-4: <classname> string + <extId> FartOL UUID (locked).
+// D-MIP-4: <classname> string + <extId> fartOLa UUID (locked).
 
 import type { FastifyInstance } from 'fastify';
 import { XMLBuilder } from 'fast-xml-parser';
@@ -564,7 +564,7 @@ const MipQuery = z.object({
 
 interface MipEntryRow {
   '@_id'?: number; // optional MIP id (we emit local_seq for uniqueness)
-  '@_extId'?: string; // FartOL competitor UUID (D-MIP-4)
+  '@_extId'?: string; // fartOLa competitor UUID (D-MIP-4)
   '@_classname'?: string; // class name string (D-MIP-4)
   name: string; // <name>LastName, FirstName</name>
   club?: string;
@@ -596,7 +596,7 @@ export default async function registerMipRoute(app: FastifyInstance): Promise<vo
     // local_seq is per-node, so we need the bridge's competition_id binding
     // to be set. In 4-klubbs the operator picks one competition at boot;
     // if no competition is active, return empty <MIPData lastid="0"/>.
-    const activeRow = app.fartolDb.db
+    const activeRow = app.fartolaDb.db
       .select({ value: config.value })
       .from(config)
       .where(eq(config.key, 'active_competition_id'))
@@ -613,7 +613,7 @@ export default async function registerMipRoute(app: FastifyInstance): Promise<vo
     // align competition scope manually pre-event — playbook covers this.
 
     // (3) Query bind events newer than lastid.
-    const rows = app.fartolDb.db
+    const rows = app.fartolaDb.db
       .select({
         localSeq: events.localSeq,
         payload: events.payload,
@@ -647,7 +647,7 @@ export default async function registerMipRoute(app: FastifyInstance): Promise<vo
       const payload = row.payload as { event_type: string; competitor_id?: string };
       if (payload.event_type !== 'card_bound' || !payload.competitor_id) continue;
 
-      const competitor = app.fartolDb.db
+      const competitor = app.fartolaDb.db
         .select()
         .from(competitors)
         .where(eq(competitors.id, payload.competitor_id))
@@ -655,7 +655,7 @@ export default async function registerMipRoute(app: FastifyInstance): Promise<vo
       if (!competitor) continue;
 
       const className = competitor.classId
-        ? (app.fartolDb.db
+        ? (app.fartolaDb.db
             .select({ name: classes.name })
             .from(classes)
             .where(eq(classes.id, competitor.classId))
@@ -665,7 +665,7 @@ export default async function registerMipRoute(app: FastifyInstance): Promise<vo
       // hired flag: check open hired_cards row for this card_number.
       let hired = false;
       if (competitor.cardNumber !== null) {
-        const hc = app.fartolDb.db
+        const hc = app.fartolaDb.db
           .select({ marked: hiredCards.markedAtMs })
           .from(hiredCards)
           .where(
@@ -680,7 +680,7 @@ export default async function registerMipRoute(app: FastifyInstance): Promise<vo
 
       const entry: MipEntryRow = {
         '@_id': row.localSeq,
-        '@_extId': competitor.id, // FartOL UUID — D-MIP-4
+        '@_extId': competitor.id, // fartOLa UUID — D-MIP-4
         '@_classname': className,
         name: competitor.name,
       };
@@ -735,7 +735,7 @@ export default async function registerMipRoute(app: FastifyInstance): Promise<vo
 **Example:**
 
 ```typescript
-// Authored for fartol. Source: mop.xsd + update.php + MOP PDF.
+// Authored for fartola. Source: mop.xsd + update.php + MOP PDF.
 //
 // MOP wire conventions (verified):
 //  - Body is raw XML (Content-Type: text/xml). update.php uses
@@ -757,7 +757,7 @@ import { XMLParser } from 'fast-xml-parser';
 import { and, eq, sql } from 'drizzle-orm';
 
 import { meosCompetitors, meosClasses, meosClubs, competitors, config } from '../../db/schema.ts';
-import { readoutChannel } from '@fartol/shared-types';
+import { readoutChannel } from '@fartola/shared-types';
 
 const MOP_BODY_LIMIT = 50 * 1024 * 1024; // 50 MB (MOP exports can be large)
 
@@ -816,7 +816,7 @@ export default async function registerMopRoute(app: FastifyInstance): Promise<vo
 
     const nowMs = Date.now();
     let mergedCount = 0;
-    const activeRow = app.fartolDb.db
+    const activeRow = app.fartolaDb.db
       .select({ value: config.value })
       .from(config)
       .where(eq(config.key, 'active_competition_id'))
@@ -824,12 +824,12 @@ export default async function registerMopRoute(app: FastifyInstance): Promise<vo
     const activeCompetitionId = activeRow?.value ?? null;
 
     try {
-      app.fartolDb.sqlite.transaction(() => {
+      app.fartolaDb.sqlite.transaction(() => {
         if (rootKey === 'MOPComplete') {
           // D-MOP-2: drop prior snapshot first.
-          app.fartolDb.db.run(sql`DELETE FROM meos_competitors`);
-          app.fartolDb.db.run(sql`DELETE FROM meos_classes`);
-          app.fartolDb.db.run(sql`DELETE FROM meos_clubs`);
+          app.fartolaDb.db.run(sql`DELETE FROM meos_competitors`);
+          app.fartolaDb.db.run(sql`DELETE FROM meos_classes`);
+          app.fartolaDb.db.run(sql`DELETE FROM meos_clubs`);
         }
 
         // <cmp> repeated. Per mop.xsd, base has cls (required) and most other
@@ -841,7 +841,7 @@ export default async function registerMopRoute(app: FastifyInstance): Promise<vo
           const id = asInt(cmp['@_id']);
           if (id === null) continue;
           if (asBool(cmp['@_delete'])) {
-            app.fartolDb.db.delete(meosCompetitors).where(eq(meosCompetitors.id, id)).run();
+            app.fartolaDb.db.delete(meosCompetitors).where(eq(meosCompetitors.id, id)).run();
             continue;
           }
           const base = cmp.base as Record<string, unknown> | undefined;
@@ -861,7 +861,7 @@ export default async function registerMopRoute(app: FastifyInstance): Promise<vo
           };
           // D-MOP-2 UPSERT for both Complete and Diff. Complete already
           // ran DELETE above, so no conflicts; Diff overrides prior rows.
-          app.fartolDb.db
+          app.fartolaDb.db
             .insert(meosCompetitors)
             .values(row)
             .onConflictDoUpdate({ target: meosCompetitors.id, set: row })
@@ -873,7 +873,7 @@ export default async function registerMopRoute(app: FastifyInstance): Promise<vo
           const id = asInt(cls['@_id']);
           if (id === null) continue;
           if (asBool(cls['@_delete'])) {
-            app.fartolDb.db.delete(meosClasses).where(eq(meosClasses.id, id)).run();
+            app.fartolaDb.db.delete(meosClasses).where(eq(meosClasses.id, id)).run();
             continue;
           }
           const row = {
@@ -882,7 +882,7 @@ export default async function registerMopRoute(app: FastifyInstance): Promise<vo
             ord: asInt(cls['@_ord']),
             lastMopUpdateMs: nowMs,
           };
-          app.fartolDb.db
+          app.fartolaDb.db
             .insert(meosClasses)
             .values(row)
             .onConflictDoUpdate({ target: meosClasses.id, set: row })
@@ -894,7 +894,7 @@ export default async function registerMopRoute(app: FastifyInstance): Promise<vo
           const id = asInt(org['@_id']);
           if (id === null) continue;
           if (asBool(org['@_delete'])) {
-            app.fartolDb.db.delete(meosClubs).where(eq(meosClubs.id, id)).run();
+            app.fartolaDb.db.delete(meosClubs).where(eq(meosClubs.id, id)).run();
             continue;
           }
           const row = {
@@ -903,7 +903,7 @@ export default async function registerMopRoute(app: FastifyInstance): Promise<vo
             nat: asString(org['@_nat']),
             lastMopUpdateMs: nowMs,
           };
-          app.fartolDb.db
+          app.fartolaDb.db
             .insert(meosClubs)
             .values(row)
             .onConflictDoUpdate({ target: meosClubs.id, set: row })
@@ -916,7 +916,7 @@ export default async function registerMopRoute(app: FastifyInstance): Promise<vo
         if (activeCompetitionId !== null) {
           // The raw SQL is cleaner than a Drizzle query-builder version
           // for an INSERT...SELECT...WHERE NOT EXISTS shape.
-          const result = app.fartolDb.db.run(sql`
+          const result = app.fartolaDb.db.run(sql`
             INSERT INTO competitors (
               id, competition_id, name, club, class_id, card_number,
               consent_at_ms, consent_status, source
@@ -1152,13 +1152,13 @@ function asBool(x: unknown): boolean {
 
 Phase 2.0 is **greenfield** for all new tables (eventor*\*, meos*\*, hired_cards) and a column-add (competitors.source). No rename, no migration of existing rows. The minimal runtime state surface is:
 
-| Category            | Items Found                                                                                                                                                                                | Action Required                                                                                                                       |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Stored data         | None — Phase 2.0 creates new SQLite tables only; existing competitors / events / config rows preserved as-is                                                                               | Drizzle migration 0002_phase2.sql will ALTER competitors to add `source` with `DEFAULT 'walkup'` so existing rows backfill correctly. |
-| Live service config | None initially — MeOS install on the parallel laptop is configured by the operator pre-event via MeOS's protocol-config UI (URL pointing at FartOL's `/mip` + `/mop`). Playbook owns this. | None at code level; playbook (Plan 6) walks the operator through.                                                                     |
-| OS-registered state | None — Phase 2 doesn't add new systemd / udev rules (Phase 1 Plan 18 covers what exists; Phase 2 binary changes are internal)                                                              | None                                                                                                                                  |
-| Secrets / env vars  | `EVENTOR_API_KEY` loaded from `.eventor-env` (D-EV-1 trigger). File is `.gitignore`d (commit 7ec8866). If missing → eventor cache disabled, UI shows "Eventor: nyckel saknas" indicator    | Plan 1 task 0 documents the operator handoff for paste-into-`.env` or commit-to-machine-only.                                         |
-| Build artifacts     | `apps/edge/dist/web/` rebuild required when WalkupModal changes (Plan 2) — same as Phase 1 binary packaging via `pack:tarball`                                                             | Plan 6 closeout task: `pnpm --filter @fartol/edge pack:tarball` after Plans 2+5 land.                                                 |
+| Category            | Items Found                                                                                                                                                                                 | Action Required                                                                                                                       |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Stored data         | None — Phase 2.0 creates new SQLite tables only; existing competitors / events / config rows preserved as-is                                                                                | Drizzle migration 0002_phase2.sql will ALTER competitors to add `source` with `DEFAULT 'walkup'` so existing rows backfill correctly. |
+| Live service config | None initially — MeOS install on the parallel laptop is configured by the operator pre-event via MeOS's protocol-config UI (URL pointing at fartOLa's `/mip` + `/mop`). Playbook owns this. | None at code level; playbook (Plan 6) walks the operator through.                                                                     |
+| OS-registered state | None — Phase 2 doesn't add new systemd / udev rules (Phase 1 Plan 18 covers what exists; Phase 2 binary changes are internal)                                                               | None                                                                                                                                  |
+| Secrets / env vars  | `EVENTOR_API_KEY` loaded from `.eventor-env` (D-EV-1 trigger). File is `.gitignore`d (commit 7ec8866). If missing → eventor cache disabled, UI shows "Eventor: nyckel saknas" indicator     | Plan 1 task 0 documents the operator handoff for paste-into-`.env` or commit-to-machine-only.                                         |
+| Build artifacts     | `apps/edge/dist/web/` rebuild required when WalkupModal changes (Plan 2) — same as Phase 1 binary packaging via `pack:tarball`                                                              | Plan 6 closeout task: `pnpm --filter @fartola/edge pack:tarball` after Plans 2+5 land.                                                |
 
 **Nothing found in a category:** explicitly stated above. The single non-trivial item is the EVENTOR_API_KEY env var.
 
@@ -1184,8 +1184,8 @@ Phase 2.0 is **greenfield** for all new tables (eventor*\*, meos*\*, hired_cards
 
 **What goes wrong:** D-MIP-4 says we send `<classname>Vit</classname>`. MeOS's `oe.getClass(clsName)` (onlineinput.cpp:996) does an exact match. If the operator created "vit" lowercase in MeOS, the lookup returns nullptr and MeOS rejects the entry with "Okänd klass" (onlineinput.cpp:999).
 **Why it happens:** No case-folding on either side of the protocol.
-**How to avoid:** Playbook (Plan 6) pre-flight checklist: confirm that the five 4-klubbs classes (Vit/Grön/Gul/Orange/Violett) in MeOS are spelled identically to FartOL's. Recommend the operator copy-paste the names rather than retype. Add `<entry>` failure logging to `mip.ts` if MeOS's `entrystatus` response surfaces back (Phase 2.1).
-**Warning signs:** MeOS log shows "Okänd klass: <name>" or `<EntryStatus status="ERROR">` responses. FartOL has no view of these — they only surface in MeOS.
+**How to avoid:** Playbook (Plan 6) pre-flight checklist: confirm that the five 4-klubbs classes (Vit/Grön/Gul/Orange/Violett) in MeOS are spelled identically to fartOLa's. Recommend the operator copy-paste the names rather than retype. Add `<entry>` failure logging to `mip.ts` if MeOS's `entrystatus` response surfaces back (Phase 2.1).
+**Warning signs:** MeOS log shows "Okänd klass: <name>" or `<EntryStatus status="ERROR">` responses. fartOLa has no view of these — they only surface in MeOS.
 
 ### Pitfall 4: TRUNCATE+INSERT inside transaction loses prior snapshot if parse fails midway
 
@@ -1196,10 +1196,10 @@ Phase 2.0 is **greenfield** for all new tables (eventor*\*, meos*\*, hired_cards
 
 ### Pitfall 5: Eventor download blocks bridge boot
 
-**What goes wrong:** D-EV-3 mandates "warn + run with what we have" on network failure. A naive `await downloadEventor()` in `bin/fartol.ts main()` blocks `app.listen()` for up to the HTTP timeout (~30s default).
-**Why it happens:** `await` semantics. The fix is fire-and-forget (Phase 1 SI bridge does this — `void lifecycle.start();` at bin/fartol.ts:507).
-**How to avoid:** `eventor/boot.ts` exports `runOnceIfStale()` returning a Promise. `bin/fartol.ts` calls it AFTER `app.listen()` resolves, with `void runOnceIfStale().catch((err) => app.log.warn({ err }, 'eventor refresh failed'))`. The walkup screen reads the cache anyway — if it's empty, the SI firmware hint fallback still works.
-**Warning signs:** `fartol --port 3000` takes 30+ seconds to print "listening on 3000" when offline; operator thinks the bridge is hung.
+**What goes wrong:** D-EV-3 mandates "warn + run with what we have" on network failure. A naive `await downloadEventor()` in `bin/fartola.ts main()` blocks `app.listen()` for up to the HTTP timeout (~30s default).
+**Why it happens:** `await` semantics. The fix is fire-and-forget (Phase 1 SI bridge does this — `void lifecycle.start();` at bin/fartola.ts:507).
+**How to avoid:** `eventor/boot.ts` exports `runOnceIfStale()` returning a Promise. `bin/fartola.ts` calls it AFTER `app.listen()` resolves, with `void runOnceIfStale().catch((err) => app.log.warn({ err }, 'eventor refresh failed'))`. The walkup screen reads the cache anyway — if it's empty, the SI firmware hint fallback still works.
+**Warning signs:** `fartola --port 3000` takes 30+ seconds to print "listening on 3000" when offline; operator thinks the bridge is hung.
 
 ### Pitfall 6: saxes UTF-8 streaming + cyrillic/non-Latin names
 
@@ -1298,7 +1298,7 @@ export default async function registerEventorLookup(app: FastifyInstance): Promi
 
     if (parsed.data.si_card !== undefined) {
       // Single-row lookup; partial unique index makes this O(log N).
-      const row = app.fartolDb.db
+      const row = app.fartolaDb.db
         .select()
         .from(eventorCompetitors)
         .where(eq(eventorCompetitors.siCard, parsed.data.si_card))
@@ -1306,7 +1306,7 @@ export default async function registerEventorLookup(app: FastifyInstance): Promi
       if (!row) return reply.code(200).send({ matches: [] });
       const club =
         row.clubId !== null
-          ? (app.fartolDb.db
+          ? (app.fartolaDb.db
               .select({ name: eventorClubs.name })
               .from(eventorClubs)
               .where(eq(eventorClubs.clubId, row.clubId))
@@ -1328,7 +1328,7 @@ export default async function registerEventorLookup(app: FastifyInstance): Promi
 
     // Prefix-match on the (family, given) compound index. Cap to 20 results.
     const prefix = parsed.data.prefix!;
-    const rows = app.fartolDb.db
+    const rows = app.fartolaDb.db
       .select()
       .from(eventorCompetitors)
       .where(like(eventorCompetitors.familyName, `${prefix}%`))
@@ -1415,7 +1415,7 @@ export function scheduleEventorBoot(
 }
 ```
 
-Wired in `bin/fartol.ts main()` AFTER `app.listen()`:
+Wired in `bin/fartola.ts main()` AFTER `app.listen()`:
 
 ```typescript
 // After `await app.listen(...)`. PATTERNS S-7 — eventor handle stays on the app.
@@ -1424,7 +1424,7 @@ const eventor = scheduleEventorBoot(handle, {
   apiKey: eventorApiKey,
   logger: app.log,
 });
-app.fartolEventor = eventor;
+app.fartolaEventor = eventor;
 ```
 
 Plus the `BackupHandle`-style admin route at `/api/__admin/eventor/refresh`:
@@ -1432,8 +1432,8 @@ Plus the `BackupHandle`-style admin route at `/api/__admin/eventor/refresh`:
 ```typescript
 // Extend routes/admin.ts.
 app.post('/api/__admin/eventor/refresh', async (_req, reply) => {
-  if (process.env['FARTOL_DEV'] !== '1') return reply.code(404).send();
-  const e = app.fartolEventor;
+  if (process.env['FARTOLA_DEV'] !== '1') return reply.code(404).send();
+  const e = app.fartolaEventor;
   if (!e) return reply.code(200).send({ ok: false, error: 'no_eventor' });
   try {
     const r = await e.runNow();
@@ -1507,7 +1507,7 @@ export const eventorClubs = sqliteTable('eventor_clubs', {
 
 // --- meos_competitors --------------------------------------------------------
 // Shadow table for MOP `<cmp>` ingest. NO competition_id FK — MeOS state is
-// global to the bridge session, not per-FartOL-competition (per-competition
+// global to the bridge session, not per-fartOLa-competition (per-competition
 // would require MeOS to know our competition UUIDs, which it doesn't).
 // last_mop_update_ms helps debug "which MOP push wrote this row".
 
@@ -1600,7 +1600,7 @@ export const competitors = sqliteTable(
 ### Migration generation step
 
 ```bash
-pnpm --filter @fartol/edge db:generate
+pnpm --filter @fartola/edge db:generate
 # Inspect drizzle/0002_phase2.sql for correctness — DO NOT edit it.
 # Expect: 6 CREATE TABLE statements + 4-5 CREATE INDEX + 1 ALTER TABLE competitors ADD COLUMN source.
 ```
@@ -1623,7 +1623,7 @@ pnpm --filter @fartol/edge db:generate
 
 - `<name>` REQUIRED (minOccurs="1"), other children optional
 - `<card>` minOccurs="0" maxOccurs="**1**" — **confirms D-MIP-3**: only one card per entry. A card-replace is one re-emit of the whole `<entry>`.
-- `extId` attribute is `xsd:string` — **FartOL UUIDs (36 chars) fit fine**. Per the PDF: "external Id (Used by IOF-XML)".
+- `extId` attribute is `xsd:string` — **fartOLa UUIDs (36 chars) fit fine**. Per the PDF: "external Id (Used by IOF-XML)".
 - `classname` attribute is `xsd:string` — exact case match against MeOS class name (Pitfall 3).
 - `<card hired="true">12345</card>` shape — `CardInfo` is `xsd:simpleContent extension of xsd:integer` with `@hired` boolean attribute.
 - `<name>` element has `EntryName` type with attributes `birthyear`, `birthdate`, `sex` (M/F NMTOKEN), `nationality` (3-letter IOC). For 4-klubbs we only need the text content (LastName, FirstName per the PDF).
@@ -1661,7 +1661,7 @@ MeOS doesn't poll for MOP — it PUSHES. There is no MOP "empty body" case from 
 
 ### On-boot trigger (D-EV-1 + D-EV-2 + D-EV-3)
 
-Wired in `apps/edge/src/bin/fartol.ts` AFTER `app.listen()` resolves, fire-and-forget pattern matching the existing SI bridge (`bin/fartol.ts:507 void lifecycle.start();`):
+Wired in `apps/edge/src/bin/fartola.ts` AFTER `app.listen()` resolves, fire-and-forget pattern matching the existing SI bridge (`bin/fartola.ts:507 void lifecycle.start();`):
 
 ```typescript
 // In main(), after `await app.listen(...)`:
@@ -1670,7 +1670,7 @@ const eventor = scheduleEventorBoot(handle, {
   apiKey: eventorApiKey,
   logger: app.log,
 });
-app.fartolEventor = eventor;
+app.fartolaEventor = eventor;
 ```
 
 `scheduleEventorBoot()` (see code in §Code Examples) reads the `eventor_cache_refreshed_at_ms` config row, compares to `Date.now() - 7d`, and either:
@@ -1689,7 +1689,7 @@ The existing `apps/web/src/lib/components/TweaksPanel.svelte` is the right home 
 - Add a `bridgeStatus.svelte.ts`-style store: `eventorStatus.svelte.ts` with `{ state: 'ready' | 'refreshing' | 'stale' | 'offline' | 'no_key', ageDays: number }`.
 - Edge exposes `GET /api/eventor/status` returning the same shape (read from config table).
 - TweaksPanel shows the row inline: green dot + "Eventor: redo (N dagar gammal)" / orange "refreshar..." / red "offline" / red "nyckel saknas".
-- A `Refresh now` button in the panel POSTs `/api/__admin/eventor/refresh` (FARTOL_DEV-gated to prevent operator from triggering during the event).
+- A `Refresh now` button in the panel POSTs `/api/__admin/eventor/refresh` (FARTOLA_DEV-gated to prevent operator from triggering during the event).
 
 Toast wording (Claude's discretion, recommend i18n keys):
 
@@ -1709,7 +1709,7 @@ For each plan the planner will produce, the specific source-file + line range + 
 
 - **Template:** `apps/edge/src/ingest/entryImport.ts:59-173` (transactional bulk-upsert via `sqlite.transaction(() => doIngest(...))()`)
 - **Runtime nuance:** Phase 1's distinctClubs-after-success pattern (lines 91, 127) — adapt for Eventor's "build a Set of club_ids referenced by competitors, then verify they exist in eventor_clubs" sanity check. The Eventor data IS internally consistent, but a defensive log is cheap insurance.
-- **Boot wiring template:** `apps/edge/src/bin/fartol.ts:510-518` (backup + retention scheduler decoration on app)
+- **Boot wiring template:** `apps/edge/src/bin/fartola.ts:510-518` (backup + retention scheduler decoration on app)
 - **Runtime nuance:** the SI bridge starts via `void lifecycle.start()` AFTER `app.listen()` (line 507) — Eventor follows the same fire-and-forget. The Eventor refresh must complete asynchronously without blocking app.listen because D-EV-3 mandates "never block boot on network."
 
 ### Plan 2 — WalkupModal + EventorAutocomplete
@@ -1743,7 +1743,7 @@ For each plan the planner will produce, the specific source-file + line range + 
 ### Plan 6 — Parallel-MeOS runbook
 
 - **Template:** no existing ops doc (first one); reference `apps/edge/README.md` for tone.
-- **Runtime nuance:** the runbook MUST cover the D-LIM-1 manual workaround for hired-card import on FartOL crash recovery. Also covers the "MeOS class names must match FartOL Bana names exactly" pre-flight (Pitfall 3).
+- **Runtime nuance:** the runbook MUST cover the D-LIM-1 manual workaround for hired-card import on fartOLa crash recovery. Also covers the "MeOS class names must match fartOLa Bana names exactly" pre-flight (Pitfall 3).
 
 ---
 
@@ -1755,7 +1755,7 @@ Place at `apps/edge/src/eventor/__fixtures__/competitors-sample.xml`:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
-<CompetitorList iofVersion="3.0" createTime="2026-05-16T20:00:00Z" creator="fartol-test"
+<CompetitorList iofVersion="3.0" createTime="2026-05-16T20:00:00Z" creator="fartola-test"
                 xmlns="http://www.orienteering.org/datastandard/3.0">
   <Competitor modifyTime="2024-12-12T09:46:45Z">
     <Person sex="M" modifyTime="2024-12-12T09:46:45Z">
@@ -1952,36 +1952,36 @@ For Phase 2.0 / Wednesday deadline, **skip the stub** — bench-test against rea
 | Framework (web)    | `vitest` 4.1.6                                                                                        |
 | E2E framework      | `@playwright/test` 1.60.0                                                                             |
 | Edge config file   | `apps/edge/package.json` `"test": "node --test --test-reporter=spec --import tsx 'src/**/*.test.ts'"` |
-| Quick run command  | `pnpm --filter @fartol/edge test --test-name-pattern="mip\|mop\|eventor\|hyrbricka"` (~5s)            |
+| Quick run command  | `pnpm --filter @fartola/edge test --test-name-pattern="mip\|mop\|eventor\|hyrbricka"` (~5s)           |
 | Full suite command | `pnpm -r test && pnpm e2e` (~5 min)                                                                   |
 
 ### Phase Requirements → Test Map
 
-| Req ID                         | Behavior                                                 | Test Type          | Automated Command                                               | File Exists? |
-| ------------------------------ | -------------------------------------------------------- | ------------------ | --------------------------------------------------------------- | ------------ |
-| REQ-STD-004 (partial)          | Eventor cachedcompetitors download + parse               | unit + integration | `pnpm --filter @fartol/edge test eventor/`                      | ❌ Wave 0    |
-| REQ-STD-004 (partial)          | Eventor lookup by si_card returns matching row           | integration        | `pnpm --filter @fartol/edge test routes/eventor`                | ❌ Wave 1    |
-| REQ-EXT-MEOS-001               | MIP empty-poll response XSD-valid                        | unit               | `pnpm --filter @fartol/edge test integrations/meos/mip`         | ❌ Wave 2    |
-| REQ-EXT-MEOS-001               | MIP entry-on-walkup re-emit XSD-valid                    | unit + integration | same                                                            | ❌ Wave 2    |
-| REQ-EXT-MEOS-001               | MIP entry re-emit on card-replace (D-MIP-3)              | integration        | same                                                            | ❌ Wave 2    |
-| REQ-EXT-MEOS-001               | MOP `<MOPComplete>` writes shadow tables atomically      | integration        | `pnpm --filter @fartol/edge test integrations/meos/mop`         | ❌ Wave 2    |
-| REQ-EXT-MEOS-001               | MOP `<MOPDiff>` UPSERT + DELETE                          | integration        | same                                                            | ❌ Wave 2    |
-| REQ-EXT-MEOS-001               | Auto-merge MeOS-only competitor (D-MOP-3)                | integration        | same                                                            | ❌ Wave 2    |
-| REQ-EXT-MEOS-001               | meos_merge WS envelope after commit (PATTERNS S-4)       | integration        | `pnpm --filter @fartol/edge test ws/` (extension)               | ❌ Wave 2    |
-| Phase-1 carry: REQ-EVT-CMP-004 | Walkup with Hyrbricka writes hired_cards row in same txn | integration        | `pnpm --filter @fartol/edge test routes/competitors`            | ❌ Wave 3    |
-| Phase-1 carry: REQ-UI-003      | Finish-readout shows Hyrbricka toast for open rentals    | e2e                | `pnpm --filter @fartol/web e2e hyrbricka.spec.ts`               | ❌ Wave 3    |
-| Phase-1 carry: REQ-PRIV-002    | retention.ts scrubs hired*cards.contact*\* after 30 days | unit               | `pnpm --filter @fartol/edge test privacy/retention` (extension) | ❌ Wave 3    |
-| Phase-1 carry: REQ-OPS-001     | `fartol` boots offline (no Eventor key, no MeOS)         | manual smoke       | `EVENTOR_API_KEY= fartol --no-bridge --port 3000`               | ❌ Wave 3    |
-| Phase-2 SC#1                   | 4-klubbs runs on FartOL with MeOS parallel               | manual-only        | Bench Wednesday 2026-05-20                                      | Phase gate   |
-| Phase-2 SC#3                   | MIP `<entry>` appears in MeOS within 5s of walkup        | manual+integration | bench + stub                                                    | Phase gate   |
-| Phase-2 SC#4                   | Hyrbricka toast + MeOS reminder both fire                | manual             | bench                                                           | Phase gate   |
-| Phase-2 SC#6                   | MeOS-side reg picked up via MOP on FartOL restart        | manual+integration | bench + stub                                                    | Phase gate   |
+| Req ID                         | Behavior                                                 | Test Type          | Automated Command                                                | File Exists? |
+| ------------------------------ | -------------------------------------------------------- | ------------------ | ---------------------------------------------------------------- | ------------ |
+| REQ-STD-004 (partial)          | Eventor cachedcompetitors download + parse               | unit + integration | `pnpm --filter @fartola/edge test eventor/`                      | ❌ Wave 0    |
+| REQ-STD-004 (partial)          | Eventor lookup by si_card returns matching row           | integration        | `pnpm --filter @fartola/edge test routes/eventor`                | ❌ Wave 1    |
+| REQ-EXT-MEOS-001               | MIP empty-poll response XSD-valid                        | unit               | `pnpm --filter @fartola/edge test integrations/meos/mip`         | ❌ Wave 2    |
+| REQ-EXT-MEOS-001               | MIP entry-on-walkup re-emit XSD-valid                    | unit + integration | same                                                             | ❌ Wave 2    |
+| REQ-EXT-MEOS-001               | MIP entry re-emit on card-replace (D-MIP-3)              | integration        | same                                                             | ❌ Wave 2    |
+| REQ-EXT-MEOS-001               | MOP `<MOPComplete>` writes shadow tables atomically      | integration        | `pnpm --filter @fartola/edge test integrations/meos/mop`         | ❌ Wave 2    |
+| REQ-EXT-MEOS-001               | MOP `<MOPDiff>` UPSERT + DELETE                          | integration        | same                                                             | ❌ Wave 2    |
+| REQ-EXT-MEOS-001               | Auto-merge MeOS-only competitor (D-MOP-3)                | integration        | same                                                             | ❌ Wave 2    |
+| REQ-EXT-MEOS-001               | meos_merge WS envelope after commit (PATTERNS S-4)       | integration        | `pnpm --filter @fartola/edge test ws/` (extension)               | ❌ Wave 2    |
+| Phase-1 carry: REQ-EVT-CMP-004 | Walkup with Hyrbricka writes hired_cards row in same txn | integration        | `pnpm --filter @fartola/edge test routes/competitors`            | ❌ Wave 3    |
+| Phase-1 carry: REQ-UI-003      | Finish-readout shows Hyrbricka toast for open rentals    | e2e                | `pnpm --filter @fartola/web e2e hyrbricka.spec.ts`               | ❌ Wave 3    |
+| Phase-1 carry: REQ-PRIV-002    | retention.ts scrubs hired*cards.contact*\* after 30 days | unit               | `pnpm --filter @fartola/edge test privacy/retention` (extension) | ❌ Wave 3    |
+| Phase-1 carry: REQ-OPS-001     | `fartola` boots offline (no Eventor key, no MeOS)        | manual smoke       | `EVENTOR_API_KEY= fartola --no-bridge --port 3000`               | ❌ Wave 3    |
+| Phase-2 SC#1                   | 4-klubbs runs on fartOLa with MeOS parallel              | manual-only        | Bench Wednesday 2026-05-20                                       | Phase gate   |
+| Phase-2 SC#3                   | MIP `<entry>` appears in MeOS within 5s of walkup        | manual+integration | bench + stub                                                     | Phase gate   |
+| Phase-2 SC#4                   | Hyrbricka toast + MeOS reminder both fire                | manual             | bench                                                            | Phase gate   |
+| Phase-2 SC#6                   | MeOS-side reg picked up via MOP on fartOLa restart       | manual+integration | bench + stub                                                     | Phase gate   |
 
 ### Sampling Rate
 
-- **Per task commit:** `pnpm --filter @fartol/edge test --test-name-pattern="<feature>"` (~5s)
-- **Per wave merge:** `pnpm --filter @fartol/edge test && pnpm --filter @fartol/web test` (~30s)
-- **Phase gate:** Full suite green + bench smoke (Wednesday morning, 1h before event) — `fartol --port 3000 --bind-host 0.0.0.0 --allow-lan --competition-id <id>` + MeOS pointed at it + read 5 cards manually.
+- **Per task commit:** `pnpm --filter @fartola/edge test --test-name-pattern="<feature>"` (~5s)
+- **Per wave merge:** `pnpm --filter @fartola/edge test && pnpm --filter @fartola/web test` (~30s)
+- **Phase gate:** Full suite green + bench smoke (Wednesday morning, 1h before event) — `fartola --port 3000 --bind-host 0.0.0.0 --allow-lan --competition-id <id>` + MeOS pointed at it + read 5 cards manually.
 
 ### Wave 0 Gaps
 
@@ -2019,7 +2019,7 @@ For Phase 2.0 / Wednesday deadline, **skip the stub** — bench-test against rea
 | V13 API & Web Service       | yes                                                 | MIP/MOP follow Fastify plugin shape; all JSON elsewhere.                                                                                         |
 | V14 Configuration           | yes                                                 | EVENTOR_API_KEY from .env (gitignored); no MIP/MOP secrets in 2.0.                                                                               |
 
-### Known Threat Patterns for FartOL + MeOS coexistence
+### Known Threat Patterns for fartOLa + MeOS coexistence
 
 | Pattern                                                                  | STRIDE                      | Standard Mitigation                                                                                                                                        |
 | ------------------------------------------------------------------------ | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -2034,7 +2034,7 @@ For Phase 2.0 / Wednesday deadline, **skip the stub** — bench-test against rea
 
 ## Project Constraints (from CLAUDE.md)
 
-No `./CLAUDE.md` exists at workspace root (`Read: File does not exist. Note: your current working directory is /home/jonas/src/FartOL-phase-2.`). Constraints inherited from user's global `~/.claude/CLAUDE.md`:
+No `./CLAUDE.md` exists at workspace root (`Read: File does not exist. Note: your current working directory is /home/jonas/src/fartOLa-phase-2.`). Constraints inherited from user's global `~/.claude/CLAUDE.md`:
 
 - **Conventional Commits** (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`). All Phase 2 commits stay inside the existing lefthook + commitlint chain.
 - **Minimum-code-that-solves-the-problem** philosophy. Phase 2.0 is mostly reuse; if a new file exceeds ~200 LOC, reconsider the abstraction.
@@ -2052,7 +2052,7 @@ No `./CLAUDE.md` exists at workspace root (`Read: File does not exist. Note: you
 | A1  | `saxes@6.0.0` is the current major version and is published on npm.                                                                                                                                          | Standard Stack                | MEDIUM — `npm view saxes version` in Plan 1 task 0 validates this. Fallback: `sax@1.2.4` (well-established, sibling API).     |
 | A2  | The Eventor cachedcompetitors endpoint shape verified by the parallel agent in May 2026 has not changed by Wed 2026-05-20.                                                                                   | Pattern 1 + §Eventor download | LOW — the endpoint has been MeOS's runner-DB source for years (TabCompetition.cpp:3107-3108 references it).                   |
 | A3  | MeOS will not change the MIP/MOP wire format between research date and 4-klubbs event date.                                                                                                                  | §MeOS XSD wire format details | LOW — MIP XSD v3.0 was bumped 2026-05-14 (2 days before research); MOP v2.0 March 2025. Unlikely to bump in 4 days.           |
-| A4  | The MeOS install on the parallel laptop is configured by the operator (Jonas) pre-event with class names matching FartOL's Bana names exactly.                                                               | Pitfall 3                     | MEDIUM — manual coordination. Playbook (Plan 6) is the mitigation.                                                            |
+| A4  | The MeOS install on the parallel laptop is configured by the operator (Jonas) pre-event with class names matching fartOLa's Bana names exactly.                                                              | Pitfall 3                     | MEDIUM — manual coordination. Playbook (Plan 6) is the mitigation.                                                            |
 | A5  | MeOS sends `Competition` and `Lastid` as HTTP headers (per spec), but tolerates `?competition=&lastid=` query params if we ALSO accept them.                                                                 | Pattern 3                     | LOW — reference server (input.php) reads headers; CONTEXT.md says query. Accepting both is robust.                            |
 | A6  | `fast-xml-parser` XMLBuilder produces XSD-conformant output for the MIP `<entry>` shape when given the @\_xmlns-at-root pattern.                                                                             | Pattern 3                     | MEDIUM — verify via the round-trip test (xmllint-wasm validation in Wave 0). If it fails, hand-roll the serializer (~30 LOC). |
 | A7  | better-sqlite3's `INSERT ... VALUES (...), (...), ...` batched insert (which Drizzle's `.insert().values([array])` produces) is fast enough for 252k rows in 1000-row chunks (<60s total on a bench laptop). | Pattern 2                     | LOW — better-sqlite3 docs benchmark ~50k inserts/sec for batched inserts. 253 batches × 1000 rows ≈ 5s; comfortable.          |
@@ -2074,7 +2074,7 @@ No `./CLAUDE.md` exists at workspace root (`Read: File does not exist. Note: you
    - What's unclear: whether MeOS will retry without gzip if we respond NOZIP.
    - RESOLVED: Phase 2.0 = plain XML only. Return `<MOPStatus status="NOZIP"/>` for gzip (matching update.php). Document in playbook that operator should configure MeOS for plain MOP. Plan 04 Task 2 Test 12 encodes this.
 
-3. **What happens if MeOS sends a `<cmp>` with a card_number that exists in a DIFFERENT FartOL competition?**
+3. **What happens if MeOS sends a `<cmp>` with a card_number that exists in a DIFFERENT fartOLa competition?**
    - What we know: auto-merge is scoped to `activeCompetitionId` via WHERE NOT EXISTS subquery. Cross-competition card collision can't happen because the EXISTS check is scoped.
    - What's unclear: whether the operator might be confused if the same physical card appears in two competitions (one open hired_cards row per competition).
    - RESOLVED: document in playbook. End-of-event admin view shows opens across competitions. Plan 06 playbook section covers operator-facing semantics.
@@ -2136,7 +2136,7 @@ if (name.empty()) {
 }
 ```
 
-**Impact:** Empty name → MeOS reject with "Namnet kan inte vara tomt", competitor NOT added on MeOS side, FartOL has no visibility into the reject. WalkupModal already enforces min length 2 on name (existing validation at WalkupModal.svelte:84) — so this is already covered.
+**Impact:** Empty name → MeOS reject with "Namnet kan inte vara tomt", competitor NOT added on MeOS side, fartOLa has no visibility into the reject. WalkupModal already enforces min length 2 on name (existing validation at WalkupModal.svelte:84) — so this is already covered.
 
 ### Landmine: MIP `<extId>` + name-mismatch silently fails reuse
 
@@ -2158,7 +2158,7 @@ if (r && !r->matchName(name))
   r = nullptr;
 ```
 
-**Impact:** If we re-emit `<entry>` with the same `extId` but a DIFFERENT name (e.g., operator edited the competitor's name in FartOL between bind and card-replace), MeOS treats it as a NEW entry instead of an update — duplicate runners on MeOS side. **Mitigation:** D-MIP-3 says re-emit on `card_number change, class_id change, name change` (CONTEXT.md "Exact UPDATEs that trigger MIP re-emit — safe default"). If name changed, we re-emit anyway. This is fine — but operators must understand that name-edits create a NEW MeOS runner; old one remains with the old card mapping. Document in playbook.
+**Impact:** If we re-emit `<entry>` with the same `extId` but a DIFFERENT name (e.g., operator edited the competitor's name in fartOLa between bind and card-replace), MeOS treats it as a NEW entry instead of an update — duplicate runners on MeOS side. **Mitigation:** D-MIP-3 says re-emit on `card_number change, class_id change, name change` (CONTEXT.md "Exact UPDATEs that trigger MIP re-emit — safe default"). If name changed, we re-emit anyway. This is fine — but operators must understand that name-edits create a NEW MeOS runner; old one remains with the old card mapping. Document in playbook.
 
 ### Landmine: MeOS card hired flag is "sticky" via oe.isHiredCard
 
@@ -2169,7 +2169,7 @@ if (!hiredCard && oe.hasHiredCardData())
   hiredCard = oe.isHiredCard(cardNo);
 ```
 
-**Impact:** If we DON'T send `hired="true"` on the entry, MeOS still consults its own hired-card hash. So if a card was previously marked hired in MeOS (out of band), our entry inherits that flag. This is GOOD (D-LIM-1 mitigation by accident — sort of). But it means the playbook's "manual re-entry on crash recovery" workaround only matters for cards marked hired ONLY in FartOL after the crash.
+**Impact:** If we DON'T send `hired="true"` on the entry, MeOS still consults its own hired-card hash. So if a card was previously marked hired in MeOS (out of band), our entry inherits that flag. This is GOOD (D-LIM-1 mitigation by accident — sort of). But it means the playbook's "manual re-entry on crash recovery" workaround only matters for cards marked hired ONLY in fartOLa after the crash.
 
 ### Landmine: MeOS finish-readout hired check is OR'd two sources
 
@@ -2179,7 +2179,7 @@ if (!hiredCard && oe.hasHiredCardData())
 rout.rentCard = runner->isRentalCard() || oe->isHiredCard(sic.CardNumber);
 ```
 
-**Impact:** MeOS's "Hyrbricka" reminder fires if EITHER (a) the runner row is flagged isRentalCard (via `<card hired="true">` in entry), OR (b) the card number is in `oe->hiredCardHash` (set elsewhere). FartOL only controls (a) via MIP. To set (b) externally we'd need a separate protocol — there isn't one. So our belt+braces is `<card hired="true">` → MeOS sets isRentalCard → MeOS reminds. Correct as designed.
+**Impact:** MeOS's "Hyrbricka" reminder fires if EITHER (a) the runner row is flagged isRentalCard (via `<card hired="true">` in entry), OR (b) the card number is in `oe->hiredCardHash` (set elsewhere). fartOLa only controls (a) via MIP. To set (b) externally we'd need a separate protocol — there isn't one. So our belt+braces is `<card hired="true">` → MeOS sets isRentalCard → MeOS reminds. Correct as designed.
 
 ### Landmine: MeOS Eventor download uses `eventorBase` + `iofExportVersion` string concat
 
@@ -2245,7 +2245,7 @@ if (strcasecmp($header, "http_lastid") == 0)
 **Deprecated/outdated for this domain:**
 
 - The two 2014-era MeOS binary protocols (SendPunch TCP, UDP broadcast) — explicitly skipped per locked decision #6. Don't introduce.
-- `node-expat` (libexpat native binding) — incompatible with the "npm install -g fartol" promise (REQ-OPS-001). Don't introduce.
+- `node-expat` (libexpat native binding) — incompatible with the "npm install -g fartola" promise (REQ-OPS-001). Don't introduce.
 
 ---
 
@@ -2263,23 +2263,23 @@ if (strcasecmp($header, "http_lastid") == 0)
 - **`/home/jonas/src/meos/code/oEvent.h:915-934`** — MeOS hired-card API. Confirms D-HB-1 superset claim.
 - **`/home/jonas/src/meos/code/TabSI.cpp:3255-3329`** — MeOS finish-readout hired check (TabSI.cpp:3272, 3309).
 - **`/home/jonas/src/meos/code/TabCompetition.cpp:3085-3124`** — MeOS Eventor download URL construction.
-- **`/home/jonas/src/FartOL-phase-2/apps/edge/src/db/schema.ts`** — Phase 1 Drizzle schema, idiom template.
-- **`/home/jonas/src/FartOL-phase-2/apps/edge/src/ingest/entryImport.ts`** — transactional bulk-upsert template.
-- **`/home/jonas/src/FartOL-phase-2/apps/edge/src/xml/parse.ts`** — fast-xml-parser config + T-FILE-IMPORT pre-flight (lines 93-124).
-- **`/home/jonas/src/FartOL-phase-2/apps/edge/src/server.ts`** — Fastify plugin registration order, CORS allow-list, decoration pattern.
-- **`/home/jonas/src/FartOL-phase-2/apps/edge/src/bin/fartol.ts:449-580`** — bin entrypoint structure, BridgeLifecycle, scheduler wiring.
-- **`/home/jonas/src/FartOL-phase-2/apps/edge/src/ws/index.ts`** — WebSocket plugin, wsBroadcast decoration, channel scoping.
-- **`/home/jonas/src/FartOL-phase-2/apps/edge/src/projection/store.ts`** — ProjectionStore pattern, markDirty + recompute + broadcast (PATTERNS S-4 broadcast-after-commit).
-- **`/home/jonas/src/FartOL-phase-2/apps/edge/src/backup/daily.ts`** — BackupHandle shape `{ runNow, stop }` template.
-- **`/home/jonas/src/FartOL-phase-2/apps/edge/src/privacy/retention.ts`** — UPDATE-with-subquery scrub pattern.
-- **`/home/jonas/src/FartOL-phase-2/apps/edge/src/routes/competitors.ts`** — atomic transaction pattern (lines 211-243, 358-412), partial-unique-index race-safety net (lines 250-265).
-- **`/home/jonas/src/FartOL-phase-2/apps/web/src/lib/screens/WalkupModal.svelte`** — extension target. Existing form shape + 409 replace-card flow.
-- **`/home/jonas/src/FartOL-phase-2/apps/web/src/lib/screens/ReadoutView.svelte`** — extension target. C-M4 consent toast pattern (lines 416-450) as the analog for Hyrbricka toast.
-- **`/home/jonas/src/FartOL-phase-2/apps/web/src/lib/components/ClubAutocomplete.svelte`** — 200ms-debounced autocomplete template.
-- **`/home/jonas/src/FartOL-phase-2/apps/edge/drizzle/0000_initial.sql`** — Phase 1 migration shape (FK + cascade + partial unique index).
-- **`/home/jonas/src/FartOL-phase-2/.planning/phases/02-4-klubbs-mvp/02-CONTEXT.md`** — the 14 locked decisions; this RESEARCH file's primary driver.
-- **`/home/jonas/src/FartOL-phase-2/.planning/phases/02-4-klubbs-mvp/02-PATTERNS.md`** — file-to-analog map; this RESEARCH file's runtime-behavior superset.
-- **`/home/jonas/src/FartOL-phase-2/.planning/phases/01-single-laptop-training-mvp/01-RESEARCH.md`** — Phase 1 RESEARCH structure being mirrored.
+- **`/home/jonas/src/fartOLa-phase-2/apps/edge/src/db/schema.ts`** — Phase 1 Drizzle schema, idiom template.
+- **`/home/jonas/src/fartOLa-phase-2/apps/edge/src/ingest/entryImport.ts`** — transactional bulk-upsert template.
+- **`/home/jonas/src/fartOLa-phase-2/apps/edge/src/xml/parse.ts`** — fast-xml-parser config + T-FILE-IMPORT pre-flight (lines 93-124).
+- **`/home/jonas/src/fartOLa-phase-2/apps/edge/src/server.ts`** — Fastify plugin registration order, CORS allow-list, decoration pattern.
+- **`/home/jonas/src/fartOLa-phase-2/apps/edge/src/bin/fartola.ts:449-580`** — bin entrypoint structure, BridgeLifecycle, scheduler wiring.
+- **`/home/jonas/src/fartOLa-phase-2/apps/edge/src/ws/index.ts`** — WebSocket plugin, wsBroadcast decoration, channel scoping.
+- **`/home/jonas/src/fartOLa-phase-2/apps/edge/src/projection/store.ts`** — ProjectionStore pattern, markDirty + recompute + broadcast (PATTERNS S-4 broadcast-after-commit).
+- **`/home/jonas/src/fartOLa-phase-2/apps/edge/src/backup/daily.ts`** — BackupHandle shape `{ runNow, stop }` template.
+- **`/home/jonas/src/fartOLa-phase-2/apps/edge/src/privacy/retention.ts`** — UPDATE-with-subquery scrub pattern.
+- **`/home/jonas/src/fartOLa-phase-2/apps/edge/src/routes/competitors.ts`** — atomic transaction pattern (lines 211-243, 358-412), partial-unique-index race-safety net (lines 250-265).
+- **`/home/jonas/src/fartOLa-phase-2/apps/web/src/lib/screens/WalkupModal.svelte`** — extension target. Existing form shape + 409 replace-card flow.
+- **`/home/jonas/src/fartOLa-phase-2/apps/web/src/lib/screens/ReadoutView.svelte`** — extension target. C-M4 consent toast pattern (lines 416-450) as the analog for Hyrbricka toast.
+- **`/home/jonas/src/fartOLa-phase-2/apps/web/src/lib/components/ClubAutocomplete.svelte`** — 200ms-debounced autocomplete template.
+- **`/home/jonas/src/fartOLa-phase-2/apps/edge/drizzle/0000_initial.sql`** — Phase 1 migration shape (FK + cascade + partial unique index).
+- **`/home/jonas/src/fartOLa-phase-2/.planning/phases/02-4-klubbs-mvp/02-CONTEXT.md`** — the 14 locked decisions; this RESEARCH file's primary driver.
+- **`/home/jonas/src/fartOLa-phase-2/.planning/phases/02-4-klubbs-mvp/02-PATTERNS.md`** — file-to-analog map; this RESEARCH file's runtime-behavior superset.
+- **`/home/jonas/src/fartOLa-phase-2/.planning/phases/01-single-laptop-training-mvp/01-RESEARCH.md`** — Phase 1 RESEARCH structure being mirrored.
 
 ### Secondary (MEDIUM confidence)
 
@@ -2317,7 +2317,7 @@ if (strcasecmp($header, "http_lastid") == 0)
 - ✅ MeOS `<classname>` string lookup at onlineinput.cpp:994-996 (already in CONTEXT.md D-MIP-4, re-verified here)
 - ✅ Phase 1's `xml/parse.ts` parser config = `processEntities: false` + DOCTYPE/ENTITY pre-flight (verified parse.ts:93-124)
 - ✅ Phase 1's WalkupModal already has 409 replace-card flow (verified WalkupModal.svelte:116-128)
-- ✅ Phase 1's bin/fartol.ts wires schedulers AFTER app.listen with fire-and-forget pattern (verified bin/fartol.ts:510-518)
+- ✅ Phase 1's bin/fartola.ts wires schedulers AFTER app.listen with fire-and-forget pattern (verified bin/fartola.ts:510-518)
 - ⚠️ `saxes@6.0.0` exact version — assumed; Plan 1 task 0 must verify
 - ⚠️ Auto-merge class-name JOIN — designed but not test-driven in research; Wave 0 of Plan 4 verifies
 - ⚠️ Svelte 5 reactive Set mutation — assumed; Wave 0 of Plan 5 verifies

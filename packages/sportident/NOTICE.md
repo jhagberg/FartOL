@@ -1,6 +1,6 @@
 # Third-party software
 
-This package (`@fartol/sportident`) is MIT-licensed (see `LICENSE`). It
+This package (`@fartola/sportident`) is MIT-licensed (see `LICENSE`). It
 contains code ported from upstream MIT projects and references reference
 implementations under other licenses for verification only. Per-file MIT
 NOTICE headers in `src/` carry line-level attribution; this document is

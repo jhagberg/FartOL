@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // CR-002 regression: the production `replayFixture()` must round-trip the
 // committed Jonas bench fixtures byte-for-byte (ts_ms normalised). Prior to

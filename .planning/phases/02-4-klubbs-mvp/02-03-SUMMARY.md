@@ -88,7 +88,7 @@ completed: 2026-05-17
 - D-MIP-1 honored: `pwd` silently ignored, no auth, route mounts unconditionally.
 - D-MIP-2 honored: zero new state, reuses `events.local_seq` directly.
 - D-MIP-3 honored: only `<entry>` on bind + on card-replace (no `<p>`/`<card>` punch dumps); the existing POST /api/competitors replace path emits a fresh card_bound, so the next /mip poll re-serializes with the same extId + new card.
-- D-MIP-4 honored: `<classname>` string + `<extId>` FartOL UUID (no `<classid>` — MeOS falls back to `oe.getClass(clsName)`).
+- D-MIP-4 honored: `<classname>` string + `<extId>` fartOLa UUID (no `<classid>` — MeOS falls back to `oe.getClass(clsName)`).
 - 12 new tests pass (3 fixture-XSD validations + 8 route-behavior tests + 1 D-MIP-3 round-trip).
 - Smoke-test from the plan's verification block:
   ```
@@ -158,9 +158,9 @@ See `key-decisions` in the frontmatter for the full list. The notable ones:
 None for plan-level acceptance. For the Wednesday bench dry-run:
 
 1. Boot the bridge with an active competition set:
-   `fartol --port 3000 --bind-host 0.0.0.0 --allow-lan` then `POST /api/sessions/active-competition { competition_id: <uuid> }`.
-2. Configure MeOS to poll the URL `http://<fartol-ip>:3000/mip` (no `/api/` prefix). MeOS picks the polling cadence; ~5s is typical.
-3. Verify with `curl -s "http://<fartol-ip>:3000/mip?lastid=0"` — should return a `<?xml version="1.0" …?>\n<MIPData xmlns="http://www.melin.nu/mip" lastid="0"/>` payload immediately.
+   `fartola --port 3000 --bind-host 0.0.0.0 --allow-lan` then `POST /api/sessions/active-competition { competition_id: <uuid> }`.
+2. Configure MeOS to poll the URL `http://<fartola-ip>:3000/mip` (no `/api/` prefix). MeOS picks the polling cadence; ~5s is typical.
+3. Verify with `curl -s "http://<fartola-ip>:3000/mip?lastid=0"` — should return a `<?xml version="1.0" …?>\n<MIPData xmlns="http://www.melin.nu/mip" lastid="0"/>` payload immediately.
 
 ## Next Phase Readiness
 

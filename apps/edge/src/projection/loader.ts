@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Lift the per-competition projection inputs out of SQLite into a ReduceInput
 // the plan-07 reducer can consume. Reads:

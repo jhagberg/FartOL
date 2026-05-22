@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // GET /api/clubs — autocomplete source for the walk-up modal's Klubb field
 // (UI-SPEC §"Walk-up modal"). Returns clubs ordered by last_seen_at_ms DESC
@@ -14,7 +14,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { desc, like } from 'drizzle-orm';
 
-import type { ClubDTO } from '@fartol/shared-types';
+import type { ClubDTO } from '@fartola/shared-types';
 import { clubs } from '../db/schema.ts';
 import { issuesToErrors } from './_zod-errors.ts';
 
@@ -40,14 +40,19 @@ export default async function registerClubs(app: FastifyInstance): Promise<void>
       // two separate chains because Drizzle's builder methods are final at
       // each stage.
       const rows = parsed.data.prefix
-        ? app.fartolDb.db
+        ? app.fartolaDb.db
             .select()
             .from(clubs)
             .where(like(clubs.name, `${parsed.data.prefix}%`))
             .orderBy(desc(clubs.lastSeenAtMs))
             .limit(limit)
             .all()
-        : app.fartolDb.db.select().from(clubs).orderBy(desc(clubs.lastSeenAtMs)).limit(limit).all();
+        : app.fartolaDb.db
+            .select()
+            .from(clubs)
+            .orderBy(desc(clubs.lastSeenAtMs))
+            .limit(limit)
+            .all();
 
       const dtos: ClubDTO[] = rows.map((r) => ({
         name: r.name,

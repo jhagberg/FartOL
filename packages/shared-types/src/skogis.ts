@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // "Skogis" — procedural collectible critter generator for the Kids receipt
 // template. Same runner (cardNumber, name, club, class) ALWAYS yields the
@@ -8,7 +8,7 @@
 // The body is byte-for-byte identical to the plan-13 implementation so the
 // determinism tests (apps/web/src/lib/skogis/skogis.test.ts) continue to
 // pass without re-baselining. The apps/web file now re-exports from this
-// module via the @fartol/shared-types barrel.
+// module via the @fartola/shared-types barrel.
 //
 // Consumers:
 //   - apps/web (UI mirror via Kids.svelte; imports through $lib/skogis/skogis.ts

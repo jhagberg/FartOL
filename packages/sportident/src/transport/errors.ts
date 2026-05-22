@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 // Shared transport-layer errors. Imported by SerialTransport.ts (post-close send rejection)
 // AND by SiSendTask.ts (mid-flight abort) — defined here so neither file imports from the other.
 // Codex review #5 (HIGH): created BEFORE any consumer so Task 1's tsc --noEmit passes

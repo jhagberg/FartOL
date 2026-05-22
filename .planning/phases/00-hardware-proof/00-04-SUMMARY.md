@@ -36,7 +36,7 @@ affects:
 # Tech tracking
 tech-stack:
   added:
-    - 'serialport@13 (declared in @fartol/sportident; loaded LAZILY via require() — tests never load the native dep)'
+    - 'serialport@13 (declared in @fartola/sportident; loaded LAZILY via require() — tests never load the native dep)'
   patterns:
     - "FakeSerialPort + FakeSerialTransport pattern: tests inject a fake (mimics serialport's open/write/drain/close + on('data'|'close'|'error')) via the constructor's second argument; the native `serialport` module is `require()`d only when no Ctor is injected."
     - 'Send-queue serialisation: SerialTransport AND SiTargetMultiplexer each chain on a private `sendChain: Promise<void>` so back-to-back sends serialise without racing.'
@@ -70,7 +70,7 @@ key-decisions:
   - "BaseSiStation simplification: trimmed the storage-typed StationConfig wrappers — Phase 0's handshake mutates known byte offsets directly (code=10, mode=Readout, autoSend=false, handshake=true, beeps=true, flashes=true). Offsets exported as STATION_CONFIG_OFFSETS so the station test can verify writes."
   - "GEMINI inline #1 (T-00-14): SiTargetMultiplexer caps the receive buffer at 64KB and emits a typed 'buffer_overflow' frameError when exceeded. Implementation: 6 lines in _onData."
   - 'GEMINI inline #2 (zombie-process prevention): two layers fail any pending send on close — SerialTransport tracks pendingRejecters and calls them in handlePortClose(); SiTargetMultiplexer tracks pendingSendTasks and calls task.abort() in _handleTransportClose(). Both verified by tests.'
-  - "SiSendTask timeout timer is NOT unref'd (deviation from upstream): bin/fartol-readout is otherwise idle while awaiting station replies, so unrefing the timer would let Node exit before the timeout fires. Tests that rely on the timeout (test 8) use 100ms timeoutMs and complete deterministically."
+  - "SiSendTask timeout timer is NOT unref'd (deviation from upstream): bin/fartola-readout is otherwise idle while awaiting station replies, so unrefing the timer would let Node exit before the timeout fires. Tests that rely on the timeout (test 8) use 100ms timeoutMs and complete deterministically."
   - 'SI_REM cardNumber decode inlined in SiMainStation (rather than reusing BaseSiCard.detectFromMessage): detectFromMessage is registry-driven and only routes SI5_DET / SI8_DET; SI_REM uses the same params layout but bypasses the registry — the cardNumber is rebuilt with the modern-card branch ((hi<<8|lo) | (mid<<16) when mid > 4) inline.'
   - 'Lazy require(''serialport'') in SerialTransport: tests inject a Fake via the constructor''s second arg; the real serialport native module is only loaded when no Ctor is injected. CI never touches the native dep — verified by `grep -c "from ''serialport''" *.test.ts` returning 0.'
 
@@ -161,8 +161,8 @@ completed: 2026-05-12
 ```ts
 // Plan 05 (bin + NDJSON) consumes this surface:
 
-import { SerialTransport } from '@fartol/sportident/transport/SerialTransport.ts';
-import { SiMainStation } from '@fartol/sportident/SiStation/SiMainStation.ts';
+import { SerialTransport } from '@fartola/sportident/transport/SerialTransport.ts';
+import { SiMainStation } from '@fartola/sportident/SiStation/SiMainStation.ts';
 
 const transport = new SerialTransport({ path: '/dev/ttyUSB0', baudRate: 38400 });
 await transport.open();
@@ -189,7 +189,7 @@ await station.readCards(); // handshake + put station in Readout mode
 - **64KB receive-buffer cap** (GEMINI MEDIUM #1, T-00-14) — `_onData` checks size after every parse and emits `'buffer_overflow'` frameError + resets the buffer if exceeded.
 - **Two layers reject pending sends on close** (GEMINI MEDIUM #2 — zombie-process prevention) — both SerialTransport (port-close → reject in-flight `send()` promises) and SiTargetMultiplexer (transport-close → abort all `SiSendTask`s). Belt-and-braces because either layer could be the one to "see" the close first depending on the failure mode.
 - **Lazy `require('serialport')`** — the real native module is only loaded when no Ctor is injected. CI never touches it; tests run in seconds without `pnpm install --frozen-lockfile` needing to compile native bindings.
-- **Timer NOT unref'd on SiSendTask** — `bin/fartol-readout` is otherwise idle awaiting station replies, so unrefing would let Node exit before the timeout fires.
+- **Timer NOT unref'd on SiSendTask** — `bin/fartola-readout` is otherwise idle awaiting station replies, so unrefing would let Node exit before the timeout fires.
 - **SI_REM cardNumber decode inlined in SiMainStation** — `BaseSiCard.detectFromMessage` only routes SI5_DET / SI8_DET (Plan 03 codex review #4 invariant). SI_REM reuses the same params layout but bypasses the registry; the cardNumber rebuild uses the modern-card branch `((hi<<8)|lo) | (mid<<16)` when `mid > 4`.
 - **BaseSiStation simplified** — Phase 0 mutates known byte offsets directly (`STATION_CONFIG_OFFSETS.CODE / MODE / AUTOSEND / HANDSHAKE / BEEPS / FLASHES`) instead of porting upstream's storage-typed wrappers. `STATION_CONFIG_OFFSETS` exported so the station test can verify writes.
 
@@ -218,7 +218,7 @@ await station.readCards(); // handshake + put station in Readout mode
 **3. [Rule 1 - Bug] node:test runner hung when test 8 left a timeout timer**
 
 - **Found during:** Task 2 first full-suite run.
-- **Issue:** My initial `SiSendTask` constructor `unref()`d the timeout timer to "stay out of the event loop". But in production `bin/fartol-readout` is otherwise idle while awaiting station replies — unrefing the timer let the test runner exit before timeouts could fire, cancelling tests 8-10 with "Promise resolution is still pending but the event loop has already resolved".
+- **Issue:** My initial `SiSendTask` constructor `unref()`d the timeout timer to "stay out of the event loop". But in production `bin/fartola-readout` is otherwise idle while awaiting station replies — unrefing the timer let the test runner exit before timeouts could fire, cancelling tests 8-10 with "Promise resolution is still pending but the event loop has already resolved".
 - **Fix:** Removed the `.unref()` call. The timer now keeps the event loop alive until the response arrives or the timeout fires.
 - **Files modified:** `SiSendTask.ts`.
 - **Verification:** Test 8 (send-timeout) passes deterministically with 100ms timeout; tests 9 and 10 now run.
@@ -293,17 +293,17 @@ Verified by:
 
 ## Self-Check: PASSED
 
-- `/home/jonas/src/FartOL/packages/sportident/src/transport/errors.ts` — FOUND (21 LOC, 2 exported classes)
-- `/home/jonas/src/FartOL/packages/sportident/src/transport/ISerialTransport.ts` — FOUND (29 LOC)
-- `/home/jonas/src/FartOL/packages/sportident/src/transport/SerialTransport.ts` — FOUND (170 LOC, imports DeviceClosedError from `./errors.ts`, no inline class redefinition)
-- `/home/jonas/src/FartOL/packages/sportident/src/transport/SerialTransport.test.ts` — FOUND (232 LOC, 11 tests, zero `from 'serialport'` references)
-- `/home/jonas/src/FartOL/packages/sportident/src/SiStation/SiSendTask.ts` — FOUND (89 LOC, imports both error types from `../transport/errors.ts`)
-- `/home/jonas/src/FartOL/packages/sportident/src/SiStation/ISiStation.ts` — FOUND
-- `/home/jonas/src/FartOL/packages/sportident/src/SiStation/ISiMainStation.ts` — FOUND
-- `/home/jonas/src/FartOL/packages/sportident/src/SiStation/SiTargetMultiplexer.ts` — FOUND (194 LOC < 250 target, contains `proto.WAKEUP` + `onFrameError` + `REMOVED (Phase 0 Direct-only)` markers; no `console.warn`/`console.log`/`console.error`)
-- `/home/jonas/src/FartOL/packages/sportident/src/SiStation/BaseSiStation.ts` — FOUND (95 LOC)
-- `/home/jonas/src/FartOL/packages/sportident/src/SiStation/SiMainStation.ts` — FOUND (174 LOC, contains literal substrings `SET_MS` / `readInfo` / `writeDiff` / `BaseSiCard.detectFromMessage` / `cardInserted` / `cardRead` / `cardRemoved` / `frameError` / `connectionChanged`)
-- `/home/jonas/src/FartOL/packages/sportident/src/SiStation/SiMainStation.test.ts` — FOUND (553 LOC, 10 tests)
+- `/home/jonas/src/fartOLa/packages/sportident/src/transport/errors.ts` — FOUND (21 LOC, 2 exported classes)
+- `/home/jonas/src/fartOLa/packages/sportident/src/transport/ISerialTransport.ts` — FOUND (29 LOC)
+- `/home/jonas/src/fartOLa/packages/sportident/src/transport/SerialTransport.ts` — FOUND (170 LOC, imports DeviceClosedError from `./errors.ts`, no inline class redefinition)
+- `/home/jonas/src/fartOLa/packages/sportident/src/transport/SerialTransport.test.ts` — FOUND (232 LOC, 11 tests, zero `from 'serialport'` references)
+- `/home/jonas/src/fartOLa/packages/sportident/src/SiStation/SiSendTask.ts` — FOUND (89 LOC, imports both error types from `../transport/errors.ts`)
+- `/home/jonas/src/fartOLa/packages/sportident/src/SiStation/ISiStation.ts` — FOUND
+- `/home/jonas/src/fartOLa/packages/sportident/src/SiStation/ISiMainStation.ts` — FOUND
+- `/home/jonas/src/fartOLa/packages/sportident/src/SiStation/SiTargetMultiplexer.ts` — FOUND (194 LOC < 250 target, contains `proto.WAKEUP` + `onFrameError` + `REMOVED (Phase 0 Direct-only)` markers; no `console.warn`/`console.log`/`console.error`)
+- `/home/jonas/src/fartOLa/packages/sportident/src/SiStation/BaseSiStation.ts` — FOUND (95 LOC)
+- `/home/jonas/src/fartOLa/packages/sportident/src/SiStation/SiMainStation.ts` — FOUND (174 LOC, contains literal substrings `SET_MS` / `readInfo` / `writeDiff` / `BaseSiCard.detectFromMessage` / `cardInserted` / `cardRead` / `cardRemoved` / `frameError` / `connectionChanged`)
+- `/home/jonas/src/fartOLa/packages/sportident/src/SiStation/SiMainStation.test.ts` — FOUND (553 LOC, 10 tests)
 - Commit `24012f1` (Task 0) — FOUND in git log
 - Commit `265e50d` (Task 1) — FOUND in git log
 - Commit `a9a649a` (Task 2) — FOUND in git log

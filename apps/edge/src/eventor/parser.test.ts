@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for the Eventor cachedcompetitors + clubs XML parser
 // (Plan 02-01 task 2). Validates:

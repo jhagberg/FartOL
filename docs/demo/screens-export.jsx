@@ -178,7 +178,7 @@ function buildXmlSample(status, classCount, personCount) {
 <ResultList xmlns="http://www.orienteering.org/datastandard/3.0"
             iofVersion="3.0"
             createTime="${now}"
-            creator="FartOL v0.1.0-phase1"
+            creator="fartOLa v0.1.0-phase1"
             status="${status}">
   <Event>
     <Id>onsdag-v20</Id>

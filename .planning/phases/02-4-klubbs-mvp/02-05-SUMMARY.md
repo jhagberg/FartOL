@@ -277,7 +277,7 @@ None for plan-level acceptance.
 
 To exercise the live Hyrbricka flow on Wednesday's 4-klubbs bench:
 
-1. Boot the bridge with FARTOL_DEV=1 + an active competition.
+1. Boot the bridge with FARTOLA_DEV=1 + an active competition.
 2. Walk up to /competition/:id/readout, type a card number, fill the
    walkup modal with Hyrbricka checked + a phone number, Spara.
 3. The bridge can now produce a real card_read for that card
@@ -294,12 +294,12 @@ To exercise the live Hyrbricka flow on Wednesday's 4-klubbs bench:
 - **Plan 02-06 (parallel-meos-runbook)** unblocked — the Hyrbricka
   feature is the last D-HB-\* decision to land. The playbook can now
   document:
-  - "When a runner doesn't return their rental card, FartOL shows a
+  - "When a runner doesn't return their rental card, fartOLa shows a
     one-tap Returnerad button at finish-readout. If they walk out
     without scanning, /competition/:id/hyrbrickor lists every open
     rental with contact info — operator chases the stragglers there."
   - The D-LIM-1 known limitation (MOP `<cmp>` lacks hired flag, so
-    MeOS-side rentals during a FartOL outage won't auto-import on
+    MeOS-side rentals during a fartOLa outage won't auto-import on
     recovery) still applies — operator re-enters those manually in
     the walkup modal post-restart.
 
@@ -327,8 +327,8 @@ To exercise the live Hyrbricka flow on Wednesday's 4-klubbs bench:
 - [x] `packages/shared-types/src/index.ts` — UPDATED, barrel re-exports
 - [x] `tests/e2e/hyrbricka.spec.ts` — FOUND, passes 3 consecutive runs
 - [x] Commits: `8243591`, `33f4fe1`, `b83edcd`, `fd957b7`, `d795fa9`, `b0e45e4`, `7b4358b` — all FOUND in `git log`
-- [x] `pnpm --filter @fartol/edge test` — 368/368 pass
-- [x] `pnpm --filter @fartol/web test --run` — 78/78 pass
+- [x] `pnpm --filter @fartola/edge test` — 368/368 pass
+- [x] `pnpm --filter @fartola/web test --run` — 78/78 pass
 - [x] `pnpm exec playwright test tests/e2e/hyrbricka.spec.ts` — passes 3 consecutive runs
 - [x] `pnpm -r typecheck` — exits 0
 - [x] No --no-verify used

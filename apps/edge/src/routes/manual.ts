@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // REST routes for the operator-attested DNF override flow:
 //
@@ -49,7 +49,7 @@
 import type { FastifyInstance } from 'fastify';
 import { and, eq } from 'drizzle-orm';
 
-import { ManualDnfInput, ManualStatusInput, readoutChannel } from '@fartol/shared-types';
+import { ManualDnfInput, ManualStatusInput, readoutChannel } from '@fartola/shared-types';
 import { competitors as competitorsTable } from '../db/schema.ts';
 import { insertEvent } from '../si/eventInserter.ts';
 import { issuesToErrors } from './_zod-errors.ts';
@@ -63,7 +63,7 @@ export default async function registerManualRoutes(app: FastifyInstance): Promis
       if (!parsed.success) {
         return reply.code(400).send(issuesToErrors(parsed.error.issues));
       }
-      const competitor = app.fartolDb.db
+      const competitor = app.fartolaDb.db
         .select({ id: competitorsTable.id })
         .from(competitorsTable)
         .where(
@@ -76,8 +76,8 @@ export default async function registerManualRoutes(app: FastifyInstance): Promis
       if (!competitor) return reply.code(404).send({ error: 'competitor_not_found' });
 
       const r = insertEvent(
-        app.fartolDb,
-        app.fartolNodeId,
+        app.fartolaDb,
+        app.fartolaNodeId,
         'manual_dnf',
         Date.now(),
         { event_type: 'manual_dnf', competitor_id: competitorId, reason: parsed.data.reason },
@@ -97,7 +97,7 @@ export default async function registerManualRoutes(app: FastifyInstance): Promis
     '/api/competitions/:id/competitors/:competitorId/un-dnf',
     async (req, reply) => {
       const { id: competitionId, competitorId } = req.params;
-      const competitor = app.fartolDb.db
+      const competitor = app.fartolaDb.db
         .select({ id: competitorsTable.id })
         .from(competitorsTable)
         .where(
@@ -110,8 +110,8 @@ export default async function registerManualRoutes(app: FastifyInstance): Promis
       if (!competitor) return reply.code(404).send({ error: 'competitor_not_found' });
 
       const r = insertEvent(
-        app.fartolDb,
-        app.fartolNodeId,
+        app.fartolaDb,
+        app.fartolaNodeId,
         'un_dnf',
         Date.now(),
         { event_type: 'un_dnf', competitor_id: competitorId },
@@ -151,7 +151,7 @@ export default async function registerManualRoutes(app: FastifyInstance): Promis
       if (!parsed.success) {
         return reply.code(400).send(issuesToErrors(parsed.error.issues));
       }
-      const competitor = app.fartolDb.db
+      const competitor = app.fartolaDb.db
         .select({ id: competitorsTable.id })
         .from(competitorsTable)
         .where(
@@ -164,8 +164,8 @@ export default async function registerManualRoutes(app: FastifyInstance): Promis
       if (!competitor) return reply.code(404).send({ error: 'competitor_not_found' });
 
       const r = insertEvent(
-        app.fartolDb,
-        app.fartolNodeId,
+        app.fartolaDb,
+        app.fartolaNodeId,
         'manual_status_set',
         Date.now(),
         {
@@ -194,7 +194,7 @@ export default async function registerManualRoutes(app: FastifyInstance): Promis
     '/api/competitions/:id/competitors/:competitorId/clear-status',
     async (req, reply) => {
       const { id: competitionId, competitorId } = req.params;
-      const competitor = app.fartolDb.db
+      const competitor = app.fartolaDb.db
         .select({ id: competitorsTable.id })
         .from(competitorsTable)
         .where(
@@ -207,8 +207,8 @@ export default async function registerManualRoutes(app: FastifyInstance): Promis
       if (!competitor) return reply.code(404).send({ error: 'competitor_not_found' });
 
       const r = insertEvent(
-        app.fartolDb,
-        app.fartolNodeId,
+        app.fartolaDb,
+        app.fartolaNodeId,
         'clear_manual_status',
         Date.now(),
         { event_type: 'clear_manual_status', competitor_id: competitorId },

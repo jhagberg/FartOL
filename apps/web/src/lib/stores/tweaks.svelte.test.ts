@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Unit tests for the operator-preferences runes store. Covers:
 //   1. The locked default snapshot (sv / med / forest / off / plex).
@@ -28,7 +28,7 @@ beforeEach(() => {
   resetTweaks();
 });
 
-describe('@fartol/web tweaks runes store', () => {
+describe('@fartola/web tweaks runes store', () => {
   it('defaults match the locked UI-SPEC values', () => {
     const d = defaultTweaks();
     expect(d).toEqual({
@@ -44,7 +44,7 @@ describe('@fartol/web tweaks runes store', () => {
     tweaks.locale = 'en';
     tweaks.accent = 'blue';
     persistTweaks();
-    const raw = localStorage.getItem('fartol.tweaks.v1');
+    const raw = localStorage.getItem('fartola.tweaks.v1');
     expect(raw).not.toBeNull();
     const parsed = JSON.parse(raw!);
     expect(parsed.locale).toBe('en');
@@ -53,7 +53,7 @@ describe('@fartol/web tweaks runes store', () => {
 
   it('loadTweaks() restores a persisted snapshot', () => {
     localStorage.setItem(
-      'fartol.tweaks.v1',
+      'fartola.tweaks.v1',
       JSON.stringify({
         locale: 'en',
         density: 'high',
@@ -71,7 +71,7 @@ describe('@fartol/web tweaks runes store', () => {
   });
 
   it('loadTweaks() falls back to defaults on garbage payload', () => {
-    localStorage.setItem('fartol.tweaks.v1', '{not json');
+    localStorage.setItem('fartola.tweaks.v1', '{not json');
     const restored = loadTweaks();
     expect(restored).toEqual(defaultTweaks());
   });

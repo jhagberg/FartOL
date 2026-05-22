@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   /competition/:id/import — kept as a deep-linkable URL so the existing
   wizard goto target + any external bookmarks survive the move. Forwards

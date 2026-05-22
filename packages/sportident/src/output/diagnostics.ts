@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 // One-line ISO-prefixed stderr diagnostic emitter for operator visibility.
 //
 // Stdout is reserved for pure NDJSON (D-13). Diagnostics (CRC failures,

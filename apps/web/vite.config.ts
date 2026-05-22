@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Vite config for the SvelteKit SPA. Two responsibilities:
 //   1. Dev-server proxy: /api/* → http://localhost:3000 (Fastify) and
@@ -16,21 +16,21 @@ import { defineConfig } from 'vite';
 
 // Edge API port — defaults to the production-tarball default (3000). The
 // Playwright config overrides this to 3001 so test runs never collide
-// with a manually-installed fartol on :3000 (the source of the E2E test-
+// with a manually-installed fartola on :3000 (the source of the E2E test-
 // data pollution we hit on 2026-05-18: reuseExistingServer made tests
 // silently piggyback on the prod instance).
-const FARTOL_EDGE_PORT = process.env['FARTOL_EDGE_PORT'] ?? '3000';
+const FARTOLA_EDGE_PORT = process.env['FARTOLA_EDGE_PORT'] ?? '3000';
 
 export default defineConfig({
   plugins: [sveltekit()],
   server: {
     proxy: {
       '/api': {
-        target: `http://localhost:${FARTOL_EDGE_PORT}`,
+        target: `http://localhost:${FARTOLA_EDGE_PORT}`,
         changeOrigin: true,
       },
       '/ws': {
-        target: `ws://localhost:${FARTOL_EDGE_PORT}`,
+        target: `ws://localhost:${FARTOLA_EDGE_PORT}`,
         ws: true,
       },
     },

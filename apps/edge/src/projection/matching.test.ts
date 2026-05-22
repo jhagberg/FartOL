@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for matchCardToCompetitor. The function is a one-line
 // linear scan; tests document the three contract scenarios

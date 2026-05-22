@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // "Skogis" — procedural collectible critter generator for the Kids receipt
 // template.
@@ -10,7 +10,7 @@
 // tests (skogis.test.ts), no source changes needed there.
 //
 // Consumers that need the type system entry point should prefer importing
-// directly from `@fartol/shared-types`; this re-export is retained only to
+// directly from `@fartola/shared-types`; this re-export is retained only to
 // keep plan-13's Kids.svelte + tests compiling.
 //
 // Locked by:
@@ -27,11 +27,11 @@ export {
   SKOGIS_PAPER,
   SKOGIS_PALETTES,
   SKOGIS_SPECIES,
-} from '@fartol/shared-types';
+} from '@fartola/shared-types';
 export type {
   SkogisInput,
   SkogisDescriptor,
   SkogisPalette,
   SkogisGeometry,
   SkogisStats,
-} from '@fartol/shared-types';
+} from '@fartola/shared-types';

@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Home route. Plan 12 retires the plan-03 walking-skeleton placeholder
   (the simulate-read button moves to the readout view in plan 13) and

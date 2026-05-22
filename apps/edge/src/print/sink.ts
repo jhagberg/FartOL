@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // PrinterSink interface — PATTERNS S-2 sink injection. Production passes
 // the real node-thermal-printer (ESC/POS) driver (plan 15); the walking
@@ -32,7 +32,7 @@
 // snake_case in the print payload — see stdout-sink.ts JSON keys.
 
 import type { CompetitorView, ResultView } from '../projection/types.ts';
-import type { SkogisStats } from '@fartol/shared-types';
+import type { SkogisStats } from '@fartola/shared-types';
 
 export type ReceiptTemplate = 'classic' | 'standing' | 'detailed' | 'top4' | 'minimal' | 'kids';
 

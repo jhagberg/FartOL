@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // REST handlers for the IOF XML 3.0 ResultList export surface:
 //
@@ -43,7 +43,7 @@ import { eq } from 'drizzle-orm';
 
 import { competitions, classes as classesTable } from '../db/schema.ts';
 import { validateAndBuild, type ExportStatus, type ExportInput } from '../xml/iofExport.ts';
-import type { CompetitionDTO, ClassDTO } from '@fartol/shared-types';
+import type { CompetitionDTO, ClassDTO } from '@fartola/shared-types';
 
 function parseStatus(raw: unknown): ExportStatus {
   // C-L1: default to 'Final' when absent / unknown. The query layer is
@@ -114,7 +114,7 @@ export default async function registerExportRoutes(app: FastifyInstance): Promis
       const { id } = req.params;
       const status = parseStatus(req.query.status);
 
-      const compRow = app.fartolDb.db
+      const compRow = app.fartolaDb.db
         .select()
         .from(competitions)
         .where(eq(competitions.id, id))
@@ -124,7 +124,7 @@ export default async function registerExportRoutes(app: FastifyInstance): Promis
         return;
       }
 
-      const classRows = app.fartolDb.db
+      const classRows = app.fartolaDb.db
         .select()
         .from(classesTable)
         .where(eq(classesTable.competitionId, id))
@@ -167,7 +167,7 @@ export default async function registerExportRoutes(app: FastifyInstance): Promis
         return reply.code(400).send({ error: 'unsupported_format' });
       }
 
-      const compRow = app.fartolDb.db
+      const compRow = app.fartolaDb.db
         .select()
         .from(competitions)
         .where(eq(competitions.id, id))
@@ -176,7 +176,7 @@ export default async function registerExportRoutes(app: FastifyInstance): Promis
         return reply.code(404).send({ error: 'competition_not_found' });
       }
 
-      const classRows = app.fartolDb.db
+      const classRows = app.fartolaDb.db
         .select()
         .from(classesTable)
         .where(eq(classesTable.competitionId, id))

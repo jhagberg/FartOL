@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Phase 0.2 — continuous-readout trainer for bench rehearsal before Phase 1.
-// Reuses the fartol-readout pipeline (SerialTransport + SiMainStation +
+// Reuses the fartola-readout pipeline (SerialTransport + SiMainStation +
 // NdjsonEmitter) but adds two event-flow behaviours the readout bin doesn't
 // have:
 //
@@ -38,13 +38,13 @@ export interface TrainerOpts {
 
 const DEFAULT_COURSE = [136, 110] as const;
 
-const HELP = `fartol-trainer: continuous-readout with course validation.
+const HELP = `fartola-trainer: continuous-readout with course validation.
 
 Usage:
-  fartol-trainer [options]
+  fartola-trainer [options]
 
 Options:
-  --device <path>          Serial device (overrides $FARTOL_DEVICE, default /dev/ttyUSB0)
+  --device <path>          Serial device (overrides $FARTOLA_DEVICE, default /dev/ttyUSB0)
   --course <codes>         Comma-separated control codes in order (default: ${DEFAULT_COURSE.join(',')})
   --bell                   Ring the terminal bell on MP (helpful when running blind)
   --require-start          Require a start punch on the card (open classes / kids).
@@ -65,7 +65,7 @@ fine. Missing a code, or punching them out of order, is MP.
 
 export const parseTrainerArgs = (argv: string[]): TrainerOpts => {
   const opts: TrainerOpts = {
-    device: process.env.FARTOL_DEVICE ?? '/dev/ttyUSB0',
+    device: process.env.FARTOLA_DEVICE ?? '/dev/ttyUSB0',
     course: [...DEFAULT_COURSE],
     bell: false,
     requireStart: false,
@@ -222,7 +222,7 @@ const main = async (): Promise<void> => {
 
   const courseStr = opts.course.join(' → ');
   process.stderr.write(
-    `${dim(`fartol-trainer  course: ${courseStr}  device: ${opts.device}  (Ctrl-C to quit)`)}\n\n`
+    `${dim(`fartola-trainer  course: ${courseStr}  device: ${opts.device}  (Ctrl-C to quit)`)}\n\n`
   );
 
   station.on('cardInserted', (card: BaseSiCard) => {
@@ -306,7 +306,7 @@ if (isEntrypoint)
     const message = err instanceof Error ? err.message : String(err);
     try {
       const emitter = new NdjsonEmitter({
-        device_path: process.env.FARTOL_DEVICE ?? '/dev/ttyUSB0',
+        device_path: process.env.FARTOLA_DEVICE ?? '/dev/ttyUSB0',
       });
       emitter.connection_changed({ state: 'error', error: message });
     } catch {

@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Operator settings — integration API key management surface.
 //
@@ -16,7 +16,7 @@
 //     config writes via this REST surface).
 //
 // Boot precedence (Plan 02-07 task 2 — apps/edge/src/config/secrets.ts):
-//   process.env.X (CLI / ~/.env.fartol) > config table > absent.
+//   process.env.X (CLI / ~/.env.fartola) > config table > absent.
 // process.env wins so headless / CI installs keep working unchanged.
 //
 // Logging: PUT bodies contain plaintext secrets. The pino logger
@@ -61,7 +61,7 @@ export interface IntegrationStatus {
  * pattern into apps/edge/src/config/secrets.ts for the boot.ts /
  * eventor.ts callers. */
 function readConfigRow(app: FastifyInstance, key: string): string | null {
-  const row = app.fartolDb.db
+  const row = app.fartolaDb.db
     .select({ value: configTable.value })
     .from(configTable)
     .where(eq(configTable.key, key))
@@ -130,9 +130,9 @@ export default async function registerSettingsRoutes(app: FastifyInstance): Prom
       // Empty string = delete the row. Operator clears the field +
       // Spara to revoke the UI-set key (env-set keys still apply via
       // the boot precedence; the UI surfaces a banner explaining that).
-      app.fartolDb.db.delete(configTable).where(eq(configTable.key, key)).run();
+      app.fartolaDb.db.delete(configTable).where(eq(configTable.key, key)).run();
     } else {
-      app.fartolDb.db
+      app.fartolaDb.db
         .insert(configTable)
         .values({ key, value })
         .onConflictDoUpdate({ target: configTable.key, set: { value } })

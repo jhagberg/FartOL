@@ -1,9 +1,9 @@
 {
-  "name": "fartol",
+  "name": "fartola",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "FartOL — orienteering competition system (workspace root)",
+  "description": "fartOLa — orienteering competition system (workspace root)",
   "license": "AGPL-3.0-or-later",
   "packageManager": "pnpm@10.30.3",
   "engines": {
@@ -19,9 +19,9 @@
     "format": "prettier --write '**/*.{ts,js,cjs,mjs,md,yml,yaml,json}'",
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "pnpm -r --if-present run test",
-    "test:quick": "pnpm --filter @fartol/edge test && pnpm --filter @fartol/shared-types test && pnpm --filter @fartol/web test",
+    "test:quick": "pnpm --filter @fartola/edge test && pnpm --filter @fartola/shared-types test && pnpm --filter @fartola/web test",
     "e2e": "playwright test",
-    "build:fartol": "bash scripts/build-fartol.sh",
+    "build:fartola": "bash scripts/build-fartola.sh",
     "test:install": "node --test --test-reporter=spec --import tsx tests/install/install-smoke.test.ts",
     "prepare": "lefthook install"
   },

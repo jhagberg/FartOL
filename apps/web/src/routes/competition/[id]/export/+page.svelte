@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   /competition/:id/export — thin shell. Forwards $page.params.id to
   ExportView, which owns all REST + download wiring (UI-SPEC §"Export

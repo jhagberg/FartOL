@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Free-text name input backed by a <datalist> populated from
   /api/eventor/lookup?prefix=. Used by WalkupModal as the name-field
@@ -22,7 +22,7 @@
 -->
 <script lang="ts">
   import { lookupEventorByPrefix } from '$lib/api/client.ts';
-  import type { EventorNameSuggestion } from '@fartol/shared-types';
+  import type { EventorNameSuggestion } from '@fartola/shared-types';
 
   interface Props {
     value: string;

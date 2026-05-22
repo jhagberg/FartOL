@@ -1,7 +1,7 @@
 // Swedish-first, English secondary. Every string is a key.
 window.STRINGS = {
   sv: {
-    'app.title': 'FartOL',
+    'app.title': 'fartOLa',
     'app.subtitle': 'Tävlingsavläsning',
     'nav.competitions': 'Tävlingar',
     'nav.readout': 'Avläsning',
@@ -80,15 +80,18 @@ window.STRINGS = {
     'ro.dnfReason': 'Orsak till brytning',
     'ro.dnfReasonPh': 'T.ex. skada, fel bana, hoppade av',
     'ro.pending.title': 'Okända brickor — väntar',
-    'ro.pending.desc': 'Brickor som lästs men inte matchats mot startlistan. Registrera deltagaren för att fortsätta.',
+    'ro.pending.desc':
+      'Brickor som lästs men inte matchats mot startlistan. Registrera deltagaren för att fortsätta.',
 
     'consent.title': 'Bekräfta samtycke',
-    'consent.body': '{name} ({className}) finns i startlistan men har inte bekräftat samtycke ännu. Bekräfta att deltagaren har lämnat samtycke?',
+    'consent.body':
+      '{name} ({className}) finns i startlistan men har inte bekräftat samtycke ännu. Bekräfta att deltagaren har lämnat samtycke?',
     'consent.confirm': 'Bekräfta',
     'consent.dismiss': 'Avfärda',
 
     'exp.title': 'Export — IOF XML 3.0 ResultList',
-    'exp.subtitle': 'Validera projektionen mot IOF.xsd och ladda ner resultatlistan som ett standardiserat XML-dokument.',
+    'exp.subtitle':
+      'Validera projektionen mot IOF.xsd och ladda ner resultatlistan som ett standardiserat XML-dokument.',
     'exp.type': 'Exporttyp',
     'exp.final': 'Slutgiltig (Final)',
     'exp.provisional': 'Provisorisk (Provisional)',
@@ -100,7 +103,8 @@ window.STRINGS = {
     'exp.download.section': 'Nedladdning',
     'exp.download': '↓ Hämta ResultList.xml',
     'exp.preview': 'Förhandsgranska XML',
-    'exp.note': 'IOF XML 3.0 är det internationella standardformatet som krävs av SOFT och IOF för sanktionerade tävlingar.',
+    'exp.note':
+      'IOF XML 3.0 är det internationella standardformatet som krävs av SOFT och IOF för sanktionerade tävlingar.',
 
     'res.title': 'Liveresultat',
     'res.all': 'Alla',
@@ -181,7 +185,7 @@ window.STRINGS = {
     'tw.font': 'Typsnitt',
   },
   en: {
-    'app.title': 'FartOL',
+    'app.title': 'fartOLa',
     'app.subtitle': 'Competition readout',
     'nav.competitions': 'Competitions',
     'nav.readout': 'Readout',
@@ -260,15 +264,18 @@ window.STRINGS = {
     'ro.dnfReason': 'Reason for DNF',
     'ro.dnfReasonPh': 'e.g. injury, wrong course, withdrew',
     'ro.pending.title': 'Unknown cards — pending',
-    'ro.pending.desc': 'Cards read but not matched against the start list. Register a competitor to continue.',
+    'ro.pending.desc':
+      'Cards read but not matched against the start list. Register a competitor to continue.',
 
     'consent.title': 'Confirm consent',
-    'consent.body': '{name} ({className}) is on the start list but has not confirmed consent yet. Confirm consent was obtained?',
+    'consent.body':
+      '{name} ({className}) is on the start list but has not confirmed consent yet. Confirm consent was obtained?',
     'consent.confirm': 'Confirm',
     'consent.dismiss': 'Dismiss',
 
     'exp.title': 'Export — IOF XML 3.0 ResultList',
-    'exp.subtitle': 'Validate the projection against IOF.xsd and download the result list as a standardised XML document.',
+    'exp.subtitle':
+      'Validate the projection against IOF.xsd and download the result list as a standardised XML document.',
     'exp.type': 'Export type',
     'exp.final': 'Final',
     'exp.provisional': 'Provisional',
@@ -280,7 +287,8 @@ window.STRINGS = {
     'exp.download.section': 'Download',
     'exp.download': '↓ Download ResultList.xml',
     'exp.preview': 'Preview XML',
-    'exp.note': 'IOF XML 3.0 is the international standard required by SOFT and IOF for sanctioned competitions.',
+    'exp.note':
+      'IOF XML 3.0 is the international standard required by SOFT and IOF for sanctioned competitions.',
 
     'res.title': 'Live results',
     'res.all': 'All',
@@ -362,7 +370,7 @@ window.STRINGS = {
   },
 };
 
-window.useT = function(locale) {
+window.useT = function (locale) {
   const dict = window.STRINGS[locale] || window.STRINGS.sv;
   return (key) => dict[key] ?? key;
 };

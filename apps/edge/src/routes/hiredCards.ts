@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // REST surface for the Plan 02-05 Hyrbricka (hired card) return UX:
 //
@@ -45,7 +45,7 @@ import { and, desc, eq, isNotNull, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { hiredCards } from '../db/schema.ts';
-import { readoutChannel } from '@fartol/shared-types';
+import { readoutChannel } from '@fartola/shared-types';
 import { issuesToErrors } from './_zod-errors.ts';
 
 const ListParams = z.object({
@@ -103,14 +103,14 @@ export default async function registerHiredCardsRoutes(app: FastifyInstance): Pr
     // than one SELECT + an in-memory partition on a hot competition
     // (the row count is bounded by the rental fleet — tens of rows in
     // typical 4-klubbs scale).
-    const openRows = app.fartolDb.db
+    const openRows = app.fartolaDb.db
       .select()
       .from(hiredCards)
       .where(and(eq(hiredCards.competitionId, id), isNull(hiredCards.returnedAtMs)))
       .orderBy(desc(hiredCards.markedAtMs))
       .all();
 
-    const returnedRows = app.fartolDb.db
+    const returnedRows = app.fartolaDb.db
       .select()
       .from(hiredCards)
       .where(and(eq(hiredCards.competitionId, id), isNotNull(hiredCards.returnedAtMs)))
@@ -136,7 +136,7 @@ export default async function registerHiredCardsRoutes(app: FastifyInstance): Pr
       // Pre-flight SELECT (PATTERNS S-5). Scoped to (competition_id,
       // card_number) — a card from another competition is a 404 by
       // composite-PK design.
-      const row = app.fartolDb.db
+      const row = app.fartolaDb.db
         .select()
         .from(hiredCards)
         .where(and(eq(hiredCards.competitionId, id), eq(hiredCards.cardNumber, cardNumber)))
@@ -171,8 +171,8 @@ export default async function registerHiredCardsRoutes(app: FastifyInstance): Pr
       // capture-then-act).
       const now = Date.now();
       let changes = 0;
-      app.fartolDb.sqlite.transaction(() => {
-        const result = app.fartolDb.db
+      app.fartolaDb.sqlite.transaction(() => {
+        const result = app.fartolaDb.db
           .update(hiredCards)
           .set({ returnedAtMs: now })
           .where(

@@ -40,7 +40,7 @@ affects: [01-08, 01-09, 01-10, 01-11, 01-12, 01-14, 01-16]
 tech-stack:
   added: [] # No new package deps — projection is pure TS over existing types
   patterns:
-    - 'PATTERNS S-1: file-header preamble in every new .ts citing 01-07-PLAN.md + relevant codex finding (C-H2) + the source-of-truth line range in @fartol/sportident (ndjson.ts lines 84-98 for CardReadEvent shape)'
+    - 'PATTERNS S-1: file-header preamble in every new .ts citing 01-07-PLAN.md + relevant codex finding (C-H2) + the source-of-truth line range in @fartola/sportident (ndjson.ts lines 84-98 for CardReadEvent shape)'
     - 'PATTERNS S-2: pure-function reducer accepts all inputs as parameters — no DB handle, no Fastify instance, no broadcast hook. Tests construct Event arrays inline; no in-memory SQLite required for projection tests.'
     - 'PATTERNS S-6: snake_case JSON boundary preserved through the reducer — CompetitionState + CompetitorView + ResultView fields are snake_case so plan 08 WS broadcast and plan 16 IOF export consume them directly without re-mapping.'
     - 'C-H2 (locked, dual-gate): payload.start / payload.finish read directly from CardReadEvent top-level fields. The revision-1 punch-code constants (START_CODES / FINISH_CODES / CHECK_CODES) are NOT present anywhere in the projection codebase — verified by grep returning zero matches across apps/edge/src/projection/. The only remaining mentions of those identifiers are in dnfMp.ts header comments explaining why they were removed.'
@@ -184,18 +184,18 @@ None — plan 07 is entirely additive over plans 02, 04, 06.
 
 ## Issues Encountered
 
-- **Cold worktree required pnpm install + sportident build before typecheck would resolve `@fartol/sportident`.** Same friction every plan has seen since plan 01 — documented in plans 01, 02, 06 summaries. A Phase 2 follow-up (source-fallback export in `packages/sportident/package.json`) would remove the interleaved-build need.
+- **Cold worktree required pnpm install + sportident build before typecheck would resolve `@fartola/sportident`.** Same friction every plan has seen since plan 01 — documented in plans 01, 02, 06 summaries. A Phase 2 follow-up (source-fallback export in `packages/sportident/package.json`) would remove the interleaved-build need.
 - **Plan-spec algorithm for out-of-order detection had the bug described in Deviation #1.** This is a pre-existing plan-spec issue (codex's C-H2 review didn't catch it; the test scenarios themselves contradicted the algorithm). Fixing inline was Rule 1; the plan can be amended retroactively if desired but the fix is documented here and in the commit.
 
 ## User Setup Required
 
-None. The reducer is pure TypeScript — no env vars, no external services, no DB pre-create. All tests run cold via `pnpm --filter @fartol/edge test`.
+None. The reducer is pure TypeScript — no env vars, no external services, no DB pre-create. All tests run cold via `pnpm --filter @fartola/edge test`.
 
 ## Next Phase Readiness
 
 - **Plan 08 (WS results channel + projection store)** ready: `import { reduce, type CompetitionState } from '../projection/index.ts'` is the canonical surface. The plan-08 store wraps `reduce()` with a DB-query for events + competitors + classes + courses, broadcasts the resulting state via `wsBroadcast(resultsChannel(competitionId), ...)`, and snapshots+memoizes on incremental events.
 - **Plan 09 / 10 (REST GETs for results / readout view live behavior)** ready: the same CompetitionState shape feeds both REST `/api/competitions/:id/results` and the WS `results:<id>` channel. Snake_case fields ready for the wire.
-- **Plan 11 (full UI + AppShell)** ready: `apps/web` consumes the projection types via plan 08's `@fartol/shared-types` re-export.
+- **Plan 11 (full UI + AppShell)** ready: `apps/web` consumes the projection types via plan 08's `@fartola/shared-types` re-export.
 - **Plan 14 (walk-up modal)** ready: `pending_unknown_cards` drives the modal trigger; `card_bound` events dismiss it. Verified by reduce.test.ts test 3.
 - **Plan 16 (IOF XML 3.0 export)** ready: CompetitorView's `latest_start` + `latest_finish` + `elapsed_time_ms` + `card_read_history` give the IOF `<PersonResult>` projection everything it needs without re-walking the event log. Verified by reduce.test.ts test 13.
 
@@ -234,9 +234,9 @@ Per the plan's `<output>` section, the items it asked the executor to record:
 
 **Behavior verified live:**
 
-- `pnpm --filter @fartol/edge typecheck`: clean.
-- `pnpm --filter @fartol/edge lint`: clean (ESLint: No issues found).
-- `pnpm --filter @fartol/edge test`: 170 / 170 pass (was 132 baseline → +38 new tests for plan 07).
+- `pnpm --filter @fartola/edge typecheck`: clean.
+- `pnpm --filter @fartola/edge lint`: clean (ESLint: No issues found).
+- `pnpm --filter @fartola/edge test`: 170 / 170 pass (was 132 baseline → +38 new tests for plan 07).
 - `grep -rE "from 'drizzle-orm'|from 'better-sqlite3'|from 'fastify'|from 'node:fs'|from 'node:http'" apps/edge/src/projection/`: zero matches — the reducer is import-only, no IO.
 - `grep -rE 'START_CODES|FINISH_CODES|CHECK_CODES' apps/edge/src/projection/`: only 2 matches, both in dnfMp.ts HEADER COMMENT documenting the removal (no code-path reference).
 - 1000-event reduce runtime: ~10ms (idempotent.test.ts test 3 timing).

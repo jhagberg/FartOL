@@ -1,4 +1,4 @@
-# PROJECT — fartol (working name)
+# PROJECT — fartola (working name)
 
 ## Vision
 

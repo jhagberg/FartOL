@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for scheduleEventorBoot (Plan 02-01 task 4).
 // Validates the five behaviors that wire D-EV-1 / D-EV-2 / D-EV-3:

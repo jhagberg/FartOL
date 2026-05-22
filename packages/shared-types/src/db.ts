@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Plain DTO interfaces describing the REST/WS wire shape (snake_case) for
 // the subset of plan 02 schema tables that do NOT yet have a Zod schema in

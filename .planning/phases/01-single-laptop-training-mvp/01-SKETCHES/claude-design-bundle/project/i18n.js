@@ -1,7 +1,7 @@
 // Swedish-first, English secondary. Every string is a key.
 window.STRINGS = {
   sv: {
-    'app.title': 'FartOL',
+    'app.title': 'fartOLa',
     'app.subtitle': 'Tävlingsavläsning',
     'nav.competitions': 'Tävlingar',
     'nav.readout': 'Avläsning',
@@ -148,7 +148,7 @@ window.STRINGS = {
     'tw.font': 'Typsnitt',
   },
   en: {
-    'app.title': 'FartOL',
+    'app.title': 'fartOLa',
     'app.subtitle': 'Competition readout',
     'nav.competitions': 'Competitions',
     'nav.readout': 'Readout',
@@ -296,7 +296,7 @@ window.STRINGS = {
   },
 };
 
-window.useT = function(locale) {
+window.useT = function (locale) {
   const dict = window.STRINGS[locale] || window.STRINGS.sv;
   return (key) => dict[key] ?? key;
 };

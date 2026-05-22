@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   ImportRunnersView — the "where do I add runners?" surface.
 
@@ -17,7 +17,7 @@
   doesn't have to learn two flows.
 
   UI shape: date picker → event list → import. We skip the parallel
-  Eventor club + class fetches because FartOL already pulls clubs as
+  Eventor club + class fetches because fartOLa already pulls clubs as
   part of the cachedcompetitors boot job and classes come from the
   CourseData import (no separate Eventor fetch needed).
 -->

@@ -1,4 +1,4 @@
-// Authored for fartol. End-to-end fixture-replay test for Plan 00-05 Task 2.
+// Authored for fartola. End-to-end fixture-replay test for Plan 00-05 Task 2.
 //
 // Closes the loop: synthetic bytes IN -> SiMainStation pipeline (multiplexer,
 // transport, station, BaseSiCard registry) -> NDJSON line OUT. Zero hardware
@@ -147,7 +147,7 @@ describe('e2e: fixture-replay through SiMainStation -> NDJSON', () => {
     });
 
     // Wire all five SiMainStation events to NdjsonEmitter — the same call
-    // graph bin/fartol-readout.ts uses in production.
+    // graph bin/fartola-readout.ts uses in production.
     station.on('connectionChanged', (state: 'opening' | 'open' | 'closed' | 'error') =>
       emitter.connection_changed({ state })
     );

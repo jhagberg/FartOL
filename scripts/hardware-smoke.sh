@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Plan 00-06 Task 2: Hardware smoke for the @fartol/sportident readout bin.
+# Plan 00-06 Task 2: Hardware smoke for the @fartola/sportident readout bin.
 #
 # Operator-driven: prompts you to insert each card type (SI5, SI9, SI10, SIAC)
-# IN TURN, runs `fartol-readout --record <basename> --once` SEPARATELY per
+# IN TURN, runs `fartola-readout --record <basename> --once` SEPARATELY per
 # card type (codex review #8 — produces 4 distinct fixture pairs natively, no
 # post-hoc splitting), and asserts per-card NDJSON events via `node -e` JSON
 # parsing (codex review LOW — no grep on key-order).
@@ -17,7 +17,7 @@
 #     and log out/in.
 #   - Node 22.18+ (TS-stripping support).
 #   - pnpm available.
-#   - The fartol-readout dist bundle must exist (run `pnpm -F @fartol/sportident
+#   - The fartola-readout dist bundle must exist (run `pnpm -F @fartola/sportident
 #     exec tsup` if missing).
 #
 # NEVER edit hard-coded `/home/jonas` paths; everything is relative to the
@@ -31,13 +31,13 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 FIXTURE_DIR="packages/sportident/tests/fixtures/jonas"
-DIST_BIN="packages/sportident/dist/bin/fartol-readout.cjs"
+DIST_BIN="packages/sportident/dist/bin/fartola-readout.cjs"
 
 # ---------------------------------------------------------------------------
 # 1. Preflight
 # ---------------------------------------------------------------------------
 
-echo "=== fartol hardware-smoke preflight ==="
+echo "=== fartola hardware-smoke preflight ==="
 echo "repo root: $REPO_ROOT"
 
 # 1a. /dev/ttyUSB0
@@ -81,7 +81,7 @@ echo "OK: pnpm $(pnpm --version)"
 # 1e. dist bin built
 if [[ ! -f "$DIST_BIN" ]]; then
   echo "Building dist bundle (missing $DIST_BIN)..."
-  pnpm --filter @fartol/sportident exec tsup --silent
+  pnpm --filter @fartola/sportident exec tsup --silent
 fi
 test -f "$DIST_BIN"
 echo "OK: $DIST_BIN exists"
@@ -108,7 +108,7 @@ for card_type in si5 si9 si10 siac; do
   echo "Press Enter to start the --record --once capture (Ctrl-C to abort)."
   read -r
 
-  # --once causes fartol-readout to exit cleanly after a single cardRead.
+  # --once causes fartola-readout to exit cleanly after a single cardRead.
   # --record writes the directional transcript + expected.json fixture pair.
   # --include-raw-pages threads the flag through; Phase 0 currently omits the
   # raw_pages_b64 field but the flag is in place for forward compatibility.

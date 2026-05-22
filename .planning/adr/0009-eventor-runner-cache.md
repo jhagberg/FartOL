@@ -87,7 +87,7 @@ The implementation pattern (locked by Plan 02-01 task 1-3):
   missing key, a network failure, or an ingest failure each degrade
   to a logged warning — the bridge keeps the prior cache and the
   Phase 1 `cardHolderHint` fallback covers walk-up.
-- `POST /api/__admin/eventor/refresh` (FARTOL_DEV gated) lets the
+- `POST /api/__admin/eventor/refresh` (FARTOLA_DEV gated) lets the
   operator force a refresh from the admin UI (Plan 02 will add the
   button).
 

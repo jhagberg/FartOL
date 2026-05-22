@@ -1,6 +1,6 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
-// node:test integration tests for the @fartol/edge Fastify factory.
+// node:test integration tests for the @fartola/edge Fastify factory.
 // Uses app.inject() for HTTP routing assertions (no port consumed) and
 // reaches directly into parseArgs for the T-WS-FAN-OUT mitigation gate
 // — the bin's main() lifecycle stays guarded by isEntrypoint so this
@@ -10,7 +10,7 @@ import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { buildServer } from './server.ts';
-import { parseArgs } from './bin/fartol.ts';
+import { parseArgs } from './bin/fartola.ts';
 
 describe('apps/edge buildServer', () => {
   test('GET /api/health returns 200 with HealthDTO shape', async () => {
@@ -45,7 +45,7 @@ describe('apps/edge bin parseArgs (T-WS-FAN-OUT gate)', () => {
     const opts = parseArgs([]);
     assert.equal(opts.bindHost, '127.0.0.1');
     assert.equal(opts.port, 3000);
-    assert.equal(opts.dbPath, './fartol.db');
+    assert.equal(opts.dbPath, './fartola.db');
     assert.equal(opts.allowLan, false);
   });
 

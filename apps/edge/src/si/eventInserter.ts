@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // `insertEvent(handle, nodeId, eventType, eventTimeMs, payload, competitionId)`
 // — the SINGLE insertion path into the events table for Phase 1. Both the SI

@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   /competition/:id/results — thin shell. Forwards $page.params.id to
   ResultsView, which owns all WS + REST wiring (UI-SPEC §"Live results

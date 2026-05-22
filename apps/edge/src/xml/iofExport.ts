@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // IOF XML 3.0 ResultList exporter. Reads the projection-store snapshot
 // (CompetitionState from plan 07's reduce()) and emits a conservative
@@ -48,7 +48,7 @@
 import { XMLBuilder } from 'fast-xml-parser';
 import { validateXml, type XsdError } from './validate.ts';
 import type { CompetitionState, CompetitorView } from '../projection/types.ts';
-import type { CompetitionDTO, ClassDTO, CourseDTO } from '@fartol/shared-types';
+import type { CompetitionDTO, ClassDTO, CourseDTO } from '@fartola/shared-types';
 
 // ---------------------------------------------------------------------------
 // Public types.
@@ -64,7 +64,7 @@ export interface ExportInput {
   courses: CourseDTO[];
   state: CompetitionState;
   status?: ExportStatus;
-  /** Creator attribute on the root element. Defaults to `FartOL v0.1`. Tests
+  /** Creator attribute on the root element. Defaults to `fartOLa v0.1`. Tests
    * inject a deterministic value so the frozen fixture is byte-stable. */
   creator?: string;
   /** Override `Date.now()` for deterministic createTime. Tests pin this so
@@ -102,7 +102,7 @@ export function splitName(full: string): { family: string; given: string } {
   return { family: trimmed.slice(idx + 1).trim(), given: trimmed.slice(0, idx).trim() };
 }
 
-/** All IOF v3 ResultStatus values fartol emits. The bundled IOF.xsd carries
+/** All IOF v3 ResultStatus values fartola emits. The bundled IOF.xsd carries
  * the full 14-value enum; we restrict to the subset our projection produces. */
 export type IofResultStatus =
   | 'OK'
@@ -248,7 +248,7 @@ function buildPersonResult(view: CompetitorView, place: number | null): PersonRe
  * to a browser or written to disk). */
 export function buildResultListXml(input: ExportInput): BuildResult {
   const status: ExportStatus = input.status ?? 'Final';
-  const creator = input.creator ?? 'FartOL v0.1';
+  const creator = input.creator ?? 'fartOLa v0.1';
   const now = input.now ?? (() => new Date());
   const xmlStatusAttr = resultListStatusFor(status);
 

@@ -30,6 +30,7 @@ in 2026 — what is missing is someone willing to build it for orienteering.
 ## 2. Existing systems — what is worth knowing
 
 ### MeOS (Melin Software, Sweden)
+
 - C++, Windows-only, **AGPL-3.0** (not GPL-3.0 — this matters: a derived
   network-accessible service must publish source).
 - Source: <https://github.com/melinsoftware/meos>
@@ -41,28 +42,34 @@ in 2026 — what is missing is someone willing to build it for orienteering.
   is a heavier license obligation than we want.
 
 ### OLA (Swedish Orienteering Federation)
+
 - Java, requires MySQL, used at major SOFT events.
 - User feedback (Eventor forum, 2024): UI is slow, MySQL setup is painful.
 
 ### SportSoftware OE12/OS12 (Krämer, Germany)
+
 - Commercial, Windows, international standard outside Scandinavia.
 - 40-page PDF manuals. Not relevant as a reference implementation.
 
 ### QuickEvent (Quick-Box, Czech Republic)
+
 - Qt-based, PostgreSQL, **GPL-2.0**. Production quality. Reference for clean
   C++/Qt orienteering data models. Source: <https://github.com/Quick-Event/quickbox>
 
 ### SI-Droid Event (Joja, Sweden)
+
 - Android-only, closed source. Already proves that mobile + USB OTG + thermal
   printer is a valid field setup. Our edge-bridge approach generalizes this.
 
 ### SPORTident Orienteering App
+
 - Official Android app. Reads via BSM7/8 over OTG, auto-assigns to course,
   QR receipts, IOF XML export. OCAD-first for course import.
 - We compete with this app in the mobile/training-event space, not just
   with MeOS in the secretariat space.
 
 ### Open source projects worth studying
+
 - **SportOrg / pysport** — comprehensive Python system for orienteering.
 - **ooresults** — browser-based, **AGPL-3.0**, reads SportIdent. Closest
   ideological neighbor. Worth studying carefully — possible collaboration
@@ -75,6 +82,7 @@ in 2026 — what is missing is someone willing to build it for orienteering.
   MeOS, OLA, OE12. Our system must speak ROC protocol.
 
 ### Standards we must support
+
 - **IOF XML 3.0** — start lists, results, courses. XSD at
   <https://github.com/international-orienteering-federation/datastandard-v3>.
 - **IOF XML 2.0.3** — legacy, still common.
@@ -87,18 +95,20 @@ in 2026 — what is missing is someone willing to build it for orienteering.
 ## 3. SportIdent ecosystem — facts
 
 ### Cards
-| Card | Memory | Cycle | Battery | Status |
-|---|---|---|---|---|
-| SI5 | 30+6 punches | 330 ms | passive | EOL, 12h clock |
-| SI6 / SI6* | 64 / 192 | 130 ms | passive | EOL |
-| SI8 | 30 | 115 ms | passive | active |
-| SI9 | 50 | 115 ms | passive | most common |
-| SI10 | 128 | 60 ms | passive | EOL, residual stock |
-| SI11 | 128 | 60 ms | built-in non-replaceable | EOL |
-| **SIAC (Air+)** | 128 + CLR/CHK/STA/FIN | 60 ms direct / 50 ms beacon | Li coin (3–4 yr, factory-replaced) | active |
-| pCard | 20 | 115 ms | passive | single-use |
+
+| Card            | Memory                | Cycle                       | Battery                            | Status              |
+| --------------- | --------------------- | --------------------------- | ---------------------------------- | ------------------- |
+| SI5             | 30+6 punches          | 330 ms                      | passive                            | EOL, 12h clock      |
+| SI6 / SI6\*     | 64 / 192              | 130 ms                      | passive                            | EOL                 |
+| SI8             | 30                    | 115 ms                      | passive                            | active              |
+| SI9             | 50                    | 115 ms                      | passive                            | most common         |
+| SI10            | 128                   | 60 ms                       | passive                            | EOL, residual stock |
+| SI11            | 128                   | 60 ms                       | built-in non-replaceable           | EOL                 |
+| **SIAC (Air+)** | 128 + CLR/CHK/STA/FIN | 60 ms direct / 50 ms beacon | Li coin (3–4 yr, factory-replaced) | active              |
+| pCard           | 20                    | 115 ms                      | passive                            | single-use          |
 
 ### Stations
+
 - BSF7/BSF8/BSF9 — same hardware, configured per mode via SYS_VAL `0x71`:
   `CLEAR=0x07, CHECK=0x0A, START=0x03, CONTROL=0x02, FINISH=0x04, READOUT=0x05`.
 - BSM7/BSM8-USB — readout station, USB. Uses **Silicon Labs CP2102** chip
@@ -111,16 +121,19 @@ in 2026 — what is missing is someone willing to build it for orienteering.
 - SI-GSM, LTE-Modem — direct cellular upload to SPORTident Center.
 
 ### IP ratings (corrected)
+
 - BSF8/BSF9, BS11 variants: **IP64** — rain-tolerant.
 - SI-Card 8/9/10: **IP67** — fully sealed.
 - BSM8-USB: **IP20** — indoor/sheltered only. **Critical:** readout
   must be planned under shelter even when forest stations run in rain.
 
 ### Internal time resolution
+
 - BSF8/9 internal clock: **1/256 s ≈ 3.9 ms**.
 - Drift: typically **under 1 s/week** per SPORTident own measurements.
 
 ### Protocol — the practical truth
+
 - **Official SDK exists but is request-only.** SPORTident publishes
   `Center REST API` openly at
   <https://docs.sportident.com/developers/center-rest-api>, and offers
@@ -134,9 +147,11 @@ in 2026 — what is missing is someone willing to build it for orienteering.
   - MeOS `SportIdent.cpp` — production-grade C++ reference.
 
 ### Frame format (extended protocol)
+
 ```
 [0xFF wakeup] 0x02 (STX) | CMD | LEN | DATA... | CRC16 | 0x03 (ETX)
 ```
+
 - CRC: CCITT polynomial `0x8005`.
 - Baudrate: **38 400** for USB; 4 800 only for legacy RS232.
 - Key commands:
@@ -152,17 +167,20 @@ in 2026 — what is missing is someone willing to build it for orienteering.
   - `0xA7` SRR ping
 
 ### Mode distinction
+
 - **Readout mode:** station has `handshake=1, autosend=0`. Host polls with
   `C_GET_SI*` for the relevant card type.
 - **Punch mode:** station has `handshake=0, autosend=1`. Station sends
   unsolicited `0xD3` frames when a card punches.
 
 ### SRR (Short Range Radio)
+
 - Band: **2.4 GHz** (license-free, FCC ID `2AIOJ-SRR`). Not 433/868 MHz.
 - Range: **6–8 m** typical, depends on placement.
 - Two channels (red/blue) — recommend two receivers for frequency diversity.
 
 ### SIAC Air+ beacon
+
 - Uses **low-frequency RFID**, same carrier as classical punch, amplified
   by BS11 antennas. Not BLE.
 - Modulation is not publicly reverse-engineered. **Get punches via SRR dongle
@@ -175,12 +193,12 @@ in 2026 — what is missing is someone willing to build it for orienteering.
 
 ## 4. Browser hardware access — what actually works in 2026
 
-| API | Chrome desktop | Chrome Android | Safari/Firefox | iOS |
-|---|---|---|---|---|
-| WebSerial | ✅ | ⚠️ (limited, USB OTG) | ❌ no plans | ❌ |
-| WebUSB | ✅ | ✅ | ❌ | ❌ |
-| Web Bluetooth | ✅ | ✅ | ❌ Firefox, ⚠️ Safari | ❌ |
-| Background Sync | ✅ | ✅ | ❌ | ❌ |
+| API             | Chrome desktop | Chrome Android        | Safari/Firefox        | iOS |
+| --------------- | -------------- | --------------------- | --------------------- | --- |
+| WebSerial       | ✅             | ⚠️ (limited, USB OTG) | ❌ no plans           | ❌  |
+| WebUSB          | ✅             | ✅                    | ❌                    | ❌  |
+| Web Bluetooth   | ✅             | ✅                    | ❌ Firefox, ⚠️ Safari | ❌  |
+| Background Sync | ✅             | ✅                    | ❌                    | ❌  |
 
 **Consequence:** browser-only hardware access is a demo strategy, not a
 production strategy. iOS is read-only client territory. Hardware-talking
@@ -196,16 +214,16 @@ architectural choice.
 
 ## 5. Networking in the forest
 
-| Tech | Range in dense forest | Bandwidth | Typical cost |
-|---|---|---|---|
-| SPORTident SRR 2.4 GHz | 6–8 m | punches only | ~2 500 SEK/station |
-| ROC (Pi + 4G + SI-master) | mobile coverage | ~kB/punch | 1 500–2 500 SEK |
-| SportidentTinymesh 169 MHz | 1.5 km/hop | punches only | ~1 500 SEK |
-| jSh.Radio 869 MHz | km mesh | punches only | ~2 000 SEK |
-| Meshtastic LoRa EU868 | 0.4–2.5 km | 10–250 B/s | 300–900 SEK |
-| WiFi mesh (UniFi U6) | 30–80 m | 50–500 Mbit/s | 1 500–4 000 SEK/AP |
-| 4G/5G router (Teltonika) | operator coverage | 50 Mbit/s – 1 Gbit/s | 2 500–7 000 SEK |
-| Starlink Mini | anywhere | 150 Mbit/s | 3 000 SEK + 480/mo |
+| Tech                       | Range in dense forest | Bandwidth            | Typical cost       |
+| -------------------------- | --------------------- | -------------------- | ------------------ |
+| SPORTident SRR 2.4 GHz     | 6–8 m                 | punches only         | ~2 500 SEK/station |
+| ROC (Pi + 4G + SI-master)  | mobile coverage       | ~kB/punch            | 1 500–2 500 SEK    |
+| SportidentTinymesh 169 MHz | 1.5 km/hop            | punches only         | ~1 500 SEK         |
+| jSh.Radio 869 MHz          | km mesh               | punches only         | ~2 000 SEK         |
+| Meshtastic LoRa EU868      | 0.4–2.5 km            | 10–250 B/s           | 300–900 SEK        |
+| WiFi mesh (UniFi U6)       | 30–80 m               | 50–500 Mbit/s        | 1 500–4 000 SEK/AP |
+| 4G/5G router (Teltonika)   | operator coverage     | 50 Mbit/s – 1 Gbit/s | 2 500–7 000 SEK    |
+| Starlink Mini              | anywhere              | 150 Mbit/s           | 3 000 SEK + 480/mo |
 
 **ROC is the Swedish de-facto standard** for radio controls. >2 600 units,
 3 M+ punches. Start here for radio-control integration.

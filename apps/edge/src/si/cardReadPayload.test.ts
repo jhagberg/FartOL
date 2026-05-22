@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for `buildCardReadPayload`. The helper builds the
 // events.payload column body from a Phase 0 BaseSiCard instance; codex
@@ -23,7 +23,7 @@
 //   4. null pass-through: a synthetic BaseSiCard with no finishTime yields
 //      payload.finish === null (proves DNF marking will work at plan 07).
 //   5. punches[] deep-equals NdjsonEmitter.card_read's punches[] (both paths
-//      pass through the same toHalfDayClock helper from @fartol/sportident).
+//      pass through the same toHalfDayClock helper from @fartola/sportident).
 //
 // Locked by:
 // - .planning/phases/01-single-laptop-training-mvp/01-06-PLAN.md task 1
@@ -36,8 +36,8 @@ import * as path from 'node:path';
 import * as url from 'node:url';
 import { EventEmitter } from 'node:events';
 
-import { SiMainStation, NdjsonEmitter, BaseSiCard } from '@fartol/sportident';
-import type { ISerialTransport } from '@fartol/sportident';
+import { SiMainStation, NdjsonEmitter, BaseSiCard } from '@fartola/sportident';
+import type { ISerialTransport } from '@fartola/sportident';
 
 import { buildCardReadPayload } from './cardReadPayload.ts';
 

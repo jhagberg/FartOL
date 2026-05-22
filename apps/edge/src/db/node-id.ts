@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node_id persistence helper. The bridge stores a per-install UUID in the
 // `config` table under key='node_id' on first boot; subsequent boots read

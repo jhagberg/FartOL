@@ -95,5 +95,5 @@ payload.status`. Same treatment for `/clear-status` when already
 - IOF XSD `OverTime` enumeration: `apps/edge/src/xml/IOF.xsd:2959`
 - Prior-art reference: MeOS `RunnerStatus::StatusMAX` (enum) +
   `oRunner.cpp:1245-1270` for the elapsed-vs-cap gate (read-only — see
-  [[reference_meos_source]]; the fartol implementation is re-authored
+  [[reference_meos_source]]; the fartola implementation is re-authored
   against the public spec, not ported).

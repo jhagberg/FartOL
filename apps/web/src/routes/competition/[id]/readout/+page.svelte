@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   /competition/:id/readout — mounts the ReadoutView screen. The route
   itself is a thin shell: it reads `id` from `$page.params` and forwards

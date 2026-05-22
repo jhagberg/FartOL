@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   RegistrationView — the registration-desk operator surface
   (/competition/:id/registration). Mounts the same Plan-02 WalkupModal
@@ -43,7 +43,7 @@
   import WalkupModal from '$lib/screens/WalkupModal.svelte';
   import AddRunnerSheet from '$lib/components/AddRunnerSheet.svelte';
   import Icon from '$lib/ui/Icon.svelte';
-  import type { ClassDTO, EventorLookupHit, CompetitorDTO } from '@fartol/shared-types';
+  import type { ClassDTO, EventorLookupHit, CompetitorDTO } from '@fartola/shared-types';
 
   interface Props {
     competitionId: string;

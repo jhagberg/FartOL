@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# Authored for fartol. Not ported from upstream.
+# Authored for fartola. Not ported from upstream.
 #
-# Build the publishable `fartol` tarball: chains `pnpm build` on @fartol/web
-# (SvelteKit adapter-static → apps/web/build/) and @fartol/edge (tsup →
+# Build the publishable `fartola` tarball: chains `pnpm build` on @fartola/web
+# (SvelteKit adapter-static → apps/web/build/) and @fartola/edge (tsup →
 # apps/edge/dist/), copies the web build + the IOF.xsd into the edge dist/
 # tree, then `pnpm pack`s the edge package. The resulting tarball is
-# self-contained: `npm install -g <tarball>` lands the `fartol` bin on PATH
+# self-contained: `npm install -g <tarball>` lands the `fartola` bin on PATH
 # with no separate publish step for the workspace siblings (tsup noExternals
-# @fartol/sportident + @fartol/shared-types into the bundle; see
+# @fartola/sportident + @fartola/shared-types into the bundle; see
 # apps/edge/tsup.config.ts plan-18 comment).
 #
 # Plan-locked by:
 # - .planning/phases/01-single-laptop-training-mvp/01-18-PLAN.md task 1
-#   (interfaces block: build-fartol.sh + tarball layout)
+#   (interfaces block: build-fartola.sh + tarball layout)
 # - .planning/phases/01-single-laptop-training-mvp/01-PATTERNS.md §S-1
 #
 # Exits non-zero on any step failure; tail-2 output names the failing step.
@@ -27,10 +27,10 @@ ROOT="$(cd "$EDGE_DIR/../.." && pwd)"
 DIST_DIR="$ROOT/dist"
 
 echo "[1/5] Building apps/web (SvelteKit adapter-static)..."
-pnpm --filter @fartol/web build
+pnpm --filter @fartola/web build
 
 echo "[2/5] Building apps/edge (tsup esm+cjs+dts)..."
-pnpm --filter @fartol/edge build
+pnpm --filter @fartola/edge build
 
 echo "[3/5] Copying apps/web/build → apps/edge/dist/web..."
 rm -rf "$EDGE_DIR/dist/web"
@@ -52,8 +52,8 @@ test -f "$EDGE_DIR/dist/web/200.html" || {
   echo "FAIL: dist/web/200.html missing — SPA fallback target absent"
   exit 1
 }
-test -f "$EDGE_DIR/dist/bin/fartol.cjs" || {
-  echo "FAIL: dist/bin/fartol.cjs missing — tsup did not emit the CJS bin"
+test -f "$EDGE_DIR/dist/bin/fartola.cjs" || {
+  echo "FAIL: dist/bin/fartola.cjs missing — tsup did not emit the CJS bin"
   exit 1
 }
 test -d "$EDGE_DIR/drizzle" || {
@@ -69,9 +69,9 @@ cd "$EDGE_DIR"
 pnpm pack --pack-destination "$DIST_DIR"
 
 # pnpm pack names the file `<scope>-<name>-<version>.tgz` for scoped packages,
-# i.e. `fartol-edge-0.1.0.tgz` for @fartol/edge. Re-alias as `fartol-<version>.tgz`
+# i.e. `fartola-edge-0.1.0.tgz` for @fartola/edge. Re-alias as `fartola-<version>.tgz`
 # so the install-smoke + README references stay stable.
-SOURCE_TGZ="$(ls "$DIST_DIR"/fartol-edge-*.tgz 2>/dev/null | sort | tail -n1 || true)"
+SOURCE_TGZ="$(ls "$DIST_DIR"/fartola-edge-*.tgz 2>/dev/null | sort | tail -n1 || true)"
 if [ -z "$SOURCE_TGZ" ]; then
   SOURCE_TGZ="$(ls "$DIST_DIR"/*.tgz 2>/dev/null | sort | tail -n1 || true)"
 fi
@@ -81,7 +81,7 @@ if [ -z "$SOURCE_TGZ" ] || [ ! -f "$SOURCE_TGZ" ]; then
 fi
 
 VERSION="$(node -p "require('$EDGE_DIR/package.json').version")"
-ALIAS_TGZ="$DIST_DIR/fartol-${VERSION}.tgz"
+ALIAS_TGZ="$DIST_DIR/fartola-${VERSION}.tgz"
 if [ "$SOURCE_TGZ" != "$ALIAS_TGZ" ]; then
   cp -f "$SOURCE_TGZ" "$ALIAS_TGZ"
 fi

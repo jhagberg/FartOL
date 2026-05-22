@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   SmartRunnerSearch — replaces the <datalist>-backed EventorAutocomplete
   for the manual-add flow (and any new picker). Two breakthroughs over
@@ -27,7 +27,7 @@
     searchEventorCompetitors,
     lookupEventorBySiCard,
   } from '$lib/api/client.ts';
-  import type { EventorNameSuggestion } from '@fartol/shared-types';
+  import type { EventorNameSuggestion } from '@fartola/shared-types';
 
   interface Props {
     value: string;

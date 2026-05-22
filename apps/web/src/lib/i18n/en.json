@@ -1,5 +1,5 @@
 {
-  "app.title": "FartOL",
+  "app.title": "fartOLa",
   "app.subtitle": "Competition readout",
   "nav.competitions": "Competitions",
   "nav.readout": "Readout",
@@ -413,8 +413,8 @@
   "settings.integrations.clear": "Clear",
   "settings.integrations.cleared": "Cleared",
   "settings.integrations.saveError": "Could not save — please retry",
-  "settings.integrations.sourceEnvBanner": "Value comes from ~/.env.fartol — UI saves are overwritten on next boot if the env value remains set",
-  "settings.integrations.sourceEnvBadge": "from ~/.env.fartol",
+  "settings.integrations.sourceEnvBanner": "Value comes from ~/.env.fartola — UI saves are overwritten on next boot if the env value remains set",
+  "settings.integrations.sourceEnvBadge": "from ~/.env.fartola",
   "settings.integrations.sourceConfigBadge": "saved in UI",
   "settings.integrations.placeholder": "Paste key here…",
   "settings.integrations.key.EVENTOR_API_KEY": "Eventor API key",

@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Pure ingester: writes a ParsedCourseData document into the SQLite layer
 // inside a transaction. Used by both /api/competitions/:id/import (existing

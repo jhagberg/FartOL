@@ -139,7 +139,7 @@ _Plan metadata commit lands with this SUMMARY (separate from per-task commits)._
 - `apps/edge/src/projection/matching.test.ts` — Added a second `describe('buildCardIndex (plan 09)')` block with 3 tests (empty / null-skipped / equivalence-with-matchCardToCompetitor for the same inputs).
 - `apps/edge/src/projection/reduce.ts` — Imports `buildCardIndex` instead of `matchCardToCompetitor`. Builds the index ONCE at the top of `reduce()` (per-call, not per-event). The card_read case uses `cardIndex.get(payload.card_number) ?? null` for the lookup.
 - `apps/edge/src/projection/index.ts` — Re-exports `buildCardIndex` and `CardIndex`.
-- `apps/edge/src/routes/import.ts` — EntryList branch calls `autoBindNewCompetitors(app.fartolDb, competitionId, app.fartolNodeId)` after the ingest transaction commits, then `app.projectionStore.markDirty(competitionId)` when `auto_bound` is non-empty. Response payload includes `auto_bound: [{competitor_id, card_number}]`.
+- `apps/edge/src/routes/import.ts` — EntryList branch calls `autoBindNewCompetitors(app.fartolaDb, competitionId, app.fartolaNodeId)` after the ingest transaction commits, then `app.projectionStore.markDirty(competitionId)` when `auto_bound` is non-empty. Response payload includes `auto_bound: [{competitor_id, card_number}]`.
 - `apps/edge/src/server.ts` — Imports + registers `registerReadoutRoute` after `registerResultsRoute`.
 
 ## Decisions Made
@@ -188,12 +188,12 @@ _Plan metadata commit lands with this SUMMARY (separate from per-task commits)._
 ## Issues Encountered
 
 - **Fastify plugin encapsulation surprise.** Plan-spec snippet `app.activeCompetitionId === competitionId` looked obviously correct but fails because sessions.ts mutates the property inside its own child plugin scope. Discovered via a focused debug script (creates app → POSTs to sessions → reads `app.activeCompetitionId` → undefined). Fixed by reading the persisted config row instead. Future cross-plugin state should either use `app.decorate(...)` (whose value propagates) or the config table (canonical singleton).
-- **Cold worktree required pnpm install + sportident build** before typecheck would resolve `@fartol/sportident`. Same friction every plan has seen since plan 01 — already documented in plans 01-08 summaries. Not in scope for plan 09.
+- **Cold worktree required pnpm install + sportident build** before typecheck would resolve `@fartola/sportident`. Same friction every plan has seen since plan 01 — already documented in plans 01-08 summaries. Not in scope for plan 09.
 - **No other blockers.** The plan-spec was internally consistent (apart from the Fastify scoping snippet); dependencies (plan 04 + plan 06 + plan 07 + plan 08) all clean.
 
 ## User Setup Required
 
-None. The new tests run cold via `pnpm --filter @fartol/edge test`. No env vars, no new package deps, no external services.
+None. The new tests run cold via `pnpm --filter @fartola/edge test`. No env vars, no new package deps, no external services.
 
 ## Next Phase Readiness
 
@@ -244,9 +244,9 @@ None. All new code paths wire to real data sources:
 
 **Behavior verified live:**
 
-- `pnpm --filter @fartol/edge typecheck`: clean.
-- `pnpm --filter @fartol/edge lint`: clean.
-- `pnpm --filter @fartol/edge test`: 197 / 197 pass (baseline 183 → +14 new tests for plan 09).
+- `pnpm --filter @fartola/edge typecheck`: clean.
+- `pnpm --filter @fartola/edge lint`: clean.
+- `pnpm --filter @fartola/edge test`: 197 / 197 pass (baseline 183 → +14 new tests for plan 09).
 - `grep -rn "matchCardToCompetitor" apps/edge/src/projection/reduce.ts`: zero matches in reduce.ts (the linear scan call site is fully replaced by `cardIndex.get`).
 - `grep -rn "json_extract" apps/edge/src/projection/auto-bind.ts`: 2 matches — both inside the existence-check + seenRead-gate SELECTs (locked behavior).
 - `grep -rn "GET.*readout\b" apps/edge/src/`: matches `/api/competitions/:id/readout` route registration + tests.

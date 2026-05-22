@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // `RecordSink` — extends `NdjsonEmitter` to tee captured NDJSON events to
 // `<basename>.expected.json` AND a DIRECTIONAL wire transcript to
@@ -9,7 +9,7 @@
 // an absolute path and rejected synchronously (before any stream open) if it
 // resolves outside any of the configured `allowedRoots`. Defaults to
 // `[process.cwd()]`; bin and tests pass `[process.cwd(), '/tmp']` so
-// `/tmp/fartol-*` fixtures during tests stay permitted.
+// `/tmp/fartola-*` fixtures during tests stay permitted.
 //
 // See packages/sportident/NOTICE.md for cumulative attribution.
 
@@ -62,7 +62,7 @@ export class RecordSink extends NdjsonEmitter {
     const resolved = validateBasename(opts.recordBasename, allowedRoots);
 
     // Build the parent NdjsonEmitter so it tees expected.json AND stdout. The
-    // operator running `fartol-readout --record` still wants to see live NDJSON
+    // operator running `fartola-readout --record` still wants to see live NDJSON
     // on stdout, so we keep the stdout default and pipe a *separate* write into
     // expected.json via a wrapper around `out`.
     const expectedStream = fs.createWriteStream(`${resolved}.expected.json`, { flags: 'w' });

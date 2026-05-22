@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for the IOF XML 3.0 root-dispatching parser. Locked
 // behavior + T-FILE-IMPORT pre-flight asserted in one place so a future

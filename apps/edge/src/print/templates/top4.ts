@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Top-4 leaderboard receipt — header → "Topp 4" → top-4 rows for this
 // runner's class (rank, name, total time); if this runner is NOT in the

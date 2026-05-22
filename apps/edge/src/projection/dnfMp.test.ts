@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for detectStatus. The 10 LOCKED scenarios from plan
 // 01-07 task 1 verify gate. Test 2b is the explicit codex C-H2 regression
@@ -13,7 +13,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import type { NdjsonPunch, HalfDayClock } from '@fartol/sportident';
+import type { NdjsonPunch, HalfDayClock } from '@fartola/sportident';
 import { detectStatus } from './dnfMp.ts';
 
 /** Build a HalfDayClock from a "seconds since the day's midnight" scalar.

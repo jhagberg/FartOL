@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Internal Drizzle row types for apps/edge. Per codex review C-H5:
 // `packages/shared-types/` is a pure DTO package that does NOT import the
@@ -8,7 +8,7 @@
 //
 // The pattern is "Drizzle-bound types live where the schema lives" — this
 // file is the single source of truth for $inferSelect / $inferInsert row
-// types within @fartol/edge, and shared-types stays Drizzle-free.
+// types within @fartola/edge, and shared-types stays Drizzle-free.
 //
 // Locked by:
 // - .planning/phases/01-single-laptop-training-mvp/01-REVIEWS.md §C-H5

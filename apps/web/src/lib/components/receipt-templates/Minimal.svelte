@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Minimal receipt template — name, class/club/card, hero time, place or
   status, optional behind-leader pill, footer. Nothing else.

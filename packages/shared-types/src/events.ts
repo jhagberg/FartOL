@@ -1,6 +1,6 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
-// NDJSON event types re-exported from @fartol/sportident — intentional
+// NDJSON event types re-exported from @fartola/sportident — intentional
 // drift-prevention per
 // .planning/phases/01-single-laptop-training-mvp/01-PATTERNS.md
 // §"shared-types/src/events.ts". The Phase 0 NDJSON contract IS the
@@ -29,7 +29,7 @@ export type {
   CardReadEvent,
   CardRemovedEvent,
   FrameErrorEvent,
-} from '@fartol/sportident';
+} from '@fartola/sportident';
 
 /** Bumped when the NDJSON event shape changes incompatibly. Pinned at 1
  * for Phase 0 + Phase 1. */

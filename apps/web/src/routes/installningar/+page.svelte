@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   /installningar route — SvelteKit wrapper that mounts SettingsView
   under the App shell. The component is the surface; this file is

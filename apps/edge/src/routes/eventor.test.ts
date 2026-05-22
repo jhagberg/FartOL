@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for GET /api/eventor/lookup + GET /api/eventor/status
 // (Plan 02-02 task 1). Validates:
@@ -10,12 +10,12 @@
 //   - GET /api/eventor/status returns 'no_key' when EVENTOR_API_KEY absent
 //   - GET /api/eventor/status returns 'ready' when marker is fresh
 //   - GET /api/eventor/status returns 'stale' when marker > 7 days old
-//   - GET /api/eventor/status returns fartol_dev:true when FARTOL_DEV=1
+//   - GET /api/eventor/status returns fartola_dev:true when FARTOLA_DEV=1
 //
 // Locked by:
 // - .planning/phases/02-4-klubbs-mvp/02-02-PLAN.md task 1
 // - .planning/phases/02-4-klubbs-mvp/02-RESEARCH.md §"UI signaling"
-//   (status payload shape: { state, ageDays, competitorCount, fartol_dev })
+//   (status payload shape: { state, ageDays, competitorCount, fartola_dev })
 
 import { describe, test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -132,18 +132,18 @@ describe('GET /api/eventor/lookup', () => {
 
 describe('GET /api/eventor/status', () => {
   const SAVED_KEY = process.env['EVENTOR_API_KEY'];
-  const SAVED_DEV = process.env['FARTOL_DEV'];
+  const SAVED_DEV = process.env['FARTOLA_DEV'];
 
   afterEach(() => {
     if (SAVED_KEY === undefined) delete process.env['EVENTOR_API_KEY'];
     else process.env['EVENTOR_API_KEY'] = SAVED_KEY;
-    if (SAVED_DEV === undefined) delete process.env['FARTOL_DEV'];
-    else process.env['FARTOL_DEV'] = SAVED_DEV;
+    if (SAVED_DEV === undefined) delete process.env['FARTOLA_DEV'];
+    else process.env['FARTOLA_DEV'] = SAVED_DEV;
   });
 
-  test('no key + no marker → state=no_key, fartol_dev derived from env', async () => {
+  test('no key + no marker → state=no_key, fartola_dev derived from env', async () => {
     delete process.env['EVENTOR_API_KEY'];
-    delete process.env['FARTOL_DEV'];
+    delete process.env['FARTOLA_DEV'];
     const ctx = await boot();
     try {
       const res = await ctx.app.inject({ method: 'GET', url: '/api/eventor/status' });
@@ -152,12 +152,12 @@ describe('GET /api/eventor/status', () => {
         state: string;
         ageDays: number | null;
         competitorCount: number;
-        fartol_dev: boolean;
+        fartola_dev: boolean;
       };
       assert.equal(body.state, 'no_key');
       assert.equal(body.ageDays, null);
       assert.equal(body.competitorCount, 0);
-      assert.equal(body.fartol_dev, false);
+      assert.equal(body.fartola_dev, false);
     } finally {
       await teardown(ctx);
     }
@@ -165,7 +165,7 @@ describe('GET /api/eventor/status', () => {
 
   test('key + fresh marker + seeded cache → state=ready', async () => {
     process.env['EVENTOR_API_KEY'] = 'TEST-KEY';
-    delete process.env['FARTOL_DEV'];
+    delete process.env['FARTOLA_DEV'];
     const ctx = await boot();
     try {
       const now = Date.now();
@@ -188,12 +188,12 @@ describe('GET /api/eventor/status', () => {
         state: string;
         ageDays: number | null;
         competitorCount: number;
-        fartol_dev: boolean;
+        fartola_dev: boolean;
       };
       assert.equal(body.state, 'ready');
       assert.equal(body.ageDays, 1);
       assert.equal(body.competitorCount, 3);
-      assert.equal(body.fartol_dev, false);
+      assert.equal(body.fartola_dev, false);
     } finally {
       await teardown(ctx);
     }
@@ -225,15 +225,15 @@ describe('GET /api/eventor/status', () => {
     }
   });
 
-  test('FARTOL_DEV=1 → fartol_dev=true (request-time eval, not bundler-time)', async () => {
-    process.env['FARTOL_DEV'] = '1';
+  test('FARTOLA_DEV=1 → fartola_dev=true (request-time eval, not bundler-time)', async () => {
+    process.env['FARTOLA_DEV'] = '1';
     delete process.env['EVENTOR_API_KEY'];
     const ctx = await boot();
     try {
       const res = await ctx.app.inject({ method: 'GET', url: '/api/eventor/status' });
       assert.equal(res.statusCode, 200);
-      const body = res.json() as { fartol_dev: boolean };
-      assert.equal(body.fartol_dev, true);
+      const body = res.json() as { fartola_dev: boolean };
+      assert.equal(body.fartola_dev, true);
     } finally {
       await teardown(ctx);
     }
@@ -243,7 +243,7 @@ describe('GET /api/eventor/status', () => {
   // Plan 02-07 task 2 — boot precedence reflected in /status.
   //
   // The status endpoint exposes a `source` field so the SettingsView
-  // banner can render "Värdet kommer från ~/.env.fartol …" when env
+  // banner can render "Värdet kommer från ~/.env.fartola …" when env
   // wins, and ops can confirm at a glance which precedence path is
   // active without restarting the bridge. Truth keys:
   //   - env set → source: 'env'

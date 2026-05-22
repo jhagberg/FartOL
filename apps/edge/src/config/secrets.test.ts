@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for resolveSecret / resolveSecretSource (Plan
 // 02-07 task 2). The helper lifts the env→config→absent precedence

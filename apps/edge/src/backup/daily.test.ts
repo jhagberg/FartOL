@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for scheduleDailyBackup. Covers:
 //   - testClock-anchored nextMidnightMs math (test 1)
@@ -27,8 +27,8 @@ interface Ctx {
 }
 
 function setupCtx(): Ctx {
-  const tmpDir = mkdtempSync(path.join(tmpdir(), 'fartol-backup-test-'));
-  const dbPath = path.join(tmpDir, 'fartol.db');
+  const tmpDir = mkdtempSync(path.join(tmpdir(), 'fartola-backup-test-'));
+  const dbPath = path.join(tmpDir, 'fartola.db');
   const backupDir = path.join(tmpDir, 'backups');
   const handle = openDatabase(dbPath);
   return { handle, tmpDir, backupDir };
@@ -64,7 +64,7 @@ describe('scheduleDailyBackup', () => {
     assert.ok(next - now <= 24 * 60 * 60 * 1000, 'delay must be ≤ 24h');
   });
 
-  test('test 2: runNow() produces a file at backupDir/fartol.db.bak-YYYY-MM-DD', async () => {
+  test('test 2: runNow() produces a file at backupDir/fartola.db.bak-YYYY-MM-DD', async () => {
     // Pin the clock to 2026-05-15 so the filename is deterministic.
     const fixedNow = new Date('2026-05-15T12:00:00.000Z').getTime();
     const backup = scheduleDailyBackup(ctx.handle, {
@@ -73,7 +73,7 @@ describe('scheduleDailyBackup', () => {
     });
     try {
       const { dest } = await backup.runNow();
-      assert.equal(dest, path.join(ctx.backupDir, 'fartol.db.bak-2026-05-15'));
+      assert.equal(dest, path.join(ctx.backupDir, 'fartola.db.bak-2026-05-15'));
       assert.ok(existsSync(dest), 'backup file must exist on disk');
       // The backup file is a real SQLite database — non-zero size.
       assert.ok(statSync(dest).size > 0, 'backup file must be non-empty');
@@ -91,9 +91,9 @@ describe('scheduleDailyBackup', () => {
     try {
       await backup.runNow();
       await backup.runNow();
-      const files = readdirSync(ctx.backupDir).filter((f) => f.startsWith('fartol.db.bak-'));
+      const files = readdirSync(ctx.backupDir).filter((f) => f.startsWith('fartola.db.bak-'));
       assert.equal(files.length, 1, 'same-day runs must overwrite, not append');
-      assert.equal(files[0], 'fartol.db.bak-2026-05-15');
+      assert.equal(files[0], 'fartola.db.bak-2026-05-15');
     } finally {
       backup.stop();
     }
@@ -130,7 +130,7 @@ describe('scheduleDailyBackup', () => {
       const fs = await import('node:fs/promises');
       for (let i = 0; i < dates.length; i++) {
         const date = dates[i] as string;
-        const p = path.join(ctx.backupDir, `fartol.db.bak-${date}`);
+        const p = path.join(ctx.backupDir, `fartola.db.bak-${date}`);
         await fs.writeFile(p, 'fake-content');
         // mtime = 2026-05-15 minus (11 - i) days, so oldest = 2026-05-05.
         const mt = new Date(fixedNow - (dates.length - i) * 86400000);
@@ -139,15 +139,15 @@ describe('scheduleDailyBackup', () => {
       // runNow on 2026-05-15 writes the 11th file (today) and prunes to 7.
       await backup.runNow();
       const remaining = readdirSync(ctx.backupDir)
-        .filter((f) => /^fartol\.db\.bak-/.test(f))
+        .filter((f) => /^fartola\.db\.bak-/.test(f))
         .sort();
       assert.equal(remaining.length, 7, 'must keep exactly keepLast files');
       // The today file MUST be kept (it's the most recent).
-      assert.ok(remaining.includes('fartol.db.bak-2026-05-15'));
+      assert.ok(remaining.includes('fartola.db.bak-2026-05-15'));
       // The oldest seeded file MUST be pruned.
-      assert.ok(!remaining.includes('fartol.db.bak-2026-05-05'));
-      assert.ok(!remaining.includes('fartol.db.bak-2026-05-06'));
-      assert.ok(!remaining.includes('fartol.db.bak-2026-05-07'));
+      assert.ok(!remaining.includes('fartola.db.bak-2026-05-05'));
+      assert.ok(!remaining.includes('fartola.db.bak-2026-05-06'));
+      assert.ok(!remaining.includes('fartola.db.bak-2026-05-07'));
     } finally {
       backup.stop();
     }

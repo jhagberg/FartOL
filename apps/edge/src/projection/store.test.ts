@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for ProjectionStore (plan 08 task 1 + task 2).
 //
@@ -25,15 +25,15 @@ import * as path from 'node:path';
 import * as url from 'node:url';
 import { EventEmitter } from 'node:events';
 
-import { SiMainStation } from '@fartol/sportident';
-import type { ISerialTransport } from '@fartol/sportident';
+import { SiMainStation } from '@fartola/sportident';
+import type { ISerialTransport } from '@fartola/sportident';
 
 import { openDatabase } from '../db/index.ts';
 import type { DbHandle } from '../db/index.ts';
 import { classes, controls, courses, courseControls, competitors } from '../db/schema.ts';
 import { createProjectionStore, type ProjectionStore } from './store.ts';
-import type { ChannelName } from '@fartol/shared-types';
-import { resultsChannel } from '@fartol/shared-types';
+import type { ChannelName } from '@fartola/shared-types';
+import { resultsChannel } from '@fartola/shared-types';
 import { attachBridge } from '../si/bridge.ts';
 
 interface BroadcastCall {

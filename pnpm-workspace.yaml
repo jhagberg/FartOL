@@ -1,7 +1,7 @@
 # INTENTIONAL DEVIATION FROM D-01 (codex review #10).
 # D-01 says: "single packages/sportident/ for now; defer pnpm workspaces to Phase 1".
 # We anchor the workspace file now (5 lines) so Phase 1 can add a sibling
-# package (@fartol/ingester) without restructuring package.json `exports`
+# package (@fartola/ingester) without restructuring package.json `exports`
 # / `paths` resolution. Cost: 5 lines today. Benefit: no Phase 1 restructure.
 # See .planning/phases/00-hardware-proof/00-01-SUMMARY.md for the full rationale.
 packages:

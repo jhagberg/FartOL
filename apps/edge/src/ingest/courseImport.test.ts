@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for ingestCourseData. Covers:
 //   - test 1: sample ParsedCourseData → 2 classes / 4 controls / 2 courses,

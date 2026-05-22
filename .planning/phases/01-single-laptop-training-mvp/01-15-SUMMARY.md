@@ -60,7 +60,7 @@ key-files:
     - apps/edge/src/routes/print.test.ts
   modified:
     - apps/edge/package.json (node-thermal-printer + sharp deps)
-    - apps/edge/src/bin/fartol.ts (PrinterSink selection + getCompetition for auto-print)
+    - apps/edge/src/bin/fartola.ts (PrinterSink selection + getCompetition for auto-print)
     - apps/edge/src/print/sink.ts (typed ReceiptData; PrintEnvelope.data stays `unknown` for plan-03 back-compat)
     - apps/edge/src/server.ts (register print route)
     - apps/edge/src/si/bridge.ts (auto-print enqueue path with C-M2 await-recompute)
@@ -161,10 +161,10 @@ Plan body proposed `mock.timers.enable({ apis: ['setTimeout'] })` for determinis
 - **Edge tests:** 246 pass (226 before + 6 escposDriver + 7 print route + 3 kids-bitmap + 4 auto-print).
 - **Edge typecheck:** clean.
 - **Edge lint:** clean (after fixing prettier + 1 unused import).
-- **Edge build:** `pnpm --filter @fartol/edge build` produces `dist/server.mjs`, `dist/bin/fartol.mjs`, and DTS bundles.
+- **Edge build:** `pnpm --filter @fartola/edge build` produces `dist/server.mjs`, `dist/bin/fartola.mjs`, and DTS bundles.
 - **Web tests:** 31 pass (all 17 skogis determinism tests still pass after the Task 2a move).
 - **Web typecheck:** clean.
-- **Web build:** `pnpm --filter @fartol/web build` still produces `apps/web/build/200.html`.
+- **Web build:** `pnpm --filter @fartola/web build` still produces `apps/web/build/200.html`.
 - **Sportident build:** clean.
 
 ## Bench-test Pending

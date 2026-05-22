@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Thin re-export of vite.config.ts — the actual vitest configuration
 // lives inside the unified vite config so dev + build + test share a

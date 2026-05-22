@@ -231,7 +231,7 @@ export class SiTargetMultiplexer extends EventEmitter {
 
   private _abortAllPendingSends(reason: string): void {
     // RESEARCH §Landmines #9 — fail every in-flight task on disconnect so
-    // bin/fartol-readout doesn't hang in zombie state.
+    // bin/fartola-readout doesn't hang in zombie state.
     const tasks = this.pendingSendTasks;
     this.pendingSendTasks = [];
     for (const t of tasks) t.abort(reason);

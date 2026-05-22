@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Authored for fartol. NOT ported from upstream — this is an operator-only
+// Authored for fartola. NOT ported from upstream — this is an operator-only
 // helper to repair the 1-byte SN corruption introduced by the bug in Plan 00-04
 // (whole-byte CODE write to offset 0x02, which is actually the third byte of
 // the 4-byte big-endian serial number at offsets 0..3).

@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   ReadoutView — primary operator surface. Grid (1fr / 380px → 340px at
   ≤1280px). Left column: LatestReadCard + ReceiptMirror. Right column:
@@ -50,14 +50,14 @@
   import { t } from '$lib/i18n/index.ts';
   import { tweaks } from '$lib/stores/tweaks.svelte.ts';
   import { bridgeStatus } from '$lib/stores/bridgeStatus.svelte.ts';
-  import { resultsChannel } from '@fartol/shared-types';
+  import { resultsChannel } from '@fartola/shared-types';
   import { createCardSubscription } from '$lib/services/cardSubscription.ts';
   import type {
     CompetitionDTO,
     ClassDTO,
     CourseDTO,
     CompetitorDTO,
-  } from '@fartol/shared-types';
+  } from '@fartola/shared-types';
   import {
     getCompetition,
     getReadout,
@@ -75,7 +75,7 @@
     lookupEventorBySiCard,
     returnHiredCard,
   } from '$lib/api/client.ts';
-  import type { EventorLookupHit } from '@fartol/shared-types';
+  import type { EventorLookupHit } from '@fartola/shared-types';
   import LatestReadCard from '$lib/components/LatestReadCard.svelte';
   import PunchGrid from '$lib/components/PunchGrid.svelte';
   import SplitsTable from '$lib/components/SplitsTable.svelte';

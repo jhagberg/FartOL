@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for replayChannel — the SQLite-backed missed-event
 // replay for the WS hello handshake. Pure unit tests against an in-memory
@@ -16,7 +16,7 @@ import { ensureNodeId } from '../db/node-id.ts';
 import { events } from '../db/schema.ts';
 import type { DbHandle } from '../db/index.ts';
 import { replayChannel, maxLocalSeq, parseChannel } from './replay.ts';
-import { readoutChannel } from '@fartol/shared-types';
+import { readoutChannel } from '@fartola/shared-types';
 
 function ensureCompetition(handle: DbHandle, id: string): void {
   // Idempotent — INSERT OR IGNORE so repeated calls in test loops are safe.

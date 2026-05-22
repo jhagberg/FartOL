@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Browser-side WebSocket wrapper. Handles:
 //   - Auto-reconnect with the LOCKED backoff schedule from UI-SPEC
@@ -23,7 +23,7 @@ import type {
   WsEnvelope,
   WsHelloMessage,
   WsSubscribeMessage,
-} from '@fartol/shared-types';
+} from '@fartola/shared-types';
 
 /** UI-SPEC §"Auto-reconnect" — LOCKED. Do not adjust without an ADR. */
 export const RECONNECT_BACKOFF_MS = [1000, 2000, 4000, 8000, 16000, 30000] as const;

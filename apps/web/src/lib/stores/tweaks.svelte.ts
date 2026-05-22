@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Svelte-5 runes store for operator preferences. Owned by the Tweaks panel
 // (locale / density / accent / contrast / font-pair) and persisted to
@@ -16,7 +16,7 @@
 // - 01-CONTEXT.md D-13 (Svelte 5 runes for shared state)
 // - 01-11-PLAN.md task 1 (interface block)
 
-const STORAGE_KEY = 'fartol.tweaks.v1';
+const STORAGE_KEY = 'fartola.tweaks.v1';
 
 // SSR/test guard. We deliberately don't import `$app/environment` here
 // because SvelteKit reports `browser: false` inside vitest+jsdom even when

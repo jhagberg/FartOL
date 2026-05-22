@@ -1,4 +1,4 @@
-// Authored for fartol. SiMainStation handshake + card-dispatch tests against a
+// Authored for fartola. SiMainStation handshake + card-dispatch tests against a
 // FakeSerialTransport. Zero real-hardware dependency: the FakeSerialTransport
 // implements ISerialTransport via EventEmitter and replays canned response frames
 // in response to recorded sends.

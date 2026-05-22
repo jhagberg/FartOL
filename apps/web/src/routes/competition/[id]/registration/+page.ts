@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // /competition/:id/registration data loader. Thin universal load —
 // extracts competitionId from the route params and passes it to the

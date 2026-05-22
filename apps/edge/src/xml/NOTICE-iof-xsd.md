@@ -26,7 +26,7 @@ must be updated.
 
 ## Why this file is bundled
 
-Phase 1 ships as a single offline `fartol` binary (REQ-OPS-001). Downloading
+Phase 1 ships as a single offline `fartola` binary (REQ-OPS-001). Downloading
 the XSD at runtime would defeat the no-internet-required guarantee. Plan 05
 therefore commits the schema to the package, copies it into `dist/xml/IOF.xsd`
 at `pnpm build` time, and parses it once at module load.
@@ -39,5 +39,5 @@ To pin a newer commit:
 2. Overwrite `apps/edge/src/xml/IOF.xsd`.
 3. Update the **Commit pinned** line and the **Bundled into this repository**
    date in this NOTICE.
-4. Run `pnpm --filter @fartol/edge test` — the XSD validator tests act as a
+4. Run `pnpm --filter @fartola/edge test` — the XSD validator tests act as a
    smoke test against the new schema.

@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 // Reference implementation from .planning/phases/00-hardware-proof/00-RESEARCH.md
 // §"serialport API Substitution Map — Minimal SerialTransport shape (planner reference)".
 //

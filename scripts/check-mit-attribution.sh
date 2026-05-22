@@ -3,7 +3,7 @@
 # under packages/sportident/src/** and packages/sportident/tests/fixtures/upstream/**
 # carries the required MIT NOTICE header ('Ported from allestuetsmerweh/sportident.js').
 #
-# Files authored for fartol (no upstream content) are allowlisted at the top of
+# Files authored for fartola (no upstream content) are allowlisted at the top of
 # the script. This script is wired into the root `pnpm lint` chain so CI catches
 # missing headers on any future ported file.
 set -euo pipefail
@@ -14,42 +14,42 @@ ALLOWLIST=(
   "packages/sportident/src/transport/ISerialTransport.ts"
   "packages/sportident/src/transport/errors.ts"
   "packages/sportident/src/transport/SerialTransport.test.ts"
-  # Output layer — authored for fartol
+  # Output layer — authored for fartola
   "packages/sportident/src/output/ndjson.ts"
   "packages/sportident/src/output/diagnostics.ts"
   "packages/sportident/src/output/ndjson.test.ts"
   "packages/sportident/src/output/diagnostics.test.ts"
-  # Bin — authored for fartol
-  "packages/sportident/src/bin/fartol-readout.ts"
+  # Bin — authored for fartola
+  "packages/sportident/src/bin/fartola-readout.ts"
   "packages/sportident/src/bin/record.ts"
   "packages/sportident/src/bin/replay.ts"
   "packages/sportident/src/bin/record.test.ts"
   "packages/sportident/src/bin/replay.test.ts"
   "packages/sportident/src/bin/replay-jonas-fixtures.test.ts"
   "packages/sportident/src/bin/parseArgs.test.ts"
-  "packages/sportident/src/bin/fartol-trainer.ts"
-  "packages/sportident/src/bin/fartol-trainer.test.ts"
+  "packages/sportident/src/bin/fartola-trainer.ts"
+  "packages/sportident/src/bin/fartola-trainer.test.ts"
   # Events util — replacement (no upstream code), wraps node:events
   "packages/sportident/src/utils/events.ts"
-  # Integration tests authored for fartol
+  # Integration tests authored for fartola
   "packages/sportident/src/integration/e2e.test.ts"
   "packages/sportident/src/integration/frameError.test.ts"
   "packages/sportident/src/integration/wireFormat.test.ts"
   "packages/sportident/src/integration/benchReplay.test.ts"
   "packages/sportident/src/integration/esmImport.test.ts"
-  # Card-type inference helper — authored for fartol (no upstream content)
+  # Card-type inference helper — authored for fartola (no upstream content)
   "packages/sportident/src/SiCard/cardTypeFromNumber.ts"
-  # Card-decoder tests authored for fartol (the decoders are ported, the tests are ours)
+  # Card-decoder tests authored for fartola (the decoders are ported, the tests are ours)
   "packages/sportident/src/SiCard/types/SiCard5.test.ts"
   "packages/sportident/src/SiCard/types/SiCard9.test.ts"
   "packages/sportident/src/SiCard/types/SiCard10.test.ts"
   "packages/sportident/src/SiCard/types/SIAC.test.ts"
-  # Station tests authored for fartol against a FakeSerialTransport
+  # Station tests authored for fartola against a FakeSerialTransport
   "packages/sportident/src/SiStation/SiMainStation.test.ts"
   "packages/sportident/src/SiStation/SiTargetMultiplexer.test.ts"
   # Storage barrel — no upstream code, just re-exports
   "packages/sportident/src/storage/index.ts"
-  # Public API barrel — authored for fartol
+  # Public API barrel — authored for fartola
   "packages/sportident/src/index.ts"
 )
 

@@ -31,7 +31,7 @@ superseded by the Option D below.**
 | `GET /competitors?organisationIds=637` |    403 | The _live, queryable_ competitors endpoint. MeOS doesn't use it for the löpardatabasen — it uses the bulk `export/cachedcompetitors` endpoint above which is OPEN to club keys. |
 | `GET /persons/organisations/8`         |    403 | Cannot fetch district-level persons across-club. Not blocking — `export/cachedcompetitors` covers every Swedish competitor anyway.                                              |
 
-## The MeOS approach — the right pattern for FartOL
+## The MeOS approach — the right pattern for fartOLa
 
 Found in `/home/jonas/src/meos/code/TabCompetition.cpp:3107-3108`:
 
@@ -51,7 +51,7 @@ The two files are then parsed and persisted to MeOS's local `RunnerDB.h`
 struct array (`RunnerDBEntryV3`: name, cardNo, clubNo, national, sex,
 birthYear, extId). MeOS keys lookups by `cardNo` (the SI card number),
 which is exactly the MeOS-style "read bricka → instant name + klubb" UX
-we want in FartOL.
+we want in fartOLa.
 
 The endpoint is named `cachedcompetitors` because **Eventor itself caches
 it server-side and expects clients to cache it client-side** — it's

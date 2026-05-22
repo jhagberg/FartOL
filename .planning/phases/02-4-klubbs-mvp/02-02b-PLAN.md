@@ -24,47 +24,47 @@ requirements:
 must_haves:
   truths:
     - "Opening /competition/:id/registration mounts WalkupModal in registration mode (label 'Registreringsdisk', 'N i kö' badge visible)"
-    - "Two card_inserted events arriving 100ms apart while modal is open result in queue size 1 + modal still open for card #1 (NOT silently dropped per ReadoutView.svelte:406-414 today)"
-    - "Pressing Spara on card #1 modal auto-opens modal for card #2 (FIFO pop)"
+    - 'Two card_inserted events arriving 100ms apart while modal is open result in queue size 1 + modal still open for card #1 (NOT silently dropped per ReadoutView.svelte:406-414 today)'
+    - 'Pressing Spara on card #1 modal auto-opens modal for card #2 (FIFO pop)'
     - "Same card_number enqueued twice triggers toast 'Brickan finns redan i kön' and queue size stays 1"
-    - "ReadoutView behavior unchanged: unknown beeps still appear in recent-reads history (no enqueue); the shared cardSubscription service routes onUnknown to history on /readout and to cardQueue on /registration"
+    - 'ReadoutView behavior unchanged: unknown beeps still appear in recent-reads history (no enqueue); the shared cardSubscription service routes onUnknown to history on /readout and to cardQueue on /registration'
     - "Empty queue + modal closed → registration screen shows 'Inga brickor i kö' empty state; next card_inserted opens modal directly with badge=0"
   artifacts:
-    - path: "apps/web/src/lib/stores/cardQueue.svelte.ts"
-      provides: "Svelte 5 rune-based FIFO queue store with push(cardNumber, hint?), pop(), peek(), count derived; push() deduplicates by card_number returning false when already queued"
+    - path: 'apps/web/src/lib/stores/cardQueue.svelte.ts'
+      provides: 'Svelte 5 rune-based FIFO queue store with push(cardNumber, hint?), pop(), peek(), count derived; push() deduplicates by card_number returning false when already queued'
       min_lines: 60
-    - path: "apps/web/src/lib/services/cardSubscription.ts"
-      provides: "Shared WS card-event subscription factory: takes a competitionId + onUnknown callback + onKnown callback; returns {connect, disconnect}; consolidates the card_read dispatch that ReadoutView used to inline"
+    - path: 'apps/web/src/lib/services/cardSubscription.ts'
+      provides: 'Shared WS card-event subscription factory: takes a competitionId + onUnknown callback + onKnown callback; returns {connect, disconnect}; consolidates the card_read dispatch that ReadoutView used to inline'
       min_lines: 80
-    - path: "apps/web/src/lib/screens/RegistrationView.svelte"
+    - path: 'apps/web/src/lib/screens/RegistrationView.svelte'
       provides: "Registration-desk screen: cardSubscription with onUnknown=cardQueue.push; renders WalkupModal whenever current card is set; shows 'N i kö' badge; auto-advances on modal close"
       min_lines: 80
-    - path: "apps/web/src/routes/competition/[id]/registration/+page.svelte"
-      provides: "Route shell that mounts RegistrationView with competitionId from $page.params"
+    - path: 'apps/web/src/routes/competition/[id]/registration/+page.svelte'
+      provides: 'Route shell that mounts RegistrationView with competitionId from $page.params'
       min_lines: 15
-    - path: "apps/web/src/routes/competition/[id]/registration/+page.ts"
-      provides: "Data loader (mirrors readout/+page.ts pattern; fetches competition + classes for WalkupModal)"
+    - path: 'apps/web/src/routes/competition/[id]/registration/+page.ts'
+      provides: 'Data loader (mirrors readout/+page.ts pattern; fetches competition + classes for WalkupModal)'
       min_lines: 15
-    - path: "tests/e2e/registration-queue.spec.ts"
-      provides: "Playwright e2e: 2-card queue + auto-advance flow + dedupe toast"
+    - path: 'tests/e2e/registration-queue.spec.ts'
+      provides: 'Playwright e2e: 2-card queue + auto-advance flow + dedupe toast'
       min_lines: 100
   key_links:
-    - from: "apps/web/src/routes/competition/[id]/registration/+page.svelte"
-      to: "apps/web/src/lib/screens/RegistrationView.svelte"
-      via: "thin shell — passes competitionId prop only (mirrors readout/+page.svelte from Phase 1)"
-      pattern: "RegistrationView"
-    - from: "apps/web/src/lib/screens/RegistrationView.svelte"
-      to: "apps/web/src/lib/stores/cardQueue.svelte.ts"
-      via: "import + push(cardNumber, hint) on onUnknown callback; pop() on modal close"
+    - from: 'apps/web/src/routes/competition/[id]/registration/+page.svelte'
+      to: 'apps/web/src/lib/screens/RegistrationView.svelte'
+      via: 'thin shell — passes competitionId prop only (mirrors readout/+page.svelte from Phase 1)'
+      pattern: 'RegistrationView'
+    - from: 'apps/web/src/lib/screens/RegistrationView.svelte'
+      to: 'apps/web/src/lib/stores/cardQueue.svelte.ts'
+      via: 'import + push(cardNumber, hint) on onUnknown callback; pop() on modal close'
       pattern: "cardQueue\\.(push|pop|peek|count)"
-    - from: "apps/web/src/lib/services/cardSubscription.ts"
-      to: "apps/web/src/lib/ws/client.ts WsClient"
-      via: "constructs WsClient + preSubscribe(readoutChannel(competitionId)) — same pattern as ReadoutView.connectWs lines 310-320"
-      pattern: "WsClient|preSubscribe"
-    - from: "apps/web/src/lib/screens/ReadoutView.svelte"
-      to: "apps/web/src/lib/services/cardSubscription.ts"
+    - from: 'apps/web/src/lib/services/cardSubscription.ts'
+      to: 'apps/web/src/lib/ws/client.ts WsClient'
+      via: 'constructs WsClient + preSubscribe(readoutChannel(competitionId)) — same pattern as ReadoutView.connectWs lines 310-320'
+      pattern: 'WsClient|preSubscribe'
+    - from: 'apps/web/src/lib/screens/ReadoutView.svelte'
+      to: 'apps/web/src/lib/services/cardSubscription.ts'
       via: "refactor: ReadoutView consumes cardSubscription with onUnknown=push-to-history (the existing silent-drop behavior at lines 406-414 stays but moves behind the service's onUnknown hook); WS dispatch and reconnect logic move into the service"
-      pattern: "cardSubscription|createCardSubscription"
+      pattern: 'cardSubscription|createCardSubscription'
 ---
 
 <objective>
@@ -105,22 +105,24 @@ ergonomics-extension Jonas added late in 02-CONTEXT.md (commit 06a1d89):
    ergonomics layer over the data flow Plan-02 already established.
 
 Purpose:
+
 - Honor the 4-klubbs throughput target: 3-5s per known kid (Eventor-prefill
-  + pick Bana + Spara), 8-12s for unknown bricks. Without auto-advance, a
-  line of 30 kids pools.
+  - pick Bana + Spara), 8-12s for unknown bricks. Without auto-advance, a
+    line of 30 kids pools.
 - Honor REQ-UI-005..007 (walk-up UI surface) — this plan is a UX extension
   of that, no new REQ-ID needed.
 - Match Phase 1 PATTERNS S-8 (Swedish-first i18n) + WS subscription pattern
   from ReadoutView.svelte lines 310-320.
 
 Output:
+
 - 1 new store (cardQueue) + 1 new service (cardSubscription) + 1 new screen
   (RegistrationView) + 1 new route shell (registration/+page.svelte + .ts).
 - ReadoutView refactor: WS connect/dispatch moves into cardSubscription;
   recent-reads history behavior preserved verbatim via the onUnknown hook.
 - i18n keys for sv.json + en.json from day one.
 - Playwright e2e covering the queue + auto-advance flow.
-</objective>
+  </objective>
 
 <execution_context>
 @$HOME/.claude/get-shit-done/workflows/execute-plan.md
@@ -148,6 +150,7 @@ Output:
 <!-- Executor should use these directly — no codebase exploration needed for these specifically. -->
 
 From `apps/web/src/lib/ws/client.ts` (Phase 1 WS wrapper — locked by 01-03):
+
 ```typescript
 export class WsClient {
   constructor(url: string, onMessage: (env: WsEnvelope) => void);
@@ -156,9 +159,11 @@ export class WsClient {
   close(): void;
 }
 ```
+
 Construct with `ws://${window.location.host}/ws` (or `wss://` under HTTPS).
 
-From `@fartol/shared-types`:
+From `@fartola/shared-types`:
+
 - `readoutChannel(competitionId: string): ChannelName` — the channel
   card_read envelopes flow on. Use the same one for /registration.
 - `WsEnvelope = { type: string; payload: unknown; seq?: number }` — card
@@ -167,10 +172,12 @@ From `@fartol/shared-types`:
 - Replay envelopes wrap: `{ type: 'replay', payload: { event_type: 'card_read', card_number, ... } }`.
 
 From Plan 02-02 (WalkupModal extended):
+
 - WalkupModal props: `{ cardNumber: number; competitionId: string; classes: ClassDTO[]; cardHolderHint?: string | null; eventorHint?: EventorLookupHit | null }`.
 - On Save success or 409-replace, WalkupModal calls `goto(`/competition/<id>/readout`)` which closes the modal by stripping the ?walkup param. **For /registration, the close behavior MUST go through a parent callback prop instead so we can auto-advance**.
 
 From `apps/web/src/lib/screens/ReadoutView.svelte` lines 406-414 — THE EXISTING SILENT-DROP SITE:
+
 ```typescript
 // Unknown card → walk-up redirect after 600ms (UI-SPEC). Skip if a
 // walk-up overlay is already open for some other card (subsequent-
@@ -183,21 +190,28 @@ if (isUnknown && walkupCard === null) {
   }, 600);
 }
 ```
+
 The `walkupCard === null` guard is the silent drop. Plan 2b replaces this
 on the /registration page with `cardQueue.push(cardNumber, hint)`.
 
 From `apps/web/src/lib/stores/bridgeStatus.svelte.ts` — the Svelte 5 rune
 store template to mirror for cardQueue:
+
 ```typescript
 let _state = $state<BridgeWsState>('closed');
 export const bridgeStatus = {
-  get value(): BridgeWsState { return _state; },
-  set(next: BridgeWsState): void { _state = next; },
+  get value(): BridgeWsState {
+    return _state;
+  },
+  set(next: BridgeWsState): void {
+    _state = next;
+  },
 };
 ```
 
 From `apps/web/src/routes/competition/[id]/readout/+page.svelte` — the
 thin-shell route pattern to clone for /registration:
+
 ```svelte
 <script lang="ts">
   import { page } from '$app/state';
@@ -222,8 +236,8 @@ export interface QueuedCard {
 }
 export const cardQueue: {
   readonly count: number;
-  readonly current: QueuedCard | null;        // peek without popping
-  push(cardNumber: number, hint: string | null): boolean;  // false if dedupe-dropped
+  readonly current: QueuedCard | null; // peek without popping
+  push(cardNumber: number, hint: string | null): boolean; // false if dedupe-dropped
   pop(): QueuedCard | null;
   clear(): void;
   contains(cardNumber: number): boolean;
@@ -244,13 +258,14 @@ export function createCardSubscription(opts: CardSubscriptionOpts): {
 ```
 
 i18n keys to add (Swedish first, English second):
+
 - registration.title: "Registreringsdisk" / "Registration desk"
 - registration.empty: "Inga brickor i kö — vänta på nästa beep" / "No cards queued — waiting for the next beep"
 - registration.queuedBadge: "{{count}} i kö" / "{{count}} in queue"
 - registration.dedupeToast: "Brickan finns redan i kön (#{{card}})" / "Card already queued (#{{card}})"
 - registration.welcome: "Skanna SI-brickan eller skriv numret nedan" / "Scan the SI card or type the number below"
-</interfaces>
-</context>
+  </interfaces>
+  </context>
 
 <tasks>
 
@@ -282,6 +297,7 @@ i18n keys to add (Swedish first, English second):
     3. Same-card dedupe must check BOTH the current open-modal card AND the queue. If card #88888 is currently showing in the open modal AND beeps again, that's also a dedupe-with-toast case — not a separate enqueue. The `cardQueue.contains(n)` API in Task 1 covers the queue; the registration view adds a sibling check `currentCardNumber === n` before calling push. Note this in the Task 4 wiring.
 
     No files written in this task. The action is "read, verify, take notes for downstream tasks." If any assumption fails, halt and surface to the orchestrator with the specific deviation before proceeding to Task 1.
+
   </action>
   <acceptance_criteria>
     Executor has confirmed (a) WalkupModal close path, (b) cardSubscription hook shape (onCardRead with classification), (c) dedupe scope including current-modal card. No code written; assumptions logged in execution notes or commit message of Task 1.
@@ -340,9 +356,10 @@ i18n keys to add (Swedish first, English second):
     Write `apps/web/src/lib/stores/cardQueue.svelte.test.ts` covering the 8 behaviors. Use vitest + the same pattern as `tweaks.svelte.test.ts`. Each test must call cardQueue.clear() in afterEach so state doesn't leak between tests (rune stores are module-scoped singletons in test runs).
 
     Keep this file pure (no fetch, no WS, no DOM). It MUST be importable from both browser and Node test environments without side effects.
+
   </action>
   <acceptance_criteria>
-    cardQueue.svelte.ts compiles under `tsc --noEmit`; all 8 vitest cases pass (`pnpm --filter @fartol/web test --run --reporter=verbose cardQueue` exit 0). The QueuedCard interface is exported and imported by Task 2 + Task 4 without circular import warnings.
+    cardQueue.svelte.ts compiles under `tsc --noEmit`; all 8 vitest cases pass (`pnpm --filter @fartola/web test --run --reporter=verbose cardQueue` exit 0). The QueuedCard interface is exported and imported by Task 2 + Task 4 without circular import warnings.
   </acceptance_criteria>
 </task>
 
@@ -355,7 +372,7 @@ i18n keys to add (Swedish first, English second):
   <read_first>
     apps/web/src/lib/screens/ReadoutView.svelte lines 280-450 (the connectWs + handleWs + handleLiveEvent + onCardRead + triggerCardReadSideEffects functions — extract WS wiring, leave history/UI logic in the screen),
     apps/web/src/lib/ws/client.ts (the WsClient interface — locked; do not modify),
-    @fartol/shared-types (readoutChannel + WsEnvelope types — locked),
+    @fartola/shared-types (readoutChannel + WsEnvelope types — locked),
     apps/web/src/lib/stores/bridgeStatus.svelte.ts (bridgeStatus.set() — the connection_changed callback shape)
   </read_first>
   <action>
@@ -399,9 +416,10 @@ i18n keys to add (Swedish first, English second):
       - Net result: ReadoutView behavior unchanged (verified by existing readout.spec.ts + walkup.spec.ts). The change is structural — WS plumbing moves out, screen logic stays.
 
     Add a one-line top-of-file comment to cardSubscription.ts: "Shared WS card-event subscription. Locked by 02-02b-PLAN.md task 2. Replaces inline WS code in ReadoutView (Phase 1) so /registration (Plan 2b) and /readout consume the same plumbing."
+
   </action>
   <verify>
-    <automated>pnpm --filter @fartol/web test --run --reporter=verbose 2>&1 | tail -40 && pnpm exec playwright test tests/e2e/readout.spec.ts tests/e2e/walkup.spec.ts --reporter=line 2>&1 | tail -40</automated>
+    <automated>pnpm --filter @fartola/web test --run --reporter=verbose 2>&1 | tail -40 && pnpm exec playwright test tests/e2e/readout.spec.ts tests/e2e/walkup.spec.ts --reporter=line 2>&1 | tail -40</automated>
   </verify>
   <acceptance_criteria>
     cardSubscription.ts compiles; ReadoutView.svelte compiles after the refactor; ALL existing readout + walkup e2e tests still pass (this is a pure refactor — zero observable behavior change for /readout). No new unit tests in this task — coverage comes from the e2e tests that already exercise the WS dispatch.
@@ -484,9 +502,10 @@ i18n keys to add (Swedish first, English second):
       - registration.welcome: "Skanna SI-brickan eller skriv numret nedan" / "Scan the SI card or type the number below"
 
     DO NOT introduce a Svelte unit test for RegistrationView in this task — coverage comes from the e2e in Task 5. The wiring is simple enough that the e2e proves correctness end-to-end; a unit test for "modal opens when state is set" would be Svelte-implementation-testing.
+
   </action>
   <verify>
-    <automated>pnpm --filter @fartol/web exec tsc --noEmit 2>&1 | tail -20 && pnpm --filter @fartol/web exec svelte-check --no-tsconfig --output human 2>&1 | tail -30</automated>
+    <automated>pnpm --filter @fartola/web exec tsc --noEmit 2>&1 | tail -20 && pnpm --filter @fartola/web exec svelte-check --no-tsconfig --output human 2>&1 | tail -30</automated>
   </verify>
   <acceptance_criteria>
     RegistrationView.svelte + the WalkupModal onClose prop compile cleanly under both tsc --noEmit and svelte-check. New i18n keys present in sv.json AND en.json (verify with `node -e "['sv','en'].forEach(l=> { const j=require('./apps/web/src/lib/i18n/'+l+'.json'); console.log(l, j.registration?.title, j.registration?.dedupeToast)})"`). Existing WalkupModal tests still pass (Plan 02-02's tests + Phase 1 walkup.spec.ts).
@@ -513,7 +532,7 @@ i18n keys to add (Swedish first, English second):
     Write `apps/web/src/routes/competition/[id]/registration/+page.svelte`:
       ```svelte
       <!--
-        Authored for fartol. Not ported from upstream.
+        Authored for fartola. Not ported from upstream.
 
         /competition/:id/registration — the registration-desk operator surface.
         Thin shell mounting RegistrationView. Mirrors the readout/+page.svelte
@@ -526,7 +545,7 @@ i18n keys to add (Swedish first, English second):
       <script lang="ts">
         import { page } from '$app/state';
         import RegistrationView from '$lib/screens/RegistrationView.svelte';
-        import type { ClassDTO } from '@fartol/shared-types';
+        import type { ClassDTO } from '@fartola/shared-types';
 
         // If +page.ts returns data, consume via $props(); otherwise derive from URL only.
         interface Props { data?: { competitionId: string; classes: ClassDTO[] } | undefined; }
@@ -549,9 +568,10 @@ i18n keys to add (Swedish first, English second):
     Both files MUST live under `apps/web/src/routes/competition/[id]/registration/`. SvelteKit picks the route up automatically; no additional route registration is needed.
 
     Confirm via local dev server that `http://localhost:5173/competition/<any-id>/registration` renders RegistrationView with the empty state. (Manual confirmation in Task 5 e2e.)
+
   </action>
   <verify>
-    <automated>pnpm --filter @fartol/web exec svelte-check --no-tsconfig --output human 2>&1 | tail -20 && find apps/web/src/routes/competition/'[id]'/registration/ -type f</automated>
+    <automated>pnpm --filter @fartola/web exec svelte-check --no-tsconfig --output human 2>&1 | tail -20 && find apps/web/src/routes/competition/'[id]'/registration/ -type f</automated>
   </verify>
   <acceptance_criteria>
     Both files exist under the correct route directory; svelte-check passes; the route directory layout matches Phase 1's `readout/` sibling (+page.svelte + optional +page.ts).
@@ -572,7 +592,7 @@ i18n keys to add (Swedish first, English second):
     Write `tests/e2e/registration-queue.spec.ts` covering 5 deterministic scenarios:
 
       ```typescript
-      // Authored for fartol. Not ported from upstream.
+      // Authored for fartola. Not ported from upstream.
       //
       // Registration-desk queue + auto-advance e2e (plan 02-02b).
       //
@@ -685,6 +705,7 @@ i18n keys to add (Swedish first, English second):
     - The exact `simulate-read` endpoint path may differ — verify by grepping `tests/e2e/readout.spec.ts` for `simulate-read` and matching. The path used above (`/api/__dev/simulate-read`) is the Phase 1 convention per CONTEXT.md.
     - The toast helper in RegistrationView fires under `data-testid="reg-toast"` — Task 3 ensures this exists.
     - If the test flakes on the auto-advance assertion (Playwright sees the OLD WalkupModal momentarily before re-render), bump the `timeout: 3000` on the toHaveValue assertion. Do NOT use `page.waitForTimeout` — that's flake-prone; rely on Playwright auto-waiting on the locator.
+
   </action>
   <verify>
     <automated>pnpm exec playwright test tests/e2e/registration-queue.spec.ts --reporter=line 2>&1 | tail -50</automated>
@@ -697,42 +718,45 @@ i18n keys to add (Swedish first, English second):
 </tasks>
 
 <threat_model>
+
 ## Trust Boundaries
 
-| Boundary | Description |
-|----------|-------------|
-| browser → /api/__dev/simulate-read | Dev-only endpoint; FARTOL_DEV-gated in production builds. Used here only by the e2e test, NOT by RegistrationView itself. |
-| browser ↔ WS readoutChannel | Same trust as Phase 1 — LAN-bound; WsClient is the locked client wrapper. /registration consumes the same channel /readout already trusts. |
-| browser → /api/competitions/:id | Read-only data fetch for classes; same trust as Phase 1's readout fetch. |
+| Boundary                             | Description                                                                                                                                |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| browser → /api/\_\_dev/simulate-read | Dev-only endpoint; FARTOLA_DEV-gated in production builds. Used here only by the e2e test, NOT by RegistrationView itself.                 |
+| browser ↔ WS readoutChannel          | Same trust as Phase 1 — LAN-bound; WsClient is the locked client wrapper. /registration consumes the same channel /readout already trusts. |
+| browser → /api/competitions/:id      | Read-only data fetch for classes; same trust as Phase 1's readout fetch.                                                                   |
 
 ## STRIDE Threat Register
 
-| Threat ID | Category | Component | Disposition | Mitigation Plan |
-|-----------|----------|-----------|-------------|-----------------|
-| T-02B-01 | DoS | Operator opens /registration twice in two tabs; both tabs consume from the same cardQueue → race conditions | accept | cardQueue is module-scoped per-tab (Svelte rune stores are not cross-tab); each tab has its own queue. Documented in playbook (Plan 06): "Use ONE registration tab per bridge." If two tabs are open, both modals open independently — confusing but not data-corrupting. |
-| T-02B-02 | Info Disclosure | RegistrationView leaks card numbers + holder hints to anyone with /registration URL on LAN | accept | Same trust posture as /readout. Phase 1's `--bind-host` + CORS allow-list + LAN-only deployment apply unchanged. No NEW data exposure beyond what /readout already shows. |
-| T-02B-03 | Tampering | Malicious LAN client POSTs /api/__dev/simulate-read to inject synthetic card_reads into someone else's registration session | mitigate | The /api/__dev/simulate-read endpoint is FARTOL_DEV-gated (Phase 1 lock). Plan 2b does not introduce a new attack surface — uses the existing endpoint only in the e2e test, not in production code paths. |
-| T-02B-04 | Repudiation | Operator marks a card as "saved" but the cardQueue entry was lost due to browser-tab crash | accept | The card_read event is still in the events table on the bridge (Phase 1 append-only). On tab reload, the queue is empty but the operator can navigate to /readout and pick up unknown cards from the history list — Phase 1 recovery path. |
-| T-02B-05 | DoS | Adversary floods card_inserted events to balloon cardQueue → browser memory exhaustion | accept | LAN-only trust posture; bridge rate-limits card_read events at the hardware level (SI reader cadence ~1 read/sec). Even at 60s of unattended floods, queue grows by ~60 entries — well under any practical memory limit. Add a soft cap of 200 entries as a future hardening if real flood scenarios emerge. |
-| T-02B-SC | Tampering | No new npm dependencies installed in this plan | mitigate | Plan 2b adds ZERO npm installs (cardQueue, cardSubscription, RegistrationView are all in-tree). Phase 2's only net-new package install (saxes for Plan 01) is unaffected by this plan. |
+| Threat ID | Category        | Component                                                                                                                     | Disposition | Mitigation Plan                                                                                                                                                                                                                                                                                              |
+| --------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| T-02B-01  | DoS             | Operator opens /registration twice in two tabs; both tabs consume from the same cardQueue → race conditions                   | accept      | cardQueue is module-scoped per-tab (Svelte rune stores are not cross-tab); each tab has its own queue. Documented in playbook (Plan 06): "Use ONE registration tab per bridge." If two tabs are open, both modals open independently — confusing but not data-corrupting.                                    |
+| T-02B-02  | Info Disclosure | RegistrationView leaks card numbers + holder hints to anyone with /registration URL on LAN                                    | accept      | Same trust posture as /readout. Phase 1's `--bind-host` + CORS allow-list + LAN-only deployment apply unchanged. No NEW data exposure beyond what /readout already shows.                                                                                                                                    |
+| T-02B-03  | Tampering       | Malicious LAN client POSTs /api/\_\_dev/simulate-read to inject synthetic card_reads into someone else's registration session | mitigate    | The /api/\_\_dev/simulate-read endpoint is FARTOLA_DEV-gated (Phase 1 lock). Plan 2b does not introduce a new attack surface — uses the existing endpoint only in the e2e test, not in production code paths.                                                                                                |
+| T-02B-04  | Repudiation     | Operator marks a card as "saved" but the cardQueue entry was lost due to browser-tab crash                                    | accept      | The card_read event is still in the events table on the bridge (Phase 1 append-only). On tab reload, the queue is empty but the operator can navigate to /readout and pick up unknown cards from the history list — Phase 1 recovery path.                                                                   |
+| T-02B-05  | DoS             | Adversary floods card_inserted events to balloon cardQueue → browser memory exhaustion                                        | accept      | LAN-only trust posture; bridge rate-limits card_read events at the hardware level (SI reader cadence ~1 read/sec). Even at 60s of unattended floods, queue grows by ~60 entries — well under any practical memory limit. Add a soft cap of 200 entries as a future hardening if real flood scenarios emerge. |
+| T-02B-SC  | Tampering       | No new npm dependencies installed in this plan                                                                                | mitigate    | Plan 2b adds ZERO npm installs (cardQueue, cardSubscription, RegistrationView are all in-tree). Phase 2's only net-new package install (saxes for Plan 01) is unaffected by this plan.                                                                                                                       |
+
 </threat_model>
 
 <verification>
-- `pnpm --filter @fartol/web test --run` exits 0 (cardQueue unit tests pass; existing tests untouched).
-- `pnpm --filter @fartol/web exec svelte-check --no-tsconfig` exits 0 (RegistrationView + WalkupModal onClose prop + route shell all type-check).
+- `pnpm --filter @fartola/web test --run` exits 0 (cardQueue unit tests pass; existing tests untouched).
+- `pnpm --filter @fartola/web exec svelte-check --no-tsconfig` exits 0 (RegistrationView + WalkupModal onClose prop + route shell all type-check).
 - `pnpm exec playwright test tests/e2e/readout.spec.ts tests/e2e/walkup.spec.ts` exits 0 (ReadoutView refactor in Task 2 preserves Phase 1 behavior).
 - `pnpm exec playwright test tests/e2e/registration-queue.spec.ts` exits 0 (the new 7-step scenario passes).
-- Manual smoke: boot bridge with FARTOL_DEV=1; navigate to /competition/<id>/registration; in another browser tab call `curl -X POST http://localhost:3000/api/__dev/simulate-read -d '{"card_number":11111,"card_type":"SI10","competition_id":"<id>"}'`; modal opens. Repeat with card_number 22222; badge appears showing "1 i kö". Save modal #1 → modal auto-opens for #22222. Empty queue → modal closes, empty state visible.
+- Manual smoke: boot bridge with FARTOLA_DEV=1; navigate to /competition/<id>/registration; in another browser tab call `curl -X POST http://localhost:3000/api/__dev/simulate-read -d '{"card_number":11111,"card_type":"SI10","competition_id":"<id>"}'`; modal opens. Repeat with card_number 22222; badge appears showing "1 i kö". Save modal #1 → modal auto-opens for #22222. Empty queue → modal closes, empty state visible.
 </verification>
 
 <success_criteria>
+
 - Operator at the registration desk handles a line of kids without losing card beeps to the silent-drop site (ReadoutView.svelte:406-414).
 - Queue badge gives accurate live count of pending cards.
 - Auto-advance on Save means no manual "pick next from history" step — the line flows.
 - Same-card double-beep produces a non-blocking toast, never a crash or silent drop.
 - /readout behavior unchanged: Phase 1's silent-drop semantics on the readout view stay (operator picks up subsequent unknown cards from history when ready).
 - Late finish punches during the registration window are surfaced as "unknown bricka" entries in the modal, NOT swallowed silently.
-</success_criteria>
+  </success_criteria>
 
 <output>
 Create `.planning/phases/02-4-klubbs-mvp/02-02b-SUMMARY.md` when done.

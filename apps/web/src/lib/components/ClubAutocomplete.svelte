@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Free-text club input backed by a <datalist> populated from /api/clubs?prefix=.
   Used by the walk-up modal (UI-SPEC §"Walk-up modal"). The DOM-native

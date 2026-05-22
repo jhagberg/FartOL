@@ -8,7 +8,7 @@ tags: [drizzle, sqlite, schema-bootstrap, migrator, append-only, consent, BLOCKI
 requires:
   - phase: 01-single-laptop-training-mvp
     plan: 01
-    provides: '@fartol/edge package skeleton + @fartol/shared-types pure-TS barrel; root tsconfig with allowImportingTsExtensions'
+    provides: '@fartola/edge package skeleton + @fartola/shared-types pure-TS barrel; root tsconfig with allowImportingTsExtensions'
 provides:
   - 'apps/edge/src/db/{schema.ts,types.ts,index.ts,migrate.ts,node-id.ts,seq.ts} — full SQLite data layer'
   - 'apps/edge/drizzle/{0000_initial.sql,0001_append_only_triggers.sql,meta/} — committed migrations'
@@ -133,7 +133,7 @@ _Plan metadata commit lands after this SUMMARY._
 ### Created — apps/edge/
 
 - `drizzle.config.ts` — dev-only drizzle-kit config (sqlite dialect, snake_case casing). Runtime migrator does NOT read this file.
-- `src/db/schema.ts` — 9 tables (events, competitions, classes, controls, courses, course_controls, competitors, clubs, config). EventPayload 9-arm discriminated union (the 5 Phase 0 wire-events + Phase 1's card_bound / manual_dnf / un_dnf / consent_confirmed). Imports `NdjsonPunch` + `HalfDayClock` from `@fartol/sportident` for typed `card_read` payload arm — closes codex C-H2 at the schema layer (a wrong-shape insert is a compile error).
+- `src/db/schema.ts` — 9 tables (events, competitions, classes, controls, courses, course_controls, competitors, clubs, config). EventPayload 9-arm discriminated union (the 5 Phase 0 wire-events + Phase 1's card_bound / manual_dnf / un_dnf / consent_confirmed). Imports `NdjsonPunch` + `HalfDayClock` from `@fartola/sportident` for typed `card_read` payload arm — closes codex C-H2 at the schema layer (a wrong-shape insert is a compile error).
 - `src/db/types.ts` — Drizzle InferSelectModel / InferInsertModel for all 9 tables + EventPayload re-export. Internal to apps/edge.
 - `src/db/index.ts` — `openDatabase(dbPath): DbHandle` factory. WAL pragmas + embedded migrator + drizzle-orm/better-sqlite3 handle.
 - `src/db/migrate.ts` — `runMigrations(sqlite)` wrapper. `MIGRATIONS_FOLDER` exported so tests can assert resolution.
@@ -166,7 +166,7 @@ _Plan metadata commit lands after this SUMMARY._
 2. **Migration filename: renamed `0000_married_hemingway.sql` → `0000_initial.sql`** on disk plus updated the `tag` field in `_journal.json` to match. drizzle-kit's auto-naming is whimsy; the plan's verbatim `0000_initial` matches the deterministic ratchet the rest of the phase will expect.
 3. **`_journal.json` shape for 0001:** `{ "idx": 1, "version": "6", "when": 1778758877200, "tag": "0001_append_only_triggers", "breakpoints": true }`. `when` is +1 ms from the 0000 `when` so the numerical sort is unambiguous. drizzle-orm's migrator orders by the `idx` field, not `when`, so the exact `when` value is cosmetic — but keeping it close to 0000's `when` makes the journal readable.
 4. **consent_status as a Drizzle TS enum**, not free-form TEXT — narrows the column type to the three-arm union at the TS layer (`'explicit' | 'pending_first_read' | 'confirmed_on_read'`) so a route handler trying to insert `consent_status: 'foo'` fails compile, while the SQL NOT NULL + DEFAULT enforces the runtime invariant. A future SQLite CHECK constraint can be added as a 0002 hand-authored migration if a later phase needs DB-side enforcement, but Phase 1's TS narrowing + tests are sufficient.
-5. **MIGRATIONS_FOLDER resolution via `import.meta.url`** — `path.resolve(__dirname, '../../drizzle')` where `__dirname` comes from `fileURLToPath(import.meta.url)`. This works under tsx (Task 2 tests pass), tsup build (`apps/edge/dist/db/migrate.js` resolves up to the bundled `drizzle/` folder when packaging includes it), and `npm install -g fartol` (the published tarball ships `drizzle/` alongside `dist/`). Verified by `migrate.test.ts` tests 1–3, all running under `tsx` via `node --test --import tsx`.
+5. **MIGRATIONS_FOLDER resolution via `import.meta.url`** — `path.resolve(__dirname, '../../drizzle')` where `__dirname` comes from `fileURLToPath(import.meta.url)`. This works under tsx (Task 2 tests pass), tsup build (`apps/edge/dist/db/migrate.js` resolves up to the bundled `drizzle/` folder when packaging includes it), and `npm install -g fartola` (the published tarball ships `drizzle/` alongside `dist/`). Verified by `migrate.test.ts` tests 1–3, all running under `tsx` via `node --test --import tsx`.
 6. **`onlyBuiltDependencies` allow-list in pnpm-workspace.yaml** — pnpm 10+ blocks postinstall scripts by default. Adding the three native binders (`@serialport/bindings-cpp` from Phase 0, `better-sqlite3` from this plan, `lefthook` from the repo root) is the minimum surface to unblock CI and local installs.
 
 ## Deviations from Plan
@@ -198,18 +198,18 @@ _Plan metadata commit lands after this SUMMARY._
 ## Issues Encountered
 
 - **drizzle-kit's auto-named migration file (`0000_married_hemingway.sql`):** drizzle-kit defaults to whimsical adjective+author names. Renamed to `0000_initial.sql` immediately and updated the journal `tag` field. Future executors regenerating 0000 should re-pin the tag to `0000_initial` and verify the 0001 entry is still appended. A Phase 2 lefthook target could enforce this with a pre-commit grep.
-- **@fartol/sportident build needed first (same as plan 01's experience):** `apps/edge` typecheck initially failed with TS2307 on `@fartol/sportident` because the Phase 0 package's `exports` map points at `dist/` and the dist had been cleaned. Resolution: `pnpm --filter @fartol/sportident build`. Both plan 01's SUMMARY and this plan recommend a Phase 2 follow-up to add a `./src/index.ts` source-fallback export to remove the need for interleaved builds during dev iteration.
+- **@fartola/sportident build needed first (same as plan 01's experience):** `apps/edge` typecheck initially failed with TS2307 on `@fartola/sportident` because the Phase 0 package's `exports` map points at `dist/` and the dist had been cleaned. Resolution: `pnpm --filter @fartola/sportident build`. Both plan 01's SUMMARY and this plan recommend a Phase 2 follow-up to add a `./src/index.ts` source-fallback export to remove the need for interleaved builds during dev iteration.
 
 ## User Setup Required
 
-None. No external services, no env vars, no DB pre-create. `openDatabase('./fartol.db')` on an empty data directory does everything: creates the file, sets pragmas, runs both migrations, returns a usable handle. `pnpm install` triggers the better-sqlite3 native build automatically (thanks to the workspace `onlyBuiltDependencies` allow-list).
+None. No external services, no env vars, no DB pre-create. `openDatabase('./fartola.db')` on an empty data directory does everything: creates the file, sets pragmas, runs both migrations, returns a usable handle. `pnpm install` triggers the better-sqlite3 native build automatically (thanks to the workspace `onlyBuiltDependencies` allow-list).
 
 ## Next Phase Readiness
 
 - **Plan 03 (walking-skeleton e2e)** ready: can `import { openDatabase } from '../db/index.ts'` (or any local relative path) and call it. The DB is fully initialized and the events table accepts inserts.
 - **Plan 04 (route handlers)** ready: the Drizzle row types in `apps/edge/src/db/types.ts` + the plain DTO interfaces in `packages/shared-types/src/db.ts` give a clean import surface for the mapper layer. No upward boundary violations to worry about.
 - **Plan 05 (EntryList import)** ready: `competitors.consent_status='pending_first_read'` is a valid value and the schema enforces it. The default `'explicit'` covers walk-up path (plan 04); the C-M4 toast that flips to `'confirmed_on_read'` lands in plan 14.
-- **Plan 06 (SI bridge)** ready: the EventPayload `card_read` arm's TS type already imports `NdjsonPunch` + `HalfDayClock` from `@fartol/sportident`, so the bridge's "insert NDJSON event from the station" path will compile only if the wire shape matches. Codex C-H2 closed at the schema layer.
+- **Plan 06 (SI bridge)** ready: the EventPayload `card_read` arm's TS type already imports `NdjsonPunch` + `HalfDayClock` from `@fartola/sportident`, so the bridge's "insert NDJSON event from the station" path will compile only if the wire shape matches. Codex C-H2 closed at the schema layer.
 - **Plan 17 (PII scrub cron)** ready: the `scrubbed_at_ms` column gates the daily scrub idempotently; non-null = already anonymized.
 
 ## Self-Check: PASSED
@@ -237,7 +237,7 @@ None. No external services, no env vars, no DB pre-create. `openDatabase('./fart
 
 **Behavior verified:**
 
-- `pnpm --filter @fartol/edge test`: 27/27 pass (16 new + 11 pre-existing).
+- `pnpm --filter @fartola/edge test`: 27/27 pass (16 new + 11 pre-existing).
 - `pnpm -r --if-present typecheck`: clean across all 4 workspace projects.
 - `pnpm -r --if-present test`: 108 sportident + 3 shared-types + 27 edge + 1 web = 139 tests, 0 fail.
 - `! grep -rE "from 'drizzle-orm'" packages/shared-types/src/`: zero matches (C-H5).

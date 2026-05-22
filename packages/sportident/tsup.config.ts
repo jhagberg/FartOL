@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/index.ts', 'src/bin/fartol-readout.ts', 'src/bin/fartol-trainer.ts'],
+  entry: ['src/index.ts', 'src/bin/fartola-readout.ts', 'src/bin/fartola-trainer.ts'],
   format: ['esm', 'cjs'],
   dts: true,
   sourcemap: true,

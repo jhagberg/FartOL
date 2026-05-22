@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   SmartClubSearch — federation-club picker backed by /api/eventor/clubs?q=.
   FTS5 matches across name + short_name + media_name so an operator can
@@ -19,7 +19,7 @@
   import { onMount } from 'svelte';
   import { t } from '$lib/i18n/index.ts';
   import { searchEventorClubs } from '$lib/api/client.ts';
-  import type { EventorClubSuggestion } from '@fartol/shared-types';
+  import type { EventorClubSuggestion } from '@fartola/shared-types';
 
   interface Props {
     value: string;

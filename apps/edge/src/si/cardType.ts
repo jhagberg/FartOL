@@ -1,8 +1,8 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Thin re-export of Phase 0's card-number → card-type inference helper. Lives
 // here so apps/edge consumers (bridge + cardReadPayload) don't reach into
-// `@fartol/sportident`'s SiCard subtree directly — single import surface keeps
+// `@fartola/sportident`'s SiCard subtree directly — single import surface keeps
 // the boundary clean.
 //
 // Phase 0 exports the function as `inferCardType` (from
@@ -18,4 +18,4 @@
 // - .planning/phases/00-hardware-proof/00-REVIEW.md §CR-002 (single source
 //   of truth for card-number → card-type mapping)
 
-export { inferCardType as cardTypeFromNumber } from '@fartol/sportident';
+export { inferCardType as cardTypeFromNumber } from '@fartola/sportident';

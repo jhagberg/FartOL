@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Streaming XML parser for the Eventor löpardatabasen feeds (Plan 02-01
 // task 2). Two public surfaces:

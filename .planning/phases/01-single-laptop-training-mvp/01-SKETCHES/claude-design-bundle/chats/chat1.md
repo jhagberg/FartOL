@@ -14,18 +14,18 @@ Hi! Happy to help — paste a github.com repository URL and I can explore the st
 
 ## User
 
-https://github.com/jhagberg/FartOL/tree/gsd/phase-1-training-mvp
+https://github.com/jhagberg/fartOLa/tree/gsd/phase-1-training-mvp
 
 Key files for Claude Design to pull:
 
 - Design brief — the main paste target:
-https://github.com/jhagberg/FartOL/blob/gsd/phase-1-training-mvp/.planning/phases/01-single-laptop-training-mvp/01-DESIGN-BRIEF.md
+  https://github.com/jhagberg/fartOLa/blob/gsd/phase-1-training-mvp/.planning/phases/01-single-laptop-training-mvp/01-DESIGN-BRIEF.md
 - CONTEXT.md (Phase 1 decisions):
-https://github.com/jhagberg/FartOL/blob/gsd/phase-1-training-mvp/.planning/phases/01-single-laptop-training-mvp/01-CONTEXT.md
+  https://github.com/jhagberg/fartOLa/blob/gsd/phase-1-training-mvp/.planning/phases/01-single-laptop-training-mvp/01-CONTEXT.md
 - REQUIREMENTS.md (full requirement list):
-https://github.com/jhagberg/FartOL/blob/gsd/phase-1-training-mvp/.planning/REQUIREMENTS.md
+  https://github.com/jhagberg/fartOLa/blob/gsd/phase-1-training-mvp/.planning/REQUIREMENTS.md
 - ROADMAP.md (Phase 1 success criteria):
-https://github.com/jhagberg/FartOL/blob/gsd/phase-1-training-mvp/.planning/ROADMAP.md
+  https://github.com/jhagberg/fartOLa/blob/gsd/phase-1-training-mvp/.planning/ROADMAP.md
 
 ## Assistant
 
@@ -84,12 +84,14 @@ _[tool: fork_verifier_agent]_
 Built the Phase 1 prototype as a single interactive app — all four key screens with live state.
 
 **Visual system**
+
 - Hybrid: modern shell (generous whitespace, card-based) + MeOS-density readout when needed
 - IBM Plex Sans + Plex Mono (mono for SI numbers, splits, control codes)
 - Forest-green accent (oklch); locked status colors: green=OK, amber=MP, red=DNF, gray=PEND
 - Swedish primary, English available via Tweaks; every label is a key
 
 **Screens**
+
 1. **Home + 3-click wizard** — `Skapa → Importera bana → Starta avläsning` with reader-detect animation (spinner → green light → handshake info)
 2. **Readout view** — large current-card panel (big SI number, name, class, control-sequence grid with ✓/✗, splits), live history sidebar, station heartbeat in topbar
 3. **Live results** — tabbed by class, projector-ready Fullscreen toggle scales typography up
@@ -97,6 +99,7 @@ Built the Phase 1 prototype as a single interactive app — all four key screens
 5. **Thermal receipt mockup** — 80mm column with dashed dividers and torn bottom edge, mirrors what prints
 
 **Try the Tweaks panel (top toolbar toggle)**
+
 - Locale `sv ↔ en`
 - Density `low / med / high` — readout switches from punch grid to dense splits table
 - Accent: forest / blue / magenta / charcoal swatches
@@ -104,6 +107,7 @@ Built the Phase 1 prototype as a single interactive app — all four key screens
 - **Simulate read** — fires the next card into the live feed; one of them is an unknown SI to trigger the walk-up flow
 
 **Caveats / next steps**
+
 - File import in the wizard is faked (one click = "imported tisdag-bana-v20.xml")
 - All times/results are mocked — no real reducer logic
 - Live results only shows updates when you fire reads from Tweaks; no auto-tick
@@ -162,6 +166,7 @@ Both done:
 **Logo** — swapped the abstract triangle for the universal orienteering **control flag** (white-and-orange diamond) drawn as a rotated square split horizontally. It's the most-recognized symbol in the sport — used on every map, every actual flag in the forest, and the IOF identity. Now the sidebar reads as "this is an orienteering tool" at a glance.
 
 **Font pair toggle** — added to Tweaks (dropdown). Cycle live between:
+
 - **IBM Plex Sans / Plex Mono** — current default
 - **Geist / Geist Mono** — most modern
 - **Source Sans 3 / JetBrains Mono** — softer, neutral
@@ -171,7 +176,7 @@ Best A/B page is the readout — that's where the mono numbers earn their keep. 
 
 ## User
 
-can you check how Meos design on Tävlingskvitto looks like I think I have seen different versions of them. Like what position and the current standing 
+can you check how Meos design on Tävlingskvitto looks like I think I have seen different versions of them. Like what position and the current standing
 like 4of 5 i mål, can we make different templates of the Tävlingskittot this one looks great so keep that one.
 
 ## Assistant
@@ -185,6 +190,7 @@ _[tool: web_search]_
 MeOS supports several split-printer templates — a "Standard" built-in list with no class results, an "Automatic" choice that picks a custom list per class, and other built-in or user-defined lists you can edit. Custom text lines below the splits can include dynamic values in brackets, like `Please pay: [RunnerFee]`. The Australian variant prints out current rank, time lost, etc. in addition to splits.
 
 So MeOS in the wild looks like these flavors:
+
 1. **Standard** — just splits, no class context
 2. **Automatic / custom** — adds place in class + time behind leader
 3. **Detailed (MeOS-OZ)** — per-leg rank + "time lost" per control
@@ -254,6 +260,7 @@ All three fixed:
 **Swedish** — `ledning` → `Leder` (verb form) with a ★ prefix on the leader rows. Reads clean in context: `★ Leder · —` for #1, `efter ledaren · +0:45` for everyone else.
 
 **Topp 4 template** — new tab between Detaljerad and Minimal. Renders:
+
 - Header + total time + behind-leader summary
 - `TOPP 4 · H21` block with the four-row leaderboard, your row highlighted in yellow with a `←` marker
 - If you're outside the top 4, a second block "Din placering" shows your row separately so it's never hidden
@@ -261,6 +268,7 @@ All three fixed:
 For pending rivals it prints `(väntar)` instead of a time — matches what MeOS does when later starters haven't finished yet.
 
 **Auto-print** — modeled on the MeOS "Print splits automatically" SportIdent-tab setting. Now visible on the latest-read card:
+
 - A real switch labeled **Auto-skriv ut** next to the print button
 - When ON: the manual button greys out, the receipt card shows a small `AUTO` badge in the header, and the print toast fires automatically ~0.4s after each new read
 - Template selection is persisted via the card-head tabs — whichever tab you have selected when auto-print fires is what would actually print
@@ -277,7 +285,7 @@ Apply comment
 
 _[tool: str_replace_edit]_
 
-Removed. Sidebar brand is just the control-flag mark + "FartOL" now — cleaner.
+Removed. Sidebar brand is just the control-flag mark + "fartOLa" now — cleaner.
 
 ## User
 
@@ -323,6 +331,7 @@ Both fixes shipped:
 **1. History rows are now clickable** — every row in "Avläsningshistorik" on the right is a button. Click it → that read becomes the current one (gets the same flash animation as a fresh read), and the kvitto card refreshes below. The selected row gets a green left bar + soft accent background so you can see which one's active.
 
 **2. All 6 mock reads now carry punch data + class progress** — so every read has a real kvitto when selected:
+
 - **Erik** (H21, 1st, OK) — flawless run, leader
 - **Anna** (D21, 1st, OK) — clean leader of her class
 - **Mikael** (H45, MP) — missed control 55, shows the `—` in the splits, MP status on receipt
@@ -334,7 +343,7 @@ Mikael in particular is worth clicking — the MP receipt shows the missing punc
 
 ## User
 
-Save this design as a PDF: FartOL Phase 1 Prototype.html
+Save this design as a PDF: fartOLa Phase 1 Prototype.html
 
 ## Assistant
 
@@ -376,5 +385,4 @@ _[tool: str_replace_edit]_
 
 _[tool: open_for_print]_
 
-Adding the auto-print and finalizing:Print-ready file opened — should auto-trigger Chrome's print dialog. If it doesn't, [open the print page manually](https://019e2199-f2b6-7990-99d3-31b7c50f43e3.claudeusercontent.com/v1/design/projects/019e2199-f2b6-7990-99d3-31b7c50f43e3/serve/FartOL%20Phase%201%20Prototype-print.html?t=4e2e18ebe629f7766b397475f63c4999e73bc78d748d868820690418f8a1b065.e5cf0ba2-ff7b-4ba6-83f2-5389cf23eb1d.beef3e00-3efd-4880-8281-ef21339a093b.1778687098&direct=1) and press ⌘P / Ctrl+P. In the print dialog set **Destination → Save as PDF**, **Paper size → "Default"** (the page CSS defines 1480×1100), and **Margins → None**. 8 pages: Home, Wizard, Erik with four receipt templates, Walk-up modal, Live results.
-
+Adding the auto-print and finalizing:Print-ready file opened — should auto-trigger Chrome's print dialog. If it doesn't, [open the print page manually](https://019e2199-f2b6-7990-99d3-31b7c50f43e3.claudeusercontent.com/v1/design/projects/019e2199-f2b6-7990-99d3-31b7c50f43e3/serve/fartOLa%20Phase%201%20Prototype-print.html?t=4e2e18ebe629f7766b397475f63c4999e73bc78d748d868820690418f8a1b065.e5cf0ba2-ff7b-4ba6-83f2-5389cf23eb1d.beef3e00-3efd-4880-8281-ef21339a093b.1778687098&direct=1) and press ⌘P / Ctrl+P. In the print dialog set **Destination → Save as PDF**, **Paper size → "Default"** (the page CSS defines 1480×1100), and **Margins → None**. 8 pages: Home, Wizard, Erik with four receipt templates, Walk-up modal, Live results.

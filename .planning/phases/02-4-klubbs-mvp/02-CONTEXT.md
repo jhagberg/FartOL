@@ -9,7 +9,7 @@
 
 Phase 2.0 is a deliberately narrow slice of the broader Phase 2 "Small
 sanctioned competition" goal. The motivating event is a **4-klubbs
-training** on Wednesday 2026-05-20 where we want to run FartOL **as the
+training** on Wednesday 2026-05-20 where we want to run fartOLa **as the
 primary registration + readout system in parallel with MeOS as a safety
 backup**. The MeOS coexistence is the new architectural piece; the rest
 is Phase-1 surface work and an Eventor pull.
@@ -72,21 +72,21 @@ TabCompetition.cpp:3107-3108`), and it's OPEN to club-level API keys
 - **MIP server** (`apps/edge/src/integrations/meos/mip.ts`) — Fastify
   route that MeOS polls. Serves `<MIPData>` containing:
   - `<entry>` for every walk-up registration (sync direktanmälningar
-    FartOL → MeOS so MeOS has the runner when card hits MeOS readback).
+    fartOLa → MeOS so MeOS has the runner when card hits MeOS readback).
   - `<p>` / `<card>` for finish punches if MeOS wants them.
   - `hired="true"` on entries with Hyrbricka so MeOS's own "return card"
     reminder kicks in too (belt + braces with our own toast).
 - **MOP receiver** (`apps/edge/src/integrations/meos/mop.ts`) — Fastify
   route MeOS pushes to. Ingests `<cmp>` updates so:
-  - We see runners registered directly in MeOS during a FartOL outage.
-  - We can reconcile state after FartOL restart.
+  - We see runners registered directly in MeOS during a fartOLa outage.
+  - We can reconcile state after fartOLa restart.
 - **Hyrbricka finish-readout toast** — when finish read returns a
   competitor with `hired_card=true`, ReadoutView shows a prominent
   Swedish alert: _"⚠️ Hyrbricka — be om att få tillbaka brickan!"_.
 - **Parallel-run ops playbook** — short Markdown runbook in
-  `docs/ops/parallel-meos-runbook.md` covering: pre-event MeOS+FartOL
+  `docs/ops/parallel-meos-runbook.md` covering: pre-event MeOS+fartOLa
   setup, network config (both on same LAN), what each operator does
-  during the event, failure-fallback steps (FartOL crashes → switch to
+  during the event, failure-fallback steps (fartOLa crashes → switch to
   MeOS-only → reconcile after restart).
 
 **Out of scope (Phase 2.0 — deferred to 2.1+):**
@@ -123,7 +123,7 @@ TabCompetition.cpp:3107-3108`), and it's OPEN to club-level API keys
     deferred to the start of execution (paste-into-chat or `.env`).
   - Stora Tuna OK organisation ID (numeric).
 - **External — NEEDED for cross-system test**:
-  - A MeOS install on the same LAN as the FartOL edge bridge. MeOS
+  - A MeOS install on the same LAN as the fartOLa edge bridge. MeOS
     version pinned ahead of Wednesday so the MIP/MOP XSD versions we
     target match what's running.
   - User runs the MeOS install; we just need to point MeOS at our HTTP
@@ -143,21 +143,21 @@ reason."
    just relabel the operator-facing "Klass" picker as **"Bana"** in
    walk-up. No schema change.
 
-2. **FartOL is registration primary; MeOS is parallel backup via MIP+MOP.**
-   - Single operator UX (FartOL walkup form).
+2. **fartOLa is registration primary; MeOS is parallel backup via MIP+MOP.**
+   - Single operator UX (fartOLa walkup form).
    - Every accepted walk-up is queued for MIP push to MeOS.
-   - MeOS readback is the backup if FartOL crashes; MOP feed pulls those
-     MeOS-only registrations back into FartOL on restart.
-   - **NOT** "MeOS is source of truth, FartOL is passive mirror" — that
+   - MeOS readback is the backup if fartOLa crashes; MOP feed pulls those
+     MeOS-only registrations back into fartOLa on restart.
+   - **NOT** "MeOS is source of truth, fartOLa is passive mirror" — that
      was the agent's lowest-risk recommendation but would not exercise
-     FartOL's full workflow.
+     fartOLa's full workflow.
 
-3. **No runner double-stamping.** FartOL bridge auto-captures the finish
+3. **No runner double-stamping.** fartOLa bridge auto-captures the finish
    punch (Phase 1 path). MeOS does its own card readback at the MeOS
    desk for any runner who visits it. Each system gets its own data
    through its own path; cross-validation happens post-event.
 
-4. **Hyrbricka handled in both systems independently.** FartOL stores
+4. **Hyrbricka handled in both systems independently.** fartOLa stores
    the flag on the competitor row and shows a Swedish toast on
    finish-readout. MIP `<card hired="true">` lets MeOS show its own
    "return card" reminder too. Belt + braces because the goal is **zero
@@ -201,8 +201,8 @@ Total committed: **~4d** (was 3.5d before Plan 2b was added). Wednesday morning 
   the event (Condes 10.8.12 export, IOF XML 3.0). Use this verbatim as
   the e2e fixture for 2.0 plans that touch course import.
 - `.reference/2026-05-20 4-klubbs.wcd` — Purple Pen / Condes native file
-  (sibling of the IOF XML). Not load-bearing; FartOL ingests the XML.
-- `docs/guide-meos.pdf` (in worktree `/home/jonas/src/FartOL-phase-1.5/`)
+  (sibling of the IOF XML). Not load-bearing; fartOLa ingests the XML.
+- `docs/guide-meos.pdf` (in worktree `/home/jonas/src/fartOLa-phase-1.5/`)
   — MeOS user manual; the **UX pattern we're matching** for walk-up
   registration (Anmälningsläge, runner DB autocomplete, Hyrbricka tag).
 - `apps/web/src/lib/screens/WalkupModal.svelte` — Phase 1 baseline that
@@ -287,10 +287,10 @@ offline`. Honors REQ-OPS-001 (no internet required). NEVER blocks
 - **D-MIP-3:** Push scope = **`<entry>` on bind + `<entry>` re-emit on
   card-replace updates**. NOT full `<card>` punch dumps (would violate
   locked decision #3 "no runner double-stamping"). The replace-card
-  409 flow re-emits the same FartOL UUID via `<extId>` so MeOS UPDATEs
+  409 flow re-emits the same fartOLa UUID via `<extId>` so MeOS UPDATEs
   rather than inserts.
 - **D-MIP-4:** Entry shape = **`<classname>` (string) + `<extId>`
-  (FartOL competitor UUID)**. Verified against MeOS source at
+  (fartOLa competitor UUID)**. Verified against MeOS source at
   `/home/jonas/src/meos/code/onlineinput.cpp:989-997`: parser falls back
   to `oe.getClass(clsName)` when `<classid>` is absent or unknown.
   Eliminates the MOP-bootstrap dance entirely. Precondition: MeOS has
@@ -301,7 +301,7 @@ offline`. Honors REQ-OPS-001 (no internet required). NEVER blocks
 
 - **D-MOP-1:** Storage = **shadow `meos_competitors` / `meos_classes` /
   `meos_clubs` tables** (not projected into the active `competitors`
-  table). Clean separation of FartOL ground truth from MeOS view;
+  table). Clean separation of fartOLa ground truth from MeOS view;
   reconciliation is an explicit step. Crash-recovery query becomes
   trivial: `WHERE NOT EXISTS (SELECT 1 FROM competitors WHERE
 card_number = meos_competitors.card_number)`.
@@ -347,9 +347,9 @@ IS NULL)`. ADD to REQ-PRIV-002 retention scrub list.
 ### Known limitation — documented in playbook (Plan 6)
 
 - **D-LIM-1:** MOP `<cmp>` does NOT carry the hired flag, so rentals
-  marked in MeOS during a FartOL outage will NOT auto-import on
+  marked in MeOS during a fartOLa outage will NOT auto-import on
   recovery. The parallel-run playbook documents the manual workaround:
-  operator re-enters those rentals in FartOL post-restart. Not worth
+  operator re-enters those rentals in fartOLa post-restart. Not worth
   fixing in 2.0 because (a) the typical outage is short, (b) MeOS
   operators eyeball rental returns anyway, (c) belt+braces is sufficient.
 
@@ -428,7 +428,7 @@ oe.getClass(clsName);`). Locks D-MIP-4 entry shape.
   fixture for any Plan that touches course import. 5 courses:
   Vit/Grön/Gul/Orange/Violett.
 - `.reference/2026-05-20 4-klubbs.wcd` — Purple Pen / Condes native
-  sibling. Not load-bearing; FartOL ingests the XML.
+  sibling. Not load-bearing; fartOLa ingests the XML.
 - `.reference/Guide_Eventor_-_Hamta_data_via_API.pdf` — Eventor API
   reference (ToS guidance for D-EV-1 cadence; key handling).
 
@@ -559,14 +559,14 @@ local_seq > ?` and serializes matching `card_bound` events to MIP
   Loaded on bridge boot (D-EV-1); if missing → Eventor cache is
   disabled, indicator says `Eventor: nyckel saknas`.
 - **MIP/MOP polling** — MeOS is the HTTP client for BOTH protocols
-  (it polls our `/mip` and POSTs to our `/mop`). FartOL is the HTTP
+  (it polls our `/mip` and POSTs to our `/mop`). fartOLa is the HTTP
   server in both cases. This is the inverse of what newcomers expect
   from "MIP = input protocol".
 - **Mobile readability** (Phase 1 carry-forward) — Jonas reads on
   mobile. AskUserQuestion / chat replies stay terse. Long content
   goes in CONTEXT.md / PLAN.md / ADRs.
 - **MeOS as parallel safety backup** — locked decision #2 (round 1)
-  AND D-MOP-3 (round 2) jointly imply: FartOL is primary, MeOS is the
+  AND D-MOP-3 (round 2) jointly imply: fartOLa is primary, MeOS is the
   parachute. Belt+braces, not redundant.
 
 </specifics>
@@ -619,10 +619,10 @@ D-MIP-1 chose no-auth for 4-klubbs. Phase 2.1 (sanctioned events,
 bigger LAN attack surface) should revisit — likely an env-var `pwd`
 check on both MIP and MOP endpoints.
 
-### MeOS-side hired-card visibility on FartOL crash recovery
+### MeOS-side hired-card visibility on fartOLa crash recovery
 
 D-LIM-1: MOP `<cmp>` doesn't carry the hired flag, so MeOS-side
-rentals during a FartOL outage won't auto-import. Operator re-enters
+rentals during a fartOLa outage won't auto-import. Operator re-enters
 on restart. Worth revisiting in Phase 2.1 if it becomes painful — a
 custom MIP `<response type="hiredcards"/>` query might work, but
 that's speculative (not in the spec we have).

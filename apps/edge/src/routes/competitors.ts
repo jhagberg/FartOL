@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // REST routes for competitors — walk-up registration (D-04 first-class) +
 // list/single read. POST /api/competitors is the path the SvelteKit walk-up
@@ -25,7 +25,7 @@
 //            status default 'explicit', scrubbed_at_ms = null.
 //          - If club non-null + non-empty, upsert clubs row.
 //          - If card_number provided, insert events row eventType='card_bound'.
-//            local_seq via app.fartolNextLocalSeq (PATTERNS S-2 injection).
+//            local_seq via app.fartolaNextLocalSeq (PATTERNS S-2 injection).
 //     6. After commit, if card_number provided, app.wsBroadcast on
 //        readout:<competition_id> with type='card_bound' + payload.
 //     7. Return 201 + CompetitorDTO.
@@ -46,7 +46,7 @@
 //          - UPDATE competitors SET card_number=? WHERE id=?.
 //          - Insert events row eventType='card_bound' + payload preserving
 //            the original consent_at_ms (REQ-PRIV-001). local_seq via
-//            app.fartolNextLocalSeq.
+//            app.fartolaNextLocalSeq.
 //     5. After commit, app.wsBroadcast on readout:<competition_id> with
 //        type='card_bound' + payload AND projectionStore.markDirty so the
 //        re-binding clears pending_unknown_cards on next recompute.
@@ -70,7 +70,7 @@ import crypto from 'node:crypto';
 import { and, asc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { CompetitorCreateInput, type CompetitorDTO, readoutChannel } from '@fartol/shared-types';
+import { CompetitorCreateInput, type CompetitorDTO, readoutChannel } from '@fartola/shared-types';
 import { classes, clubs, competitions, competitors, events, hiredCards } from '../db/schema.ts';
 import type { Competitor } from '../db/types.ts';
 import { issuesToErrors } from './_zod-errors.ts';
@@ -143,7 +143,7 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
     const input = parsed.data;
 
     // (2) Competition must exist (both modes).
-    const compRow = app.fartolDb.db
+    const compRow = app.fartolaDb.db
       .select({ id: competitions.id })
       .from(competitions)
       .where(eq(competitions.id, input.competition_id))
@@ -158,7 +158,7 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
       // (3r) Locate the target competitor scoped to this competition.
       // Cross-competition reject (T-CROSS-COMP-REPLACE) — 404 even when
       // the id exists in some other competition.
-      const target = app.fartolDb.db
+      const target = app.fartolaDb.db
         .select()
         .from(competitors)
         .where(
@@ -187,7 +187,7 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
       // throw at UPDATE time but the pre-flight SELECT returns a
       // structured 409 (mirrors create-mode behavior).
       if (newCardNumber !== target.cardNumber) {
-        const collision = app.fartolDb.db
+        const collision = app.fartolaDb.db
           .select({ id: competitors.id })
           .from(competitors)
           .where(
@@ -208,8 +208,8 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
       const now = Date.now();
       let seq: number | null = null;
       try {
-        app.fartolDb.sqlite.transaction(() => {
-          app.fartolDb.db
+        app.fartolaDb.sqlite.transaction(() => {
+          app.fartolaDb.db
             .update(competitors)
             .set({ cardNumber: newCardNumber })
             .where(eq(competitors.id, target.id))
@@ -217,11 +217,11 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
 
           // PATTERNS S-2 injection — same path as create mode so test 9
           // covers both branches.
-          seq = app.fartolNextLocalSeq(app.fartolDb, app.fartolNodeId);
-          app.fartolDb.db
+          seq = app.fartolaNextLocalSeq(app.fartolaDb, app.fartolaNodeId);
+          app.fartolaDb.db
             .insert(events)
             .values({
-              nodeId: app.fartolNodeId,
+              nodeId: app.fartolaNodeId,
               localSeq: seq,
               competitionId: input.competition_id,
               eventType: 'card_bound',
@@ -248,7 +248,7 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
         // returns. Look up the colliding row again so the response carries
         // a useful existing_competitor_id.
         if (isCardCollisionError(err)) {
-          const collision = app.fartolDb.db
+          const collision = app.fartolaDb.db
             .select({ id: competitors.id })
             .from(competitors)
             .where(
@@ -320,7 +320,7 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
     const createClassId = input.class_id;
 
     // (3) Class must exist AND belong to the competition.
-    const classRow = app.fartolDb.db
+    const classRow = app.fartolaDb.db
       .select({ id: classes.id, competitionId: classes.competitionId })
       .from(classes)
       .where(eq(classes.id, createClassId))
@@ -349,7 +349,7 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
     // 409 response (with the colliding competitor id) instead of a raw
     // SQLITE_CONSTRAINT_UNIQUE error.
     if (input.card_number !== null) {
-      const collision = app.fartolDb.db
+      const collision = app.fartolaDb.db
         .select({ id: competitors.id })
         .from(competitors)
         .where(
@@ -370,8 +370,8 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
     let seq: number | null = null;
 
     try {
-      app.fartolDb.sqlite.transaction(() => {
-        app.fartolDb.db
+      app.fartolaDb.sqlite.transaction(() => {
+        app.fartolaDb.db
           .insert(competitors)
           .values({
             id: competitorId,
@@ -389,7 +389,7 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
         if (input.club !== null && input.club.length > 0) {
           // ON CONFLICT (name) DO UPDATE last_seen_at_ms = excluded.last_seen_at_ms.
           // Drizzle exposes onConflictDoUpdate on the sqlite insert builder.
-          app.fartolDb.db
+          app.fartolaDb.db
             .insert(clubs)
             .values({ name: input.club, lastSeenAtMs: now })
             .onConflictDoUpdate({
@@ -400,14 +400,14 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
         }
 
         if (input.card_number !== null) {
-          // PATTERNS S-2 injection: app.fartolNextLocalSeq defaults to the
+          // PATTERNS S-2 injection: app.fartolaNextLocalSeq defaults to the
           // real nextLocalSeq trailing-edge SELECT; test 9 swaps in a
           // throwing fn to verify transactional atomicity.
-          seq = app.fartolNextLocalSeq(app.fartolDb, app.fartolNodeId);
-          app.fartolDb.db
+          seq = app.fartolaNextLocalSeq(app.fartolaDb, app.fartolaNodeId);
+          app.fartolaDb.db
             .insert(events)
             .values({
-              nodeId: app.fartolNodeId,
+              nodeId: app.fartolaNodeId,
               localSeq: seq,
               competitionId: input.competition_id,
               eventType: 'card_bound',
@@ -439,7 +439,7 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
           const contactPhone = hc?.phone && hc.phone.trim() !== '' ? hc.phone.trim() : null;
           const contactEmail = hc?.email && hc.email.trim() !== '' ? hc.email.trim() : null;
           const note = hc?.note && hc.note.trim() !== '' ? hc.note.trim() : null;
-          app.fartolDb.db
+          app.fartolaDb.db
             .insert(hiredCards)
             .values({
               competitionId: input.competition_id,
@@ -472,7 +472,7 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
       // collisions at commit time. Look up the winner and surface the
       // same structured 409.
       if (isCardCollisionError(err) && input.card_number !== null) {
-        const collision = app.fartolDb.db
+        const collision = app.fartolaDb.db
           .select({ id: competitors.id })
           .from(competitors)
           .where(
@@ -542,7 +542,7 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
       return reply.code(400).send(issuesToErrors(parsed.error.issues));
     }
 
-    const row = app.fartolDb.db.select().from(competitors).where(eq(competitors.id, id)).get();
+    const row = app.fartolaDb.db.select().from(competitors).where(eq(competitors.id, id)).get();
     if (!row) return reply.code(404).send({ error: 'competitor_not_found' });
 
     if (row.consentStatus !== 'pending_first_read') {
@@ -550,18 +550,18 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
     }
 
     let seq: number | null = null;
-    app.fartolDb.sqlite.transaction(() => {
-      app.fartolDb.db
+    app.fartolaDb.sqlite.transaction(() => {
+      app.fartolaDb.db
         .update(competitors)
         .set({ consentStatus: 'confirmed_on_read', consentAtMs: parsed.data.consent_at_ms })
         .where(eq(competitors.id, id))
         .run();
 
-      seq = app.fartolNextLocalSeq(app.fartolDb, app.fartolNodeId);
-      app.fartolDb.db
+      seq = app.fartolaNextLocalSeq(app.fartolaDb, app.fartolaNodeId);
+      app.fartolaDb.db
         .insert(events)
         .values({
-          nodeId: app.fartolNodeId,
+          nodeId: app.fartolaNodeId,
           localSeq: seq,
           competitionId: row.competitionId,
           eventType: 'consent_confirmed',
@@ -598,14 +598,14 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
       return reply.code(400).send(issuesToErrors(parsed.error.issues));
     }
 
-    const row = app.fartolDb.db.select().from(competitors).where(eq(competitors.id, id)).get();
+    const row = app.fartolaDb.db.select().from(competitors).where(eq(competitors.id, id)).get();
     if (!row) return reply.code(404).send({ error: 'competitor_not_found' });
 
     const update: Partial<Competitor> = {};
     if (parsed.data.name !== undefined) update.name = parsed.data.name;
     if (parsed.data.club !== undefined) update.club = parsed.data.club;
     if (parsed.data.class_id !== undefined) {
-      const classRow = app.fartolDb.db
+      const classRow = app.fartolaDb.db
         .select({ id: classes.id })
         .from(classes)
         .where(
@@ -622,7 +622,7 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
     if (cardChanged) {
       const candidate = parsed.data.card_number ?? null;
       if (candidate !== null) {
-        const clash = app.fartolDb.db
+        const clash = app.fartolaDb.db
           .select({ id: competitors.id })
           .from(competitors)
           .where(
@@ -645,14 +645,14 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
 
     const now = Date.now();
     const newCard = parsed.data.card_number;
-    app.fartolDb.sqlite.transaction(() => {
-      app.fartolDb.db.update(competitors).set(update).where(eq(competitors.id, id)).run();
+    app.fartolaDb.sqlite.transaction(() => {
+      app.fartolaDb.db.update(competitors).set(update).where(eq(competitors.id, id)).run();
       if (cardChanged && typeof newCard === 'number') {
-        const seq = app.fartolNextLocalSeq(app.fartolDb, app.fartolNodeId);
-        app.fartolDb.db
+        const seq = app.fartolaNextLocalSeq(app.fartolaDb, app.fartolaNodeId);
+        app.fartolaDb.db
           .insert(events)
           .values({
-            nodeId: app.fartolNodeId,
+            nodeId: app.fartolaNodeId,
             localSeq: seq,
             competitionId: row.competitionId,
             eventType: 'card_bound',
@@ -672,7 +672,7 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
 
     app.projectionStore.markDirty(row.competitionId);
 
-    const updated = app.fartolDb.db.select().from(competitors).where(eq(competitors.id, id)).get();
+    const updated = app.fartolaDb.db.select().from(competitors).where(eq(competitors.id, id)).get();
     if (!updated) return reply.code(404).send({ error: 'competitor_not_found' });
     return reply.code(200).send({ ok: true, competitor: competitorRowToDTO(updated) });
   });
@@ -684,7 +684,7 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
     '/api/competitions/:id/competitors',
     async (req, reply) => {
       const { id } = req.params;
-      const compRow = app.fartolDb.db
+      const compRow = app.fartolaDb.db
         .select({ id: competitions.id })
         .from(competitions)
         .where(eq(competitions.id, id))
@@ -697,7 +697,7 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
         if (!Number.isInteger(n) || n <= 0) {
           return { competitors: [] };
         }
-        const rows = app.fartolDb.db
+        const rows = app.fartolaDb.db
           .select()
           .from(competitors)
           .where(and(eq(competitors.competitionId, id), eq(competitors.cardNumber, n)))
@@ -705,7 +705,7 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
         return { competitors: rows.map(competitorRowToDTO) };
       }
 
-      const rows = app.fartolDb.db
+      const rows = app.fartolaDb.db
         .select()
         .from(competitors)
         .where(eq(competitors.competitionId, id))
@@ -720,7 +720,7 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
     '/api/competitions/:id/competitors/:competitorId',
     async (req, reply) => {
       const { id, competitorId } = req.params;
-      const row = app.fartolDb.db
+      const row = app.fartolaDb.db
         .select()
         .from(competitors)
         .where(and(eq(competitors.competitionId, id), eq(competitors.id, competitorId)))

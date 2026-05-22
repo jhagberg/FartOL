@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   EditCompetitorModal — operator-driven edits to an existing competitor
   row (name, club, class, card number). Composes on the shared Modal
@@ -25,7 +25,7 @@
     setManualStatus,
     type CompetitorProfilePatch,
   } from '$lib/api/client.ts';
-  import type { CompetitorDTO, ClassDTO } from '@fartol/shared-types';
+  import type { CompetitorDTO, ClassDTO } from '@fartola/shared-types';
 
   interface Props {
     open: boolean;

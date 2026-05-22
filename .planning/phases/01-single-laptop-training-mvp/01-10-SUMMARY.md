@@ -20,7 +20,7 @@ provides:
   - POST /api/competitions/:id/competitors/:competitorId/manual-dnf endpoint
   - POST /api/competitions/:id/competitors/:competitorId/un-dnf endpoint
   - replace_card_for_competitor_id mode on POST /api/competitors (atomic UPDATE + card_bound event preserving consent_at_ms)
-  - ManualDnfInput + UnDnfInput Zod schemas in @fartol/shared-types
+  - ManualDnfInput + UnDnfInput Zod schemas in @fartola/shared-types
 affects: [plan-13-readout-view, plan-14-walkup-modal, plan-16-iof-export]
 
 # Tech tracking
@@ -44,7 +44,7 @@ key-files:
 
 key-decisions:
   - 'Made name/class_id/consent optional at the Zod base shape so the same CompetitorCreateInput schema covers both create and replace modes; superRefine adds custom issues at the right path for each mode.'
-  - 'Replace-card UPDATE branch reuses app.fartolNextLocalSeq (PATTERNS S-2) so the create-mode test 9 atomicity coverage transitively covers the replace path too.'
+  - 'Replace-card UPDATE branch reuses app.fartolaNextLocalSeq (PATTERNS S-2) so the create-mode test 9 atomicity coverage transitively covers the replace path too.'
   - "Un-DNF endpoint is idempotent at REST layer (always 201) — the projection-layer no-op handles the empty-history case; this matches manual-DNF's reversibility contract per UI-SPEC §'Destructive actions'."
   - 'Did NOT auto-add a 404-on-unknown-card for un-DNF (no prior manual_dnf event); chose idempotent 201 because the reducer already converges (un_dnf is a no-op when no override is active).'
 
@@ -79,7 +79,7 @@ completed: 2026-05-14
 - **Manual DNF override flow** wired end-to-end: REST endpoint inserts `manual_dnf` event via `insertEvent`, broadcasts on `readout:<id>`, marks projection dirty. The reducer (plan 07) already handled the override semantics — plan 10 lands the REST that emits the events.
 - **Un-DNF reversal** lands as a paired idempotent endpoint — reducer re-derives status from `latest_punches` (PEND if no card_read, OK/MP if punches present). Matches UI-SPEC §"Destructive actions": no irreversible Phase-1 mutations.
 - **Walk-up replace-card extension** atomically updates an existing competitor's `card_number` when the operator notices a misread Bricka. `consent_at_ms` is preserved on the competitor row AND in the emitted `card_bound` event payload — REQ-PRIV-001 holds.
-- **11 new node:test tests** (5 manual-dnf + 3 un-dnf + 3 replace-card); 208 total tests pass on `pnpm --filter @fartol/edge test`.
+- **11 new node:test tests** (5 manual-dnf + 3 un-dnf + 3 replace-card); 208 total tests pass on `pnpm --filter @fartola/edge test`.
 
 ## Task Commits
 
@@ -114,7 +114,7 @@ Each task was committed atomically:
 - **Issue:** The plan's <action> for Task 1 included `UnDnfInput = z.object({}).optional()` and the Task 2 <action> overhauled `CompetitorCreateInput`. I initially made all of those Zod changes in Task 1, which broke typechecking inside competitors.ts (handler assumed name/class_id were `string`, not `string | undefined`).
 - **Fix:** Reverted the `CompetitorCreateInput` changes from Task 1's commit; ship only `ManualDnfInput` + `UnDnfInput` schemas there. Task 2 lands the `CompetitorCreateInput` superRefine alongside the handler refactor that needs it. This makes each commit independently buildable + testable.
 - **Files modified:** packages/shared-types/src/dtos.ts (revert + re-add split across commits)
-- **Verification:** `pnpm --filter @fartol/edge typecheck` passes at the head of each commit.
+- **Verification:** `pnpm --filter @fartola/edge typecheck` passes at the head of each commit.
 - **Committed in:** `643bb61` (Task 1) + `8d96e0d` (Task 2)
 
 **2. [Rule 2 - Missing Critical] Belt-and-braces null check in replace-mode handler**
@@ -165,8 +165,8 @@ None — no external service configuration required.
 ### Verification commands
 
 ```
-cd /home/jonas/src/FartOL-phase-1 && pnpm --filter @fartol/edge typecheck
-cd /home/jonas/src/FartOL-phase-1 && pnpm --filter @fartol/edge test
+cd /home/jonas/src/fartOLa-phase-1 && pnpm --filter @fartola/edge typecheck
+cd /home/jonas/src/fartOLa-phase-1 && pnpm --filter @fartola/edge test
 # Expected: 208 tests pass, 0 fail.
 ```
 
@@ -181,8 +181,8 @@ cd /home/jonas/src/FartOL-phase-1 && pnpm --filter @fartol/edge test
 - [x] `apps/edge/src/server.ts` modified (manualRoutes registered)
 - [x] Commit `643bb61` present in `git log` (feat(01-10): manual-dnf + un-dnf)
 - [x] Commit `8d96e0d` present in `git log` (feat(01-10): replace_card_for_competitor_id)
-- [x] `pnpm --filter @fartol/edge typecheck` passes
-- [x] `pnpm --filter @fartol/edge test` reports 208 pass / 0 fail / 0 skipped
+- [x] `pnpm --filter @fartola/edge typecheck` passes
+- [x] `pnpm --filter @fartola/edge test` reports 208 pass / 0 fail / 0 skipped
 
 ---
 

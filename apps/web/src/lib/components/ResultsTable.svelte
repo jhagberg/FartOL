@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Per-class results table. The .new accent-soft flash lives here (UI-SPEC
   §"Live results auto-update" — 4s fade). The parent ResultsView tracks

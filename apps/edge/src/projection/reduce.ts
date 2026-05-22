@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Pure reducer over the event log → CompetitionState. Per codex review
 // C-H2: card_read payload carries top-level start/finish/check/clear
