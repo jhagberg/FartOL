@@ -61,6 +61,7 @@ function makeCompetition(): CompetitionDTO {
     receipt_template: 'classic',
     auto_print: false,
     created_at_ms: 1_716_120_000_000,
+    race_started_at_ms: null,
   };
 }
 
@@ -96,6 +97,7 @@ function makeCompetitorView(
     out_of_order_codes: [],
     elapsed_time_ms: partial.elapsed_time_ms,
     manual_dnf_reason: null,
+    manual_status: null,
   };
 }
 
@@ -305,6 +307,37 @@ describe('buildResultListXml — frozen fixture + structural guarantees', () => 
     assert.ok(xml.includes('StorTuna OK'));
   });
 
+  test('Phase 2.0: DNS/DQ/CANCEL/MAX rows round-trip into XSD-valid IOF XML', async () => {
+    const state = makeSeededState();
+    const cmps: Array<['DNS' | 'DQ' | 'CANCEL' | 'MAX', string, string]> = [
+      ['DNS', 'cmp-dns', 'Erik Eriksson'],
+      ['DQ', 'cmp-dq', 'Fia Forsberg'],
+      ['CANCEL', 'cmp-cancel', 'Gustav Gren'],
+      ['MAX', 'cmp-max', 'Hanna Hagberg'],
+    ];
+    for (const [status, id, name] of cmps) {
+      const view = makeCompetitorView({
+        id,
+        name,
+        club: 'StorTuna OK',
+        class_id: 'cls-h21',
+        card_number: 9000000 + state.competitors.size,
+        status,
+        elapsed_time_ms: status === 'MAX' ? 9_000_000 : null,
+      });
+      state.competitors.set(view.id, view);
+      state.results_by_class.get('cls-h21')!.push(rowFor(view, null));
+    }
+    const res = await validateAndBuild(makeInput({ state }));
+    assert.equal(res.valid, true, `XSD-invalid output: ${JSON.stringify(res)}`);
+    if (res.valid) {
+      assert.ok(res.build.xml.includes('<Status>DidNotStart</Status>'));
+      assert.ok(res.build.xml.includes('<Status>Disqualified</Status>'));
+      assert.ok(res.build.xml.includes('<Status>Cancelled</Status>'));
+      assert.ok(res.build.xml.includes('<Status>OverTime</Status>'));
+    }
+  });
+
   test('test 7: per-competitor status mapping — OK/MP/DNF emitted, PEND omitted', () => {
     const state = makeSeededState();
     // Add a PEND row to H21 (extra competitor with no card read yet).
@@ -413,6 +446,15 @@ describe('iofExport — helper functions', () => {
     assert.equal(statusForXml('MP'), 'MissingPunch');
     assert.equal(statusForXml('DNF'), 'DidNotFinish');
     assert.equal(statusForXml('PEND'), null);
+    // Phase 2.0 (2026-05-18) — the four operator-asserted states. Each maps
+    // to an enumeration value present in apps/edge/src/xml/IOF.xsd (lines
+    // 2994 / 2931 / 3008 / 2959). The validator gate stays on byte-for-byte
+    // (`validateAndBuild` keeps the build/validate contract); these asserts
+    // only check the wire-level mapping is in sync with the XSD enum.
+    assert.equal(statusForXml('DNS'), 'DidNotStart');
+    assert.equal(statusForXml('DQ'), 'Disqualified');
+    assert.equal(statusForXml('CANCEL'), 'Cancelled');
+    assert.equal(statusForXml('MAX'), 'OverTime');
   });
 
   test('resultListStatusFor maps the export-status toggle to the IOF @status enum', () => {

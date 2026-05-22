@@ -22,7 +22,7 @@ import { eq, count } from 'drizzle-orm';
 
 import { openDatabase, type DbHandle } from '../db/index.ts';
 import { ensureNodeId } from '../db/node-id.ts';
-import { competitions, classes, competitors, events } from '../db/schema.ts';
+import { competitions, classes, competitors, events, hiredCards } from '../db/schema.ts';
 import { insertEvent } from '../si/eventInserter.ts';
 import { scheduleDailyRetention, formatLocalDate } from './retention.ts';
 
@@ -75,6 +75,37 @@ function seedCompetition(
     })
     .run();
   return { competitorId };
+}
+
+/** Seed a hired_cards row directly. Plan 02-06 D-HB-1 — compound PK
+ * (competition_id, card_number); contact_* are scrub targets, marked_at_ms /
+ * returned_at_ms / card_number are PRESERVED. */
+function seedHiredCard(
+  ctx: Ctx,
+  opts: {
+    competitionId: string;
+    cardNumber: number;
+    contactName?: string | null;
+    contactPhone?: string | null;
+    contactEmail?: string | null;
+    note?: string | null;
+    markedAtMs?: number;
+    returnedAtMs?: number | null;
+  }
+): void {
+  ctx.handle.db
+    .insert(hiredCards)
+    .values({
+      competitionId: opts.competitionId,
+      cardNumber: opts.cardNumber,
+      markedAtMs: opts.markedAtMs ?? 1_700_000_000_000,
+      returnedAtMs: opts.returnedAtMs ?? null,
+      contactName: opts.contactName ?? null,
+      contactPhone: opts.contactPhone ?? null,
+      contactEmail: opts.contactEmail ?? null,
+      note: opts.note ?? null,
+    })
+    .run();
 }
 
 describe('scheduleDailyRetention', () => {
@@ -324,13 +355,21 @@ describe('scheduleDailyRetention', () => {
       mock.timers.tick(30 * 60 * 1000);
       // Drain microtasks so the catch handler installs the retry timer.
       for (let i = 0; i < 5; i++) await new Promise<void>((r) => setImmediate(r));
+      // First attempt: the thrower stub fires once on the competitors UPDATE
+      // and throws — runOnce aborts before reaching the hired_cards UPDATE.
       assert.equal(updateCalls, 1, 'first attempt fired at midnight');
 
       // Advance 1h. The retry must invoke runOnce again (not skip a day).
+      // Post-Plan-02-06: a successful runOnce makes TWO update calls
+      // (competitors + hired_cards), so the cumulative counter is 1 + 2 = 3.
       currentNow += 60 * 60 * 1000;
       mock.timers.tick(60 * 60 * 1000);
       for (let i = 0; i < 5; i++) await new Promise<void>((r) => setImmediate(r));
-      assert.equal(updateCalls, 2, 'retry ran runOnce after 1h, not after 24h');
+      assert.equal(
+        updateCalls,
+        3,
+        'retry ran runOnce after 1h (calls competitors + hired_cards UPDATEs); not after 24h'
+      );
 
       // The second attempt actually scrubbed the seeded row.
       const row = ctx.handle.db
@@ -345,6 +384,261 @@ describe('scheduleDailyRetention', () => {
       retention.stop();
       mock.timers.reset();
       ctx.handle.db.update = originalUpdate;
+    }
+  });
+
+  // ---------------------------------------------------------------------
+  // Plan 02-06 — hired_cards.contact_* scrub extension (D-HB-1, REQ-PRIV-002)
+  // ---------------------------------------------------------------------
+
+  test('test P206-1: 35-day-old competition with hired_cards row → contact_phone nulled, marked_at_ms preserved', async () => {
+    seedCompetition(ctx, {
+      id: 'comp-old-hc',
+      date: '2026-04-10',
+      competitorName: 'Hired Holger',
+      club: 'HC Klubb',
+      cardNumber: 99,
+    });
+    seedHiredCard(ctx, {
+      competitionId: 'comp-old-hc',
+      cardNumber: 88888,
+      contactName: 'Holger Holgersson',
+      contactPhone: '0701234567',
+      contactEmail: 'holger@example.com',
+      note: 'Hyrbricka för kvällen',
+      markedAtMs: 1_715_000_000_000,
+    });
+    const retention = scheduleDailyRetention(ctx.handle, {
+      retentionDays: 30,
+      testClock: { now: () => FIXED_NOW },
+    });
+    try {
+      const r = await retention.runNow();
+      // scrubbed_count includes the competitor row + the hired_cards row.
+      assert.equal(r.scrubbed_count, 2);
+      assert.equal(r.cutoff_date, '2026-04-15');
+
+      const hc = ctx.handle.db
+        .select()
+        .from(hiredCards)
+        .where(eq(hiredCards.cardNumber, 88888))
+        .get();
+      assert.ok(hc);
+      // Scrubbed contact_*.
+      assert.equal(hc.contactName, null);
+      assert.equal(hc.contactPhone, null);
+      assert.equal(hc.contactEmail, null);
+      assert.equal(hc.note, null);
+      // PRESERVED audit trail.
+      assert.equal(hc.cardNumber, 88888, 'card_number is a hardware ID, not PII');
+      assert.equal(hc.markedAtMs, 1_715_000_000_000, 'marked_at_ms must persist as audit trail');
+      assert.equal(hc.competitionId, 'comp-old-hc');
+    } finally {
+      retention.stop();
+    }
+  });
+
+  test('test P206-2: 25-day-old competition with hired_cards row → no scrub, contact_phone unchanged', async () => {
+    seedCompetition(ctx, {
+      id: 'comp-recent-hc',
+      date: '2026-04-20',
+      competitorName: 'Recent Renter',
+      club: 'RR Klubb',
+      cardNumber: 100,
+    });
+    seedHiredCard(ctx, {
+      competitionId: 'comp-recent-hc',
+      cardNumber: 12345,
+      contactName: 'Renter Recent',
+      contactPhone: '0709876543',
+      contactEmail: 'renter@example.com',
+      note: 'Within window',
+    });
+    const retention = scheduleDailyRetention(ctx.handle, {
+      retentionDays: 30,
+      testClock: { now: () => FIXED_NOW },
+    });
+    try {
+      const r = await retention.runNow();
+      // The 25-day-old competition is INSIDE the retention window — neither
+      // its competitor nor its hired_cards row scrubs.
+      assert.equal(r.scrubbed_count, 0);
+
+      const hc = ctx.handle.db
+        .select()
+        .from(hiredCards)
+        .where(eq(hiredCards.cardNumber, 12345))
+        .get();
+      assert.ok(hc);
+      assert.equal(hc.contactName, 'Renter Recent');
+      assert.equal(hc.contactPhone, '0709876543');
+      assert.equal(hc.contactEmail, 'renter@example.com');
+      assert.equal(hc.note, 'Within window');
+    } finally {
+      retention.stop();
+    }
+  });
+
+  test('test P206-3: hired_cards scrub is idempotent — second runNow does not bump changes counter', async () => {
+    seedCompetition(ctx, {
+      id: 'comp-idempotent-hc',
+      date: '2026-03-01',
+      competitorName: 'Idempotent Ida',
+      club: 'II Klubb',
+      cardNumber: 101,
+    });
+    seedHiredCard(ctx, {
+      competitionId: 'comp-idempotent-hc',
+      cardNumber: 22222,
+      contactName: 'Ida Idsson',
+      contactPhone: '0701112233',
+    });
+    const retention = scheduleDailyRetention(ctx.handle, {
+      retentionDays: 30,
+      testClock: { now: () => FIXED_NOW },
+    });
+    try {
+      const first = await retention.runNow();
+      // First run: scrubs the competitor row + the hired_cards row.
+      assert.equal(first.scrubbed_count, 2, 'first run scrubs both');
+
+      const second = await retention.runNow();
+      // Second run: nothing to scrub (competitors via scrubbed_at_ms guard;
+      // hired_cards via the contact_* IS NOT NULL guard).
+      assert.equal(second.scrubbed_count, 0, 'second run finds nothing to scrub');
+    } finally {
+      retention.stop();
+    }
+  });
+
+  test('test P206-4: combined scrubbed_count returns competitors + hired_cards counts', async () => {
+    // Two old competitions, each with a competitor + a hired card → 4 scrubs.
+    seedCompetition(ctx, {
+      id: 'comp-combo-A',
+      date: '2026-04-01',
+      competitorName: 'Combo A',
+      club: 'Combo Klubb A',
+      cardNumber: 200,
+    });
+    seedHiredCard(ctx, {
+      competitionId: 'comp-combo-A',
+      cardNumber: 30001,
+      contactPhone: '0701000001',
+    });
+    seedCompetition(ctx, {
+      id: 'comp-combo-B',
+      date: '2026-04-02',
+      competitorName: 'Combo B',
+      club: 'Combo Klubb B',
+      cardNumber: 201,
+    });
+    seedHiredCard(ctx, {
+      competitionId: 'comp-combo-B',
+      cardNumber: 30002,
+      contactEmail: 'b@example.com',
+    });
+    const retention = scheduleDailyRetention(ctx.handle, {
+      retentionDays: 30,
+      testClock: { now: () => FIXED_NOW },
+    });
+    try {
+      const r = await retention.runNow();
+      assert.equal(r.scrubbed_count, 4, 'two competitors + two hired_cards rows');
+      assert.equal(r.cutoff_date, '2026-04-15');
+    } finally {
+      retention.stop();
+    }
+  });
+
+  test('test P206-5: hired_cards with ALL contact_* NULL are skipped (no spurious update)', async () => {
+    // The competition is old, but the hired_cards row has no contact info.
+    // Per the WHERE clause, that row should NOT be UPDATEd (changes counter
+    // must not increase for it).
+    seedCompetition(ctx, {
+      id: 'comp-null-hc',
+      date: '2026-03-15',
+      competitorName: 'Null Nilsson',
+      club: 'NN Klubb',
+      cardNumber: 300,
+    });
+    // hired_cards row with no PII to scrub (e.g. rental never had contact info
+    // captured — operator forgot to fill it).
+    seedHiredCard(ctx, {
+      competitionId: 'comp-null-hc',
+      cardNumber: 44444,
+      contactName: null,
+      contactPhone: null,
+      contactEmail: null,
+      note: null,
+    });
+    const retention = scheduleDailyRetention(ctx.handle, {
+      retentionDays: 30,
+      testClock: { now: () => FIXED_NOW },
+    });
+    try {
+      const r = await retention.runNow();
+      // Only the competitor row scrubs; the all-null hired_cards row skips.
+      assert.equal(r.scrubbed_count, 1);
+
+      const hc = ctx.handle.db
+        .select()
+        .from(hiredCards)
+        .where(eq(hiredCards.cardNumber, 44444))
+        .get();
+      assert.ok(hc);
+      // Row still exists with NULLs preserved verbatim.
+      assert.equal(hc.contactName, null);
+      assert.equal(hc.contactPhone, null);
+      assert.equal(hc.contactEmail, null);
+      assert.equal(hc.note, null);
+    } finally {
+      retention.stop();
+    }
+  });
+
+  test('test P206-6: testClock injection — runOnce uses opts.testClock.now reference, not literal Date.now', async () => {
+    // Pick a fixed clock value far in the future so the cutoff date computed
+    // from it is unambiguously distinguishable from Date.now() at test time.
+    const FUTURE = 9_999_999_999_999; // year ~2286
+    seedCompetition(ctx, {
+      id: 'comp-future-clock',
+      date: '2026-05-15',
+      competitorName: 'Future Frida',
+      club: 'FF Klubb',
+      cardNumber: 400,
+    });
+    seedHiredCard(ctx, {
+      competitionId: 'comp-future-clock',
+      cardNumber: 55555,
+      contactPhone: '0701234500',
+    });
+    const retention = scheduleDailyRetention(ctx.handle, {
+      retentionDays: 30,
+      testClock: { now: () => FUTURE },
+    });
+    try {
+      const r = await retention.runNow();
+      // From the FUTURE clock's perspective, the competition (2026-05-15)
+      // is ancient — both competitor + hired_cards row scrub.
+      assert.equal(r.scrubbed_count, 2);
+      // cutoff_date derived from FUTURE - 30 days; must be in year 2286.
+      // (More important: must NOT be in 2026, which is what literal Date.now
+      // would return.)
+      assert.ok(
+        r.cutoff_date.startsWith('228'),
+        `cutoff_date should reflect the injected clock (got: ${r.cutoff_date})`
+      );
+
+      // Confirm the hired_cards row was actually scrubbed (the testClock
+      // reference flowed through to the hired_cards UPDATE's WHERE clause).
+      const hc = ctx.handle.db
+        .select()
+        .from(hiredCards)
+        .where(eq(hiredCards.cardNumber, 55555))
+        .get();
+      assert.equal(hc?.contactPhone, null);
+    } finally {
+      retention.stop();
     }
   });
 

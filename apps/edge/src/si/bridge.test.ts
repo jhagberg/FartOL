@@ -183,9 +183,9 @@ async function bootCtx(): Promise<ReplayCtx> {
   // Seed two competitions so events with competition_id pass the FK.
   handle.sqlite
     .prepare(
-      `INSERT INTO competitions (id, name, date, receipt_template, auto_print, created_at_ms)
-       VALUES ('comp-1', 'C1', '2026-01-01', 'classic', 0, 0),
-              ('comp-2', 'C2', '2026-01-01', 'classic', 0, 0)`
+      `INSERT INTO competitions (id, name, date, receipt_template, auto_print, created_at_ms, race_started_at_ms)
+       VALUES ('comp-1', 'C1', '2026-01-01', 'classic', 0, 0, 0),
+              ('comp-2', 'C2', '2026-01-01', 'classic', 0, 0, 0)`
     )
     .run();
   return { handle, broadcasts: [], markDirtyCalls: [] };
@@ -530,9 +530,9 @@ async function bootAutoPrintCtx(): Promise<AutoPrintCtx> {
   // Seed comp-auto with auto_print=1 + comp-no-auto with auto_print=0.
   handle.sqlite
     .prepare(
-      `INSERT INTO competitions (id, name, date, receipt_template, auto_print, created_at_ms)
-       VALUES ('comp-auto', 'Auto', '2026-01-01', 'classic', 1, 0),
-              ('comp-no-auto', 'NoAuto', '2026-01-01', 'classic', 0, 0)`
+      `INSERT INTO competitions (id, name, date, receipt_template, auto_print, created_at_ms, race_started_at_ms)
+       VALUES ('comp-auto', 'Auto', '2026-01-01', 'classic', 1, 0, 0),
+              ('comp-no-auto', 'NoAuto', '2026-01-01', 'classic', 0, 0, 0)`
     )
     .run();
   return { handle, broadcasts: [], markDirtyCalls: [], printed: [], stderrChunks: [] };

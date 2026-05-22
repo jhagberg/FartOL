@@ -46,9 +46,23 @@ export {
   CompetitorCreateInput,
   ManualDnfInput,
   UnDnfInput,
+  ManualStatusInput,
+  ClearManualStatusInput,
   ClubDTO,
+  EventorLookupCandidate,
+  EventorLookupHit,
+  EventorLookupMany,
+  EventorLookupMiss,
+  EventorNameSuggestion,
+  EventorClubSuggestion,
+  EventorStatusDTO,
+  HiredCardRow,
+  HiredCardsListResponse,
+  HiredCardReturnResponse,
+  HiredCardOpen,
   HealthDTO,
 } from './dtos.ts';
+export type { EventorLookupResult } from './dtos.ts';
 
 // --- DB DTO interfaces (subset without a Zod schema) -----------------------
 // EventDTO + ControlDTO stay as plain interfaces; the events projection

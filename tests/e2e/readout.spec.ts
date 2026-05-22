@@ -50,7 +50,7 @@ const ENTRYLIST_FIXTURE = path.resolve(
 // tables stable across tests.
 test.describe.configure({ mode: 'serial' });
 
-const BASE = 'http://localhost:5173';
+const BASE = 'http://localhost:5174';
 
 interface SetupRes {
   competitionId: string;
@@ -96,6 +96,14 @@ async function setup(request: import('@playwright/test').APIRequestContext): Pro
     data: { competition_id: competitionId },
   });
   expect(setActive.status()).toBe(200);
+
+  // 4b) Phase 2.1 race-phase gate (9f5781f): flip the competition out of
+  //     pre-race so simulate-read events score normally (status=OK/MP, not
+  //     PEND identity-only). Without this every card_read is a quiet
+  //     identity scan that doesn't surface on the readout view.
+  const startRace = await request.post(`${BASE}/api/competitions/${competitionId}/start-race`);
+  // 201 on first call (inserts race_started event), 200 if already started.
+  expect([200, 201]).toContain(startRace.status());
 
   // 5) Look up Anna's id + H21's id for the manual-DNF + walk-up tests.
   const compsRes = await request.get(`${BASE}/api/competitions/${competitionId}/competitors`);

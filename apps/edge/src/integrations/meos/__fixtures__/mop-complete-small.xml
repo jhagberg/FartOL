@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MOPComplete xmlns="http://www.melin.nu/mop">
+  <competition date="2026-05-20" organizer="Stora Tuna OK" zerotime="10:00:00">4-klubbs 2026</competition>
+  <cls id="1" ord="10">Vit</cls>
+  <org id="637" nat="SWE">Stora Tuna OK</org>
+  <cmp id="5490" card="12345">
+    <base org="637" cls="1" stat="1" st="370800" rt="71480" nat="SWE">Hagberg, Jonas</base>
+  </cmp>
+</MOPComplete>

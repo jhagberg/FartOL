@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CompetitorList iofVersion="3.0" createTime="2026-05-16T20:00:00Z" creator="fartol-test"
+                xmlns="http://www.orienteering.org/datastandard/3.0">
+  <Competitor modifyTime="2024-12-12T09:46:45Z">
+    <Person sex="M" modifyTime="2024-12-12T09:46:45Z">
+      <Id type="Sweden">1001</Id>
+      <Name><Family>Hagberg</Family><Given>Jonas</Given></Name>
+      <BirthDate>1980-01-01</BirthDate>
+      <Nationality code="SWE"/>
+    </Person>
+    <Organisation type="Club" modifyTime="2026-03-16T08:25:36Z">
+      <Id type="Sweden">637</Id>
+      <Name>Stora Tuna OK</Name>
+      <ShortName>STK</ShortName>
+    </Organisation>
+    <ControlCard punchingSystem="SI">8535005</ControlCard>
+  </Competitor>
+  <Competitor modifyTime="2024-12-12T09:46:45Z">
+    <!-- Orphan competitor (no Organisation) — must not crash parser -->
+    <Person sex="F">
+      <Id type="Sweden">1002</Id>
+      <Name><Family>Larsson</Family><Given>Lena</Given></Name>
+      <BirthDate>1957-01-01</BirthDate>
+    </Person>
+    <ControlCard punchingSystem="SI">8303057</ControlCard>
+    <ControlCard punchingSystem="Emit">530947</ControlCard>
+  </Competitor>
+  <Competitor modifyTime="2024-12-12T09:46:45Z">
+    <!-- Competitor with no SI card AND name with å/ä/ö (UTF-8 multi-byte) -->
+    <Person sex="M">
+      <Id type="Sweden">1003</Id>
+      <Name><Family>Östberg</Family><Given>Pär</Given></Name>
+      <BirthDate>1990-01-01</BirthDate>
+    </Person>
+    <Organisation type="Club"><Id type="Sweden">637</Id><Name>Stora Tuna OK</Name></Organisation>
+  </Competitor>
+</CompetitorList>

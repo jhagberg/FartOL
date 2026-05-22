@@ -50,6 +50,12 @@ export interface EntryImportResult {
    * the competition's classes table. Non-empty = some entries were
    * skipped; the wizard surfaces this as a warning. */
   classes_missing: string[];
+  /** Count of entries silently skipped because a competitor with the same
+   * card_number already exists in the competition (D-11 dedupe). The
+   * eventor-import UI surfaces this so an operator who re-clicks
+   * Importera sees "X redan importerade" instead of a bare "0 löpare
+   * importerade" that looks like Eventor returned nothing. */
+  competitors_skipped_duplicate: number;
 }
 
 export interface EntryImportOpts {
@@ -76,6 +82,7 @@ function doIngest(
 
   const missing = new Set<string>();
   let competitorsCreated = 0;
+  let competitorsSkippedDuplicate = 0;
   // Bulk-upsert distinct club names ONCE after the competitor loop instead
   // of per-row inside it (PR #3 review — Gemini medium). For an EntryList
   // with N competitors sharing K distinct clubs, this drops to K writes
@@ -105,7 +112,10 @@ function doIngest(
           sql`${competitors.competitionId} = ${competitionId} AND ${competitors.cardNumber} = ${e.card_number}`
         )
         .get();
-      if (dup) continue;
+      if (dup) {
+        competitorsSkippedDuplicate++;
+        continue;
+      }
     }
     // C-M4: EntryList-imported competitors start at pending_first_read +
     // NULL consent_at_ms. Plan 14 flips the status on first card_read.
@@ -151,6 +161,7 @@ function doIngest(
   return {
     competitors_created: competitorsCreated,
     classes_missing: [...missing],
+    competitors_skipped_duplicate: competitorsSkippedDuplicate,
   };
 }
 
@@ -165,6 +176,7 @@ export function ingestEntryList(
   let result: EntryImportResult = {
     competitors_created: 0,
     classes_missing: [],
+    competitors_skipped_duplicate: 0,
   };
   handle.sqlite.transaction(() => {
     result = doIngest(handle, competitionId, data, nowMs);

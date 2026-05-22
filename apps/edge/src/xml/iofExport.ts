@@ -102,11 +102,25 @@ export function splitName(full: string): { family: string; given: string } {
   return { family: trimmed.slice(idx + 1).trim(), given: trimmed.slice(0, idx).trim() };
 }
 
+/** All IOF v3 ResultStatus values fartol emits. The bundled IOF.xsd carries
+ * the full 14-value enum; we restrict to the subset our projection produces. */
+export type IofResultStatus =
+  | 'OK'
+  | 'MissingPunch'
+  | 'DidNotFinish'
+  | 'DidNotStart'
+  | 'Disqualified'
+  | 'Cancelled'
+  | 'OverTime';
+
 /** Internal projection status → IOF ResultStatus enum value. Returns null for
- * PEND — those competitors are excluded from the export entirely. */
-export function statusForXml(
-  s: CompetitorView['status']
-): 'OK' | 'MissingPunch' | 'DidNotFinish' | null {
+ * PEND — those competitors are excluded from the export entirely.
+ *
+ * The Phase 2.0 manual states (DNS/DQ/CANCEL/MAX) round-trip into the IOF
+ * XSD enum via the obvious mapping (DidNotStart / Disqualified / Cancelled
+ * / OverTime). All four are valid values per apps/edge/src/xml/IOF.xsd lines
+ * 2994 / 2931 / 3008 / 2959 — the validator gate keeps that contract. */
+export function statusForXml(s: CompetitorView['status']): IofResultStatus | null {
   switch (s) {
     case 'OK':
       return 'OK';
@@ -114,6 +128,14 @@ export function statusForXml(
       return 'MissingPunch';
     case 'DNF':
       return 'DidNotFinish';
+    case 'DNS':
+      return 'DidNotStart';
+    case 'DQ':
+      return 'Disqualified';
+    case 'CANCEL':
+      return 'Cancelled';
+    case 'MAX':
+      return 'OverTime';
     case 'PEND':
       return null;
   }
@@ -139,7 +161,7 @@ interface ResultNode {
   FinishTime?: string;
   Time?: number;
   Position?: number;
-  Status: 'OK' | 'MissingPunch' | 'DidNotFinish';
+  Status: IofResultStatus;
 }
 
 interface PersonResultNode {

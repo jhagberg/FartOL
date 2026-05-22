@@ -435,4 +435,350 @@ describe('reduce — CompetitionState projection', () => {
     assert.deepEqual(anna.card_read_history[0]!.start, hd(10 * 3600));
     assert.deepEqual(anna.card_read_history[1]!.start, hd(11 * 3600));
   });
+
+  // ---------------------------------------------------------------------------
+  // Phase 2.0 — manual_status_set tests for the four new states added on
+  // 2026-05-18. Each test asserts that:
+  //   1. The override flips the status field as expected.
+  //   2. view.manual_status carries the asserted code (not just 'DNF').
+  //   3. view.manual_dnf_reason carries the operator reason (back-compat).
+  //   4. A subsequent card_read does NOT overwrite the override.
+  //   5. clear_manual_status reverts to the auto-detected status.
+  // ---------------------------------------------------------------------------
+
+  for (const status of ['DNS', 'DQ', 'CANCEL', 'MAX'] as const) {
+    test(`Phase-2.0 manual_status_set: ${status} wins over card_read`, () => {
+      seqCounter = 0;
+      const events = [
+        cardRead(1, [p(31), p(32), p(33), p(34)], hd(10 * 3600), hd(10 * 3600 + 600)),
+        evt({
+          event_type: 'manual_status_set',
+          competitor_id: 'c-anna',
+          status,
+          reason: `op-set-${status}`,
+        }),
+      ];
+      const state = reduce({
+        competition_id: 'comp-1',
+        events,
+        competitors: [comp({ id: 'c-anna', cardNumber: 1 })],
+        classes: [cls('cls-H21')],
+        courses: [course('cls-H21', [31, 32, 33, 34])],
+      });
+      const anna = state.competitors.get('c-anna');
+      assert.ok(anna);
+      assert.equal(anna.status, status);
+      assert.equal(anna.manual_status, status);
+      assert.equal(anna.manual_dnf_reason, `op-set-${status}`);
+    });
+  }
+
+  test('Phase-2.0 manual_status_set: DNS clears split fields (operator-asserted absence)', () => {
+    seqCounter = 0;
+    const events = [
+      cardRead(1, [p(31), p(32)], hd(10 * 3600), hd(10 * 3600 + 600)),
+      evt({
+        event_type: 'manual_status_set',
+        competitor_id: 'c-anna',
+        status: 'DNS',
+        reason: 'no-show',
+      }),
+    ];
+    const state = reduce({
+      competition_id: 'comp-1',
+      events,
+      competitors: [comp({ id: 'c-anna', cardNumber: 1 })],
+      classes: [cls('cls-H21')],
+      courses: [course('cls-H21', [31, 32, 33, 34])],
+    });
+    const anna = state.competitors.get('c-anna');
+    assert.ok(anna);
+    assert.equal(anna.status, 'DNS');
+    assert.equal(anna.elapsed_time_ms, null);
+    assert.deepEqual(anna.missing_codes, []);
+    assert.deepEqual(anna.extra_codes, []);
+  });
+
+  test('Phase-2.0 manual_status_set: MAX keeps the punch diff (attempted but over time)', () => {
+    seqCounter = 0;
+    const events = [
+      cardRead(1, [p(31), p(32), p(33), p(34)], hd(10 * 3600), hd(10 * 3600 + 600)),
+      evt({
+        event_type: 'manual_status_set',
+        competitor_id: 'c-anna',
+        status: 'MAX',
+        reason: 'exceeded 2h cap',
+      }),
+    ];
+    const state = reduce({
+      competition_id: 'comp-1',
+      events,
+      competitors: [comp({ id: 'c-anna', cardNumber: 1 })],
+      classes: [cls('cls-H21')],
+      courses: [course('cls-H21', [31, 32, 33, 34])],
+    });
+    const anna = state.competitors.get('c-anna');
+    assert.ok(anna);
+    assert.equal(anna.status, 'MAX');
+    // elapsed stays — runner did attempt the course; the operator's MAX
+    // judgement is independent of whether they touched controls.
+    assert.equal(anna.elapsed_time_ms, 600 * 1000);
+  });
+
+  test('Phase-2.0 clear_manual_status reverts to auto-detected status', () => {
+    seqCounter = 0;
+    const events = [
+      cardRead(1, [p(31), p(32), p(33), p(34)], hd(10 * 3600), hd(10 * 3600 + 600)),
+      evt({
+        event_type: 'manual_status_set',
+        competitor_id: 'c-anna',
+        status: 'DQ',
+        reason: 'rule-break',
+      }),
+      evt({ event_type: 'clear_manual_status', competitor_id: 'c-anna' }),
+    ];
+    const state = reduce({
+      competition_id: 'comp-1',
+      events,
+      competitors: [comp({ id: 'c-anna', cardNumber: 1 })],
+      classes: [cls('cls-H21')],
+      courses: [course('cls-H21', [31, 32, 33, 34])],
+    });
+    const anna = state.competitors.get('c-anna');
+    assert.ok(anna);
+    assert.equal(anna.status, 'OK');
+    assert.equal(anna.manual_status, null);
+    assert.equal(anna.manual_dnf_reason, null);
+    assert.equal(anna.elapsed_time_ms, 600 * 1000);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Phase 2.1 — race-phase gate (added 2026-05-18).
+  //
+  // The reducer's card_read arm now consults competition.race_started_at_ms
+  // (threaded through ReduceInput). Three modes:
+  //   - field omitted → gate disabled, score everything (back-compat for
+  //                     the Phase-1 fixtures above which all assume scoring)
+  //   - null          → pre-race phase, card_reads stay PEND
+  //   - number        → race started; reads at/after score, reads before stay PEND
+  //
+  // Manual overrides win in all three modes (no race-phase weakening of the
+  // operator's assertion semantics).
+  // ---------------------------------------------------------------------------
+  test('Phase-2.1 race-phase gate: pre-race (race_started_at_ms=null) → card_read stays PEND', () => {
+    seqCounter = 0;
+    const events = [cardRead(1, [p(31), p(32), p(33), p(34)], hd(10 * 3600), hd(10 * 3600 + 600))];
+    const state = reduce({
+      competition_id: 'comp-1',
+      race_started_at_ms: null,
+      events,
+      competitors: [comp({ id: 'c-anna', cardNumber: 1 })],
+      classes: [cls('cls-H21')],
+      courses: [course('cls-H21', [31, 32, 33, 34])],
+    });
+    const anna = state.competitors.get('c-anna');
+    assert.ok(anna);
+    assert.equal(anna.status, 'PEND');
+    assert.equal(anna.elapsed_time_ms, null);
+    // History is preserved for the audit trail even though scoring is off.
+    assert.equal(anna.card_read_history.length, 1);
+  });
+
+  test('Phase-2.1 race-phase gate: race-started, card_read AFTER stamp scores normally', () => {
+    seqCounter = 0;
+    const raceStartMs = 1_700_000_000_000;
+    const events = [
+      cardRead(1, [p(31), p(32), p(33), p(34)], hd(10 * 3600), hd(10 * 3600 + 600), {
+        eventTimeMs: raceStartMs + 60_000,
+      }),
+    ];
+    const state = reduce({
+      competition_id: 'comp-1',
+      race_started_at_ms: raceStartMs,
+      events,
+      competitors: [comp({ id: 'c-anna', cardNumber: 1 })],
+      classes: [cls('cls-H21')],
+      courses: [course('cls-H21', [31, 32, 33, 34])],
+    });
+    const anna = state.competitors.get('c-anna');
+    assert.ok(anna);
+    assert.equal(anna.status, 'OK');
+    assert.equal(anna.elapsed_time_ms, 600 * 1000);
+  });
+
+  test('Phase-2.1 race-phase gate: race-started, card_read BEFORE stamp stays PEND', () => {
+    seqCounter = 0;
+    const raceStartMs = 1_700_000_000_000;
+    const events = [
+      // Card scanned at the registration desk an hour before race start —
+      // the SIAC still has punches from a different race on it. Must not
+      // contaminate today's results.
+      cardRead(1, [p(31), p(32), p(33), p(34)], hd(10 * 3600), hd(10 * 3600 + 600), {
+        eventTimeMs: raceStartMs - 3_600_000,
+      }),
+    ];
+    const state = reduce({
+      competition_id: 'comp-1',
+      race_started_at_ms: raceStartMs,
+      events,
+      competitors: [comp({ id: 'c-anna', cardNumber: 1 })],
+      classes: [cls('cls-H21')],
+      courses: [course('cls-H21', [31, 32, 33, 34])],
+    });
+    const anna = state.competitors.get('c-anna');
+    assert.ok(anna);
+    assert.equal(anna.status, 'PEND');
+    assert.equal(anna.elapsed_time_ms, null);
+  });
+
+  test('Phase-2.1 race_started event mid-log flips the in-pass gate', () => {
+    seqCounter = 0;
+    const raceStartMs = 1_700_000_000_000;
+    const events = [
+      // Pre-race scan: stale punches from another race. Stays PEND.
+      cardRead(1, [p(31)], hd(10 * 3600), hd(10 * 3600 + 100), {
+        eventTimeMs: raceStartMs - 60_000,
+      }),
+      // The race_started event flips the gate. The column would normally
+      // be set in lockstep by the route; this asserts the reducer is
+      // correct under pure replay when the column is empty.
+      evt({ event_type: 'race_started', started_at_ms: raceStartMs }, { eventTimeMs: raceStartMs }),
+      // Post-race scan: full clean run. Scores OK.
+      cardRead(1, [p(31), p(32), p(33), p(34)], hd(11 * 3600), hd(11 * 3600 + 500), {
+        eventTimeMs: raceStartMs + 60_000,
+      }),
+    ];
+    const state = reduce({
+      competition_id: 'comp-1',
+      race_started_at_ms: null,
+      events,
+      competitors: [comp({ id: 'c-anna', cardNumber: 1 })],
+      classes: [cls('cls-H21')],
+      courses: [course('cls-H21', [31, 32, 33, 34])],
+    });
+    const anna = state.competitors.get('c-anna');
+    assert.ok(anna);
+    assert.equal(anna.status, 'OK');
+    assert.equal(anna.elapsed_time_ms, 500 * 1000);
+    // Both reads land in history regardless of phase — audit trail
+    // stays complete.
+    assert.equal(anna.card_read_history.length, 2);
+  });
+
+  test('Phase-2.1 race_reset event un-scores prior reads (auto status only)', () => {
+    seqCounter = 0;
+    const raceStartMs = 1_700_000_000_000;
+    const events = [
+      evt({ event_type: 'race_started', started_at_ms: raceStartMs }, { eventTimeMs: raceStartMs }),
+      cardRead(1, [p(31), p(32), p(33), p(34)], hd(10 * 3600), hd(10 * 3600 + 500), {
+        eventTimeMs: raceStartMs + 60_000,
+      }),
+      evt(
+        { event_type: 'race_reset', previous_started_at_ms: raceStartMs },
+        { eventTimeMs: raceStartMs + 120_000 }
+      ),
+    ];
+    const state = reduce({
+      competition_id: 'comp-1',
+      race_started_at_ms: null,
+      events,
+      competitors: [comp({ id: 'c-anna', cardNumber: 1 })],
+      classes: [cls('cls-H21')],
+      courses: [course('cls-H21', [31, 32, 33, 34])],
+    });
+    const anna = state.competitors.get('c-anna');
+    assert.ok(anna);
+    assert.equal(anna.status, 'PEND');
+    assert.equal(anna.elapsed_time_ms, null);
+    assert.deepEqual(anna.missing_codes, []);
+    assert.deepEqual(anna.extra_codes, []);
+    // History stays — race_reset is a rollback of scoring, not a wipe.
+    assert.equal(anna.card_read_history.length, 1);
+  });
+
+  test('Phase-2.1 race_reset preserves manual_status overrides', () => {
+    seqCounter = 0;
+    const raceStartMs = 1_700_000_000_000;
+    const events = [
+      evt({ event_type: 'race_started', started_at_ms: raceStartMs }, { eventTimeMs: raceStartMs }),
+      evt({
+        event_type: 'manual_status_set',
+        competitor_id: 'c-bob',
+        status: 'DNF',
+        reason: 'injury',
+      }),
+      evt(
+        { event_type: 'race_reset', previous_started_at_ms: raceStartMs },
+        { eventTimeMs: raceStartMs + 120_000 }
+      ),
+    ];
+    const state = reduce({
+      competition_id: 'comp-1',
+      race_started_at_ms: null,
+      events,
+      competitors: [comp({ id: 'c-bob', cardNumber: 2 })],
+      classes: [cls('cls-H21')],
+      courses: [course('cls-H21', [31, 32, 33, 34])],
+    });
+    const bob = state.competitors.get('c-bob');
+    assert.ok(bob);
+    assert.equal(bob.status, 'DNF');
+    assert.equal(bob.manual_status, 'DNF');
+  });
+
+  test('Phase-2.0 results sort: OK > MP > DNF > DQ > MAX > DNS > CANCEL > PEND', () => {
+    seqCounter = 0;
+    const competitors = [
+      comp({ id: 'c-ok', name: 'OK', cardNumber: 1 }),
+      comp({ id: 'c-mp', name: 'MP', cardNumber: 2 }),
+      comp({ id: 'c-dnf', name: 'DNF', cardNumber: 3 }),
+      comp({ id: 'c-max', name: 'MAX', cardNumber: 4 }),
+      comp({ id: 'c-dq', name: 'DQ', cardNumber: 5 }),
+      comp({ id: 'c-dns', name: 'DNS', cardNumber: 6 }),
+      comp({ id: 'c-cancel', name: 'CANCEL', cardNumber: 7 }),
+      comp({ id: 'c-pend', name: 'PEND', cardNumber: 8 }),
+    ];
+    const events = [
+      cardRead(1, [p(31), p(32), p(33), p(34)], hd(10 * 3600), hd(10 * 3600 + 500)),
+      cardRead(2, [p(31), p(33)], hd(10 * 3600), hd(10 * 3600 + 700)),
+      cardRead(3, [p(31)], hd(10 * 3600), null),
+      evt({
+        event_type: 'manual_status_set',
+        competitor_id: 'c-max',
+        status: 'MAX',
+        reason: 'over',
+      }),
+      evt({
+        event_type: 'manual_status_set',
+        competitor_id: 'c-dq',
+        status: 'DQ',
+        reason: 'dq',
+      }),
+      evt({
+        event_type: 'manual_status_set',
+        competitor_id: 'c-dns',
+        status: 'DNS',
+        reason: 'no-show',
+      }),
+      evt({
+        event_type: 'manual_status_set',
+        competitor_id: 'c-cancel',
+        status: 'CANCEL',
+        reason: 'wd',
+      }),
+    ];
+    const state = reduce({
+      competition_id: 'comp-1',
+      events,
+      competitors,
+      classes: [cls('cls-H21')],
+      courses: [course('cls-H21', [31, 32, 33, 34])],
+    });
+    const rows = state.results_by_class.get('cls-H21');
+    assert.ok(rows);
+    assert.deepEqual(
+      rows.map((r) => r.status),
+      ['OK', 'MP', 'DNF', 'DQ', 'MAX', 'DNS', 'CANCEL', 'PEND']
+    );
+  });
 });

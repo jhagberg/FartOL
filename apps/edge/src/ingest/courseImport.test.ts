@@ -205,6 +205,79 @@ describe('ingestCourseData', () => {
     assert.equal(courseRows.length, 0);
   });
 
+  test('test 5 (Phase 2.0 course-only fallback): zero classes + N courses → synthesises 1:1 class-per-course wired into course.class_id', () => {
+    // 4-klubbs Condes export shape: 5 <Course> elements, ZERO <Class>
+    // elements. Phase 2.0 promised "course-only model works for the
+    // 4-klubbs 5-course bundle" (ROADMAP SC#5). Without this fallback
+    // the WalkupModal Bana picker is empty.
+    const courseOnly: ParsedCourseData = {
+      kind: 'CourseData',
+      event_name: '4-klubbs 2026',
+      classes: [],
+      controls: [{ code: 31 }, { code: 32 }, { code: 33 }],
+      courses: [
+        {
+          id: 'Vit',
+          name: 'Vit',
+          class_id_ref: null,
+          length_m: 1875,
+          climb_m: null,
+          control_codes: [31, 32, 33],
+        },
+        {
+          id: 'Grön',
+          name: 'Grön',
+          class_id_ref: null,
+          length_m: 1525,
+          climb_m: null,
+          control_codes: [31, 33],
+        },
+      ],
+    };
+    const r = ingestCourseData(ctx.handle, ctx.competitionId, courseOnly);
+    assert.equal(r.classes_created, 2);
+    assert.equal(r.courses_created, 2);
+
+    const classRows = ctx.handle.db
+      .select()
+      .from(classes)
+      .where(eq(classes.competitionId, ctx.competitionId))
+      .all();
+    assert.equal(classRows.length, 2);
+    const classNames = classRows.map((c) => c.name).sort();
+    assert.deepEqual(classNames, ['Grön', 'Vit']);
+
+    const courseRows = ctx.handle.db
+      .select()
+      .from(courses)
+      .where(eq(courses.competitionId, ctx.competitionId))
+      .all();
+    assert.equal(courseRows.length, 2);
+    // Every course MUST have a class_id pointing at its synthesised class.
+    for (const cr of courseRows) {
+      assert.ok(cr.classId, `course ${cr.name} should have a synthesised classId`);
+      const matchingClass = classRows.find((c) => c.id === cr.classId);
+      assert.ok(matchingClass, `course ${cr.name}.classId must reference a real class row`);
+      assert.equal(matchingClass.name, cr.name, 'synthesised class shares course name');
+    }
+  });
+
+  test('test 6 (Phase 2.0 course-only fallback): when classes ARE present, fallback does NOT fire (idempotent)', () => {
+    // Defensive: the fallback must only trigger when classes.length===0.
+    // Sanity-check that the existing 2-classes/2-courses SAMPLE still
+    // produces exactly 2 classes (not 4) — re-asserts the SAMPLE
+    // path is unaffected by the new branch.
+    const r = ingestCourseData(ctx.handle, ctx.competitionId, SAMPLE);
+    assert.equal(r.classes_created, 2);
+    assert.equal(r.courses_created, 2);
+    const classRows = ctx.handle.db
+      .select()
+      .from(classes)
+      .where(eq(classes.competitionId, ctx.competitionId))
+      .all();
+    assert.equal(classRows.length, 2);
+  });
+
   test('test 4 (C-H3 mid-tx seam): outerTransaction=true throws synchronously inside caller tx', () => {
     const bad: ParsedCourseData = {
       ...SAMPLE,

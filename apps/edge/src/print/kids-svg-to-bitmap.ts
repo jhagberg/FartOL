@@ -27,7 +27,7 @@ export interface KidsBitmapInput {
   name: string;
   club: string | null;
   class_id: string;
-  status: 'OK' | 'MP' | 'DNF' | 'PEND';
+  status: 'OK' | 'MP' | 'DNF' | 'PEND' | 'DNS' | 'DQ' | 'CANCEL' | 'MAX';
   place: number | null;
   control_count: number;
   best_legs: number;

@@ -35,6 +35,8 @@
     toStationStatus,
     toWsStatus,
   } from '../lib/stores/bridgeStatus.svelte.ts';
+  import { activeCompetition } from '../lib/stores/activeCompetition.svelte.ts';
+  import { getBridgeStatus } from '../lib/api/client.ts';
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
 
@@ -42,23 +44,32 @@
 
   let tweaksOpen = $state(false);
 
-  // Extract active competition id from the URL when we're inside
-  // /competition/[id]/... The sidebar nav uses this to deep-link to the
-  // readout / results / export views without an extra fetch. When the
-  // user is on /, the active id is null and nav items for views that
-  // require an id fall back to /.
-  const activeCompId = $derived.by(() => {
+  // Active competition id: prefer the URL when we're inside
+  // /competition/[id]/... so deep-links and bookmarks stay authoritative.
+  // Fall back to the activeCompetition store (which mirrors the backend
+  // session pointer) so navigating to "Tävlingar" (path '/') no longer
+  // unsets scope and silently disables every comp-scoped nav item. The
+  // store is initialised in the $effect below; until it resolves the
+  // URL value is the only source.
+  const urlCompId = $derived.by(() => {
     const m = page.url.pathname.match(/^\/competition\/([^/]+)/);
     return m?.[1] ?? null;
   });
+  const activeCompId = $derived(urlCompId ?? activeCompetition.id);
 
   // Map URL → sidebar route prop so the active item highlights correctly.
+  // /import is a deep-link redirect that lands on /runners with the import
+  // sheet open — highlight the same sidebar item the redirect lands on.
   const navRoute = $derived.by(() => {
     const p = page.url.pathname;
-    if (p === '/' || p === '') return 'home';
+    if (p === '/') return 'home';
     if (p.endsWith('/readout')) return 'readout';
+    if (p.endsWith('/runners') || p.endsWith('/import')) return 'runners';
+    if (p.endsWith('/registration')) return 'registration';
     if (p.endsWith('/results')) return 'results';
     if (p.endsWith('/export')) return 'export';
+    if (p.endsWith('/hyrbrickor')) return 'hyrbrickor';
+    if (p.endsWith('/info')) return 'info';
     return 'home';
   });
 
@@ -73,8 +84,13 @@
       return;
     }
     if (route === 'readout') void goto(`/competition/${activeCompId}/readout`);
+    else if (route === 'runners') void goto(`/competition/${activeCompId}/runners`);
+    else if (route === 'registration')
+      void goto(`/competition/${activeCompId}/registration`);
     else if (route === 'results') void goto(`/competition/${activeCompId}/results`);
     else if (route === 'export') void goto(`/competition/${activeCompId}/export`);
+    else if (route === 'hyrbrickor') void goto(`/competition/${activeCompId}/hyrbrickor`);
+    else if (route === 'info') void goto(`/competition/${activeCompId}/info`);
   }
 
   // Mirror the tweaks store onto <html> attributes whenever any preference
@@ -89,12 +105,69 @@
     void tweaks.contrast_high;
     applyTweaksToRoot(document.documentElement);
   });
+
+  // Hydrate the activeCompetition store on first paint. Subsequent
+  // navigation to /competition/X/... syncs the URL id back into the
+  // store so the sidebar pill always mirrors the current workspace.
+  $effect(() => {
+    if (typeof document === 'undefined') return;
+    void activeCompetition.init();
+  });
+  $effect(() => {
+    if (urlCompId !== null && activeCompetition.initialized) {
+      void activeCompetition.syncFromUrl(urlCompId);
+    }
+  });
+
+  // Global SI-bridge connection poll. ReadoutView gets sub-second updates
+  // via its WS connection_changed handler; every OTHER page (e.g. /import,
+  // /settings, /) used to sit at the initial 'closed' value because nothing
+  // wrote to the store. Polling /api/bridge/status every 2s closes that gap
+  // so the sidebar StationCard + topbar PulseDot mirror real hardware state
+  // regardless of route. Pause when the tab is hidden to avoid background
+  // chatter; resume on visibilitychange.
+  $effect(() => {
+    if (typeof document === 'undefined') return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    async function tick(): Promise<void> {
+      if (cancelled) return;
+      try {
+        const bs = await getBridgeStatus();
+        bridgeStatus.set(bs.state);
+      } catch {
+        // Edge unreachable → treat as closed so the StationCard shows the
+        // right visual state and the Reconnect button is offered.
+        bridgeStatus.set('closed');
+      }
+      if (cancelled) return;
+      timer = setTimeout(tick, 2000);
+    }
+    function onVisibility(): void {
+      if (document.hidden) {
+        if (timer) {
+          clearTimeout(timer);
+          timer = null;
+        }
+      } else if (timer === null && !cancelled) {
+        void tick();
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility);
+    void tick();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  });
 </script>
 
 <AppShell
   onOpenSettings={() => (tweaksOpen = true)}
   onNavigate={handleNavigate}
   route={navRoute}
+  {activeCompId}
   stationStatus={toStationStatus(bridgeStatus.value)}
   wsStatus={toWsStatus(bridgeStatus.value)}
 >

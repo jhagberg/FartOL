@@ -232,4 +232,120 @@ describe('competitions REST CRUD', () => {
     });
     assert.equal(patchRes.statusCode, 400);
   });
+
+  // Phase 2.1 — race-phase gate.
+
+  test('Phase 2.1: new competitions default to race_started_at_ms=null', async () => {
+    const createRes = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/competitions',
+      payload: { name: 'Pre-race comp', date: '2026-05-25' },
+    });
+    assert.equal(createRes.statusCode, 201);
+    const body = createRes.json() as { race_started_at_ms: number | null };
+    assert.equal(body.race_started_at_ms, null);
+  });
+
+  test('Phase 2.1: POST /start-race sets race_started_at_ms and returns 201', async () => {
+    const createRes = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/competitions',
+      payload: { name: 'Start-race test', date: '2026-05-26' },
+    });
+    const { id } = createRes.json() as { id: string };
+    const before = Date.now();
+    const startRes = await ctx.app.inject({
+      method: 'POST',
+      url: `/api/competitions/${id}/start-race`,
+      payload: {},
+    });
+    const after = Date.now();
+    assert.equal(startRes.statusCode, 201);
+    const body = startRes.json() as { race_started_at_ms: number | null };
+    assert.ok(body.race_started_at_ms !== null);
+    assert.ok(body.race_started_at_ms! >= before);
+    assert.ok(body.race_started_at_ms! <= after);
+  });
+
+  test('Phase 2.1: POST /start-race on already-started competition is idempotent (returns existing ts)', async () => {
+    const createRes = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/competitions',
+      payload: { name: 'Idempotent start', date: '2026-05-26' },
+    });
+    const { id } = createRes.json() as { id: string };
+    const first = await ctx.app.inject({
+      method: 'POST',
+      url: `/api/competitions/${id}/start-race`,
+      payload: {},
+    });
+    const firstStamp = (first.json() as { race_started_at_ms: number }).race_started_at_ms;
+    // Second call must NOT overwrite the timestamp — return 200 with the
+    // existing stamp, no new event written.
+    const second = await ctx.app.inject({
+      method: 'POST',
+      url: `/api/competitions/${id}/start-race`,
+      payload: {},
+    });
+    assert.equal(second.statusCode, 200);
+    const secondStamp = (second.json() as { race_started_at_ms: number }).race_started_at_ms;
+    assert.equal(secondStamp, firstStamp);
+  });
+
+  test('Phase 2.1: POST /start-race on unknown id returns 404', async () => {
+    const res = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/competitions/00000000-0000-0000-0000-000000000000/start-race',
+      payload: {},
+    });
+    assert.equal(res.statusCode, 404);
+  });
+
+  test('Phase 2.1: POST /reset-race clears race_started_at_ms and returns 201', async () => {
+    const createRes = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/competitions',
+      payload: { name: 'Reset comp', date: '2026-05-27' },
+    });
+    const { id } = createRes.json() as { id: string };
+    await ctx.app.inject({
+      method: 'POST',
+      url: `/api/competitions/${id}/start-race`,
+      payload: {},
+    });
+    const resetRes = await ctx.app.inject({
+      method: 'POST',
+      url: `/api/competitions/${id}/reset-race`,
+      payload: {},
+    });
+    assert.equal(resetRes.statusCode, 201);
+    const body = resetRes.json() as { race_started_at_ms: number | null };
+    assert.equal(body.race_started_at_ms, null);
+  });
+
+  test('Phase 2.1: POST /reset-race on already-pre-race competition is idempotent (200, no new event)', async () => {
+    const createRes = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/competitions',
+      payload: { name: 'Reset idem', date: '2026-05-28' },
+    });
+    const { id } = createRes.json() as { id: string };
+    const res = await ctx.app.inject({
+      method: 'POST',
+      url: `/api/competitions/${id}/reset-race`,
+      payload: {},
+    });
+    assert.equal(res.statusCode, 200);
+    const body = res.json() as { race_started_at_ms: number | null };
+    assert.equal(body.race_started_at_ms, null);
+  });
+
+  test('Phase 2.1: POST /reset-race on unknown id returns 404', async () => {
+    const res = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/competitions/00000000-0000-0000-0000-000000000000/reset-race',
+      payload: {},
+    });
+    assert.equal(res.statusCode, 404);
+  });
 });

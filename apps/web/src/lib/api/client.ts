@@ -29,6 +29,12 @@ import type {
   CourseDTO,
   CourseCreateInput,
   ClubDTO,
+  EventorLookupResult,
+  EventorNameSuggestion,
+  EventorClubSuggestion,
+  EventorStatusDTO,
+  HiredCardsListResponse,
+  HiredCardReturnResponse,
   HealthDTO,
 } from '@fartol/shared-types';
 
@@ -140,6 +146,26 @@ export function patchCompetition(id: string, body: CompetitionPatchInput): Promi
   });
 }
 
+/** Phase 2.1 — flip the race-phase gate. Idempotent: returns the existing
+ * competition row (with race_started_at_ms already set) on a duplicate
+ * call instead of resetting the start time. */
+export function startRace(id: string): Promise<CompetitionDTO> {
+  return apiFetch<CompetitionDTO>(`/api/competitions/${encodeURIComponent(id)}/start-race`, {
+    method: 'POST',
+    body: {},
+  });
+}
+
+/** Phase 2.1 — rollback the race-phase gate. Operator hits this when the
+ * race was started by mistake (testing, demo). Idempotent: already-in-pre-
+ * race returns the same row without writing a new event. */
+export function resetRace(id: string): Promise<CompetitionDTO> {
+  return apiFetch<CompetitionDTO>(`/api/competitions/${encodeURIComponent(id)}/reset-race`, {
+    method: 'POST',
+    body: {},
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Wizard atomic create + XML ingest (C-H3 LOCKED — plan 12)
 // ---------------------------------------------------------------------------
@@ -237,6 +263,19 @@ export function listCompetitors(competitionId: string): Promise<{ competitors: C
   return apiFetch(`/api/competitions/${encodeURIComponent(competitionId)}/competitors`);
 }
 
+/** Lookup the (at most one) competitor bound to a given SI card in this
+ * competition. Returns an empty competitors[] when no binding exists. The
+ * partial unique index on (competition_id, card_number) WHERE card_number
+ * IS NOT NULL guarantees at most one match. */
+export function lookupCompetitorByCard(
+  competitionId: string,
+  cardNumber: number
+): Promise<{ competitors: CompetitorDTO[] }> {
+  return apiFetch(
+    `/api/competitions/${encodeURIComponent(competitionId)}/competitors?card_number=${encodeURIComponent(cardNumber)}`
+  );
+}
+
 export function getCompetitor(
   competitionId: string,
   competitorId: string
@@ -247,9 +286,26 @@ export function getCompetitor(
 }
 
 /** Walk-up create + plan-10 replace-card share this entry point; the
- * `replace_card_for_competitor_id` field switches mode server-side. */
-export function createCompetitor(body: CompetitorCreateInput): Promise<CompetitorDTO> {
-  return apiFetch<CompetitorDTO>('/api/competitors', { method: 'POST', body });
+ * `replace_card_for_competitor_id` field switches mode server-side.
+ *
+ * Level-A mobile resilience (2026-05-17): on a raw network failure
+ * (TypeError from fetch — wifi dropped, DNS hiccup, AP roam) do ONE
+ * automatic retry with a 1500 ms back-off. We never retry on an ApiError
+ * (the server got it and responded — 4xx is deterministic, 5xx is a real
+ * bug). The form survives the failure either way; this just absorbs the
+ * common case where the operator wouldn't otherwise notice the blip.
+ *
+ * Durable outbox + server-side idempotency is the Level-B follow-up at
+ * `.planning/todos/pending/2026-05-17-mobile-registration-outbox-idempotency.md`. */
+export async function createCompetitor(body: CompetitorCreateInput): Promise<CompetitorDTO> {
+  try {
+    return await apiFetch<CompetitorDTO>('/api/competitors', { method: 'POST', body });
+  } catch (e) {
+    if (e instanceof ApiError) throw e;
+    // Raw fetch failure — wait briefly then retry once.
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    return apiFetch<CompetitorDTO>('/api/competitors', { method: 'POST', body });
+  }
 }
 
 /** Edit name / club / class / card on an existing competitor row. Distinct
@@ -331,6 +387,36 @@ export function manualDnf(
 export function unDnf(competitionId: string, competitorId: string): Promise<{ local_seq: number }> {
   return apiFetch(
     `/api/competitions/${encodeURIComponent(competitionId)}/competitors/${encodeURIComponent(competitorId)}/un-dnf`,
+    { method: 'POST', body: {} }
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2.0 — generalized manual-status override (DNS/DQ/CANCEL/MAX + DNF).
+// The legacy manualDnf() above stays for back-compat; new operator UI should
+// call setManualStatus() so the operator can pick any of the five states.
+// ---------------------------------------------------------------------------
+
+export type ManualStatus = 'DNF' | 'DNS' | 'DQ' | 'CANCEL' | 'MAX';
+
+export function setManualStatus(
+  competitionId: string,
+  competitorId: string,
+  status: ManualStatus,
+  reason: string
+): Promise<{ local_seq: number }> {
+  return apiFetch(
+    `/api/competitions/${encodeURIComponent(competitionId)}/competitors/${encodeURIComponent(competitorId)}/status`,
+    { method: 'POST', body: { status, reason } }
+  );
+}
+
+export function clearManualStatus(
+  competitionId: string,
+  competitorId: string
+): Promise<{ local_seq: number }> {
+  return apiFetch(
+    `/api/competitions/${encodeURIComponent(competitionId)}/competitors/${encodeURIComponent(competitorId)}/clear-status`,
     { method: 'POST', body: {} }
   );
 }
@@ -458,6 +544,190 @@ export function listClubs(prefix?: string, limit?: number): Promise<{ clubs: Clu
       ? { query: { prefix, ...(limit !== undefined ? { limit } : {}) } }
       : {}),
   });
+}
+
+// ---------------------------------------------------------------------------
+// Eventor walk-up autocomplete (Phase 2.0 Plan 02-02).
+// ---------------------------------------------------------------------------
+
+/** GET /api/eventor/lookup?si_card=N — cache lookup for the bricka-scan
+ * pre-fill flow. Returns { hit: true, ... } for a unique match,
+ * { hit: 'many', candidates } when the cache holds duplicate rows for the
+ * card (family-shared / replacement / rental pool), or { hit: false }. */
+export function lookupEventorBySiCard(siCard: number): Promise<EventorLookupResult> {
+  return apiFetch<EventorLookupResult>('/api/eventor/lookup', {
+    query: { si_card: siCard },
+  });
+}
+
+/** GET /api/eventor/lookup?prefix=S&limit=K — name-prefix autocomplete
+ * for the operator-types-name flow. Caller MUST enforce minLength 2 on
+ * the prefix (the 252k-row scan blows the autocomplete UX otherwise);
+ * the API tolerates shorter prefixes but UI patterns reject them. */
+export function lookupEventorByPrefix(
+  prefix: string,
+  limit: number = 20
+): Promise<{ suggestions: EventorNameSuggestion[] }> {
+  return apiFetch<{ suggestions: EventorNameSuggestion[] }>('/api/eventor/lookup', {
+    query: { prefix, limit },
+  });
+}
+
+/** FTS5-backed competitor search. Folds diacritics, matches across
+ * family + given + club_name in any word order. Use this for new code
+ * (the Lägg-till sheet) — `lookupEventorByPrefix` stays for back-compat
+ * with WalkupModal.
+ *
+ * When `clubId` is supplied, the result set is hard-narrowed to that
+ * federation club. The Lägg-till sheet passes this once the operator
+ * has picked a club so a common name like "Per Karlsson" returns the
+ * in-club match instead of being ranked-out by homonyms from other
+ * clubs. */
+export function searchEventorCompetitors(
+  q: string,
+  limit: number = 20,
+  clubId?: number
+): Promise<{ suggestions: EventorNameSuggestion[] }> {
+  const query: Record<string, string | number> = { q, limit };
+  if (clubId !== undefined) query['club_id'] = clubId;
+  return apiFetch<{ suggestions: EventorNameSuggestion[] }>('/api/eventor/lookup', {
+    query,
+  });
+}
+
+/** GET /api/eventor/clubs?q= — federation-club search backed by FTS5.
+ * Matches name + short_name + media_name in any word order with
+ * diacritic folding, so "stk" / "stora tuna" / "stortuna" all hit
+ * Stora Tuna OK. */
+export function searchEventorClubs(
+  q: string,
+  limit: number = 20
+): Promise<{ suggestions: EventorClubSuggestion[] }> {
+  return apiFetch<{ suggestions: EventorClubSuggestion[] }>('/api/eventor/clubs', {
+    query: { q, limit },
+  });
+}
+
+/** GET /api/eventor/status — current cache health for the TweaksPanel
+ * indicator. fartol_dev is server-side-derived from process.env at
+ * request time so the UI's admin-button gate is correct in production
+ * builds (import.meta.env.DEV would be bundler-time and always false). */
+export function getEventorStatus(): Promise<EventorStatusDTO> {
+  return apiFetch<EventorStatusDTO>('/api/eventor/status');
+}
+
+// ---------------------------------------------------------------------------
+// Eventor event-based import. Two-step:
+//   1. listEventorEvents — show events on a given date so the operator
+//      can confirm they're picking the right one (not just typing an ID)
+//   2. importEntriesFromEventor — fetch + ingest the EntryList for the
+//      chosen event ID
+// ---------------------------------------------------------------------------
+
+export interface EventorEventListItem {
+  eventId: number;
+  name: string;
+  /** YYYY-MM-DD. */
+  date: string;
+  /** HH:MM:SS — null for multi-day events. */
+  clock: string | null;
+}
+
+export function listEventorEvents(opts: {
+  fromDate: string;
+  toDate?: string;
+  organisationIds?: string;
+}): Promise<{ events: EventorEventListItem[] }> {
+  const query: Record<string, string> = { fromDate: opts.fromDate };
+  if (opts.toDate !== undefined) query['toDate'] = opts.toDate;
+  if (opts.organisationIds !== undefined) query['organisationIds'] = opts.organisationIds;
+  return apiFetch<{ events: EventorEventListItem[] }>('/api/eventor/events', { query });
+}
+
+export interface EventorImportResult {
+  kind: 'EntryList';
+  competitors_created: number;
+  classes_missing: string[];
+  /** Server count of duplicate-card skips. Surfaced separately from
+   * competitors_created so the operator who re-clicks Importera sees
+   * "X redan importerade" instead of a confusing bare "0 löpare". */
+  competitors_skipped_duplicate: number;
+  auto_bound: string[];
+}
+
+export function importEntriesFromEventor(
+  competitionId: string,
+  eventId: number
+): Promise<EventorImportResult> {
+  return apiFetch<EventorImportResult>(`/api/competitions/${competitionId}/eventor-import`, {
+    method: 'POST',
+    body: { eventId },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Settings — integration API keys (Phase 2.0 Plan 02-07).
+// ---------------------------------------------------------------------------
+
+export type IntegrationSource = 'env' | 'config' | 'absent';
+
+export interface IntegrationStatus {
+  key: string;
+  set: boolean;
+  source: IntegrationSource;
+}
+
+/** GET /api/settings/integrations — list every allowlisted integration
+ * with its current { set, source } status. The `value` field is NEVER
+ * returned by the API (write-only secret, OWASP A02:2021). The UI
+ * masks the row to `••••••••` when set or shows the "Inte
+ * konfigurerad" placeholder when set=false. */
+export function listIntegrations(): Promise<{ integrations: IntegrationStatus[] }> {
+  return apiFetch<{ integrations: IntegrationStatus[] }>('/api/settings/integrations');
+}
+
+/** PUT /api/settings/integrations — upsert the secret. Empty-string
+ * value deletes the row (server treats both null and "" the same).
+ * Server re-resolves env precedence on the response so the caller
+ * knows whether the freshly-written config row will actually take
+ * effect or if process.env still wins. */
+export function setIntegration(
+  key: string,
+  value: string
+): Promise<{ ok: true; key: string; set: boolean; source: IntegrationSource }> {
+  return apiFetch('/api/settings/integrations', {
+    method: 'PUT',
+    body: { key, value },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Hired cards (Hyrbricka — Phase 2.0 Plan 02-05)
+// ---------------------------------------------------------------------------
+
+/** GET /api/competitions/:id/hired-cards — list open + returned rentals.
+ * Backs the admin "Aktiva hyrbrickor" view; the Hyrbricka finish-readout
+ * toast in ReadoutView reads hired_card_open from the /readout response
+ * instead (single source of truth). */
+export function listHiredCards(competitionId: string): Promise<HiredCardsListResponse> {
+  return apiFetch<HiredCardsListResponse>(
+    `/api/competitions/${encodeURIComponent(competitionId)}/hired-cards`
+  );
+}
+
+/** PATCH /api/competitions/:id/hired-cards/:cardNumber/return — mark the
+ * rental returned. Idempotent: the second call returns
+ * `already_returned: true` with the original timestamp. */
+export function returnHiredCard(
+  competitionId: string,
+  cardNumber: number
+): Promise<HiredCardReturnResponse> {
+  return apiFetch<HiredCardReturnResponse>(
+    `/api/competitions/${encodeURIComponent(competitionId)}/hired-cards/${encodeURIComponent(
+      String(cardNumber)
+    )}/return`,
+    { method: 'PATCH' }
+  );
 }
 
 // ---------------------------------------------------------------------------

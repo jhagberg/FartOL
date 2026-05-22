@@ -38,9 +38,12 @@
 // - .planning/phases/01-single-laptop-training-mvp/01-REVIEWS.md §C-H2
 
 import type { FastifyInstance } from 'fastify';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { competitions } from '../db/schema.ts';
 import { insertEvent } from '../si/eventInserter.ts';
+import { ingestEventorCache } from '../eventor/cache.ts';
 import { readoutChannel } from '@fartol/shared-types';
 import { eq } from 'drizzle-orm';
 import type { EventPayload } from '../db/schema.ts';
@@ -219,5 +222,24 @@ export default async function registerDevRoutes(app: FastifyInstance): Promise<v
     });
 
     return reply.code(201).send({ local_seq: inserted.local_seq, broadcasted: true });
+  });
+
+  // Phase 2.0 Plan 02-02 task 5 — seed the Eventor cache from the bundled
+  // Plan-01 fixture so e2e specs have deterministic data without
+  // round-tripping the Eventor API. Same FARTOL_DEV gate as the rest of
+  // /api/__dev/*.
+  app.post('/api/__dev/eventor-seed', async (_req, reply) => {
+    try {
+      const here = path.dirname(fileURLToPath(import.meta.url));
+      // routes/dev.ts -> eventor/__fixtures__/
+      const fixDir = path.resolve(here, '..', 'eventor', '__fixtures__');
+      const competitorsXml = path.join(fixDir, 'competitors-sample.xml');
+      const clubsXml = path.join(fixDir, 'clubs-sample.xml');
+      const result = await ingestEventorCache(app.fartolDb, competitorsXml, clubsXml, Date.now());
+      return reply.code(200).send({ ok: true, ...result });
+    } catch (err) {
+      app.log.error({ err }, 'eventor-seed failed');
+      return reply.code(500).send({ ok: false, error: (err as Error).message });
+    }
   });
 }

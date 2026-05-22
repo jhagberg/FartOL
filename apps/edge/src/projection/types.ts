@@ -20,7 +20,22 @@
 
 import type { NdjsonPunch, HalfDayClock } from '@fartol/sportident';
 
-export type PunchStatus = 'PEND' | 'OK' | 'MP' | 'DNF';
+// Phase 2.0 extension (2026-05-18): four operator-flagged states added on
+// top of the auto-detected PEND/OK/MP/DNF set. Each maps to an IOF v3
+// ResultStatus value (see apps/edge/src/xml/iofExport.ts). MAX is operator-
+// manual-only in Phase 2.0; Phase 2.1 will add auto-compute from a future
+// class.max_time field.
+//   - DNS    → IOF "DidNotStart"  (no-show on race day)
+//   - DQ     → IOF "Disqualified"  (operator rule decision)
+//   - CANCEL → IOF "Cancelled"     (pre-race entry withdrawn — "Återbud")
+//   - MAX    → IOF "OverTime"      (exceeded class time cap — "Maxtid")
+export type PunchStatus = 'PEND' | 'OK' | 'MP' | 'DNF' | 'DNS' | 'DQ' | 'CANCEL' | 'MAX';
+
+/** Subset of PunchStatus an operator can assert via manual_status_set.
+ * Auto-detected states (PEND/OK/MP) are NEVER operator-asserted — they fall
+ * out of dnfMp.detectStatus naturally. DNF stays asserter-allowed for back-
+ * compat with the legacy manual_dnf event. */
+export type ManualStatus = 'DNF' | 'DNS' | 'DQ' | 'CANCEL' | 'MAX';
 
 /** One competitor's projected view — what readout + receipts render. */
 export interface CompetitorView {
@@ -51,7 +66,16 @@ export interface CompetitorView {
   extra_codes: number[];
   out_of_order_codes: number[];
   elapsed_time_ms: number | null;
+  /** Back-compat alias retained for IOF export / tests that still read it.
+   * When `manual_status` is one of DNS/DQ/CANCEL/MAX or DNF, this carries the
+   * operator's free-text reason (1..500 chars). Null when no override is in
+   * force. */
   manual_dnf_reason: string | null;
+  /** Operator-asserted override status. NULL when no override is in force
+   * and the projected status comes from dnfMp.detectStatus over the latest
+   * card_read. When set, the reducer skips auto-detection (the override
+   * wins until cleared via clear_manual_status). */
+  manual_status: ManualStatus | null;
 }
 
 /** One row in the per-class results table. ResultView is the projection

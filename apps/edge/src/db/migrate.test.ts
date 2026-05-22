@@ -39,15 +39,17 @@ describe('migrator: idempotency + cold-start coverage', () => {
   test('test 1: calling runMigrations twice on the same sqlite is a no-op', () => {
     const handle = openDatabase(':memory:');
     try {
-      // openDatabase already ran the migrator once.
+      // openDatabase already ran the migrator once. Migration 0006 added
+      // the FTS UPDATE triggers (Gemini review item #5), so the expected
+      // migration count is now 7.
       const initialCount = handle.sqlite
         .prepare<unknown[], CountRow>('SELECT count(*) as count FROM __drizzle_migrations')
         .get();
       assert.ok(initialCount);
       assert.equal(
         initialCount.count,
-        2,
-        `expected 2 migrations applied, got ${initialCount.count}`
+        7,
+        `expected 7 migrations applied (0000..0006), got ${initialCount.count}`
       );
 
       // Call again — should be a no-op.
@@ -56,13 +58,13 @@ describe('migrator: idempotency + cold-start coverage', () => {
         .prepare<unknown[], CountRow>('SELECT count(*) as count FROM __drizzle_migrations')
         .get();
       assert.ok(after);
-      assert.equal(after.count, 2, 'count must not change on second run');
+      assert.equal(after.count, 7, 'count must not change on second run');
     } finally {
       handle.close();
     }
   });
 
-  test('test 2 (C-H1): both 0000 + 0001 applied with distinct hashes; triggers present', () => {
+  test('test 2 (C-H1): 0000..0005 applied with distinct hashes; triggers present', () => {
     const handle = openDatabase(':memory:');
     try {
       const rows = handle.sqlite
@@ -71,8 +73,10 @@ describe('migrator: idempotency + cold-start coverage', () => {
           MigrationRow
         >('SELECT id, hash FROM __drizzle_migrations ORDER BY id ASC')
         .all();
-      assert.equal(rows.length, 2, `expected 2 migrations, got ${rows.length}`);
-      assert.notEqual(rows[0]?.hash, rows[1]?.hash, 'migration hashes must differ');
+      assert.equal(rows.length, 7, `expected 7 migrations, got ${rows.length}`);
+      // All hashes pairwise distinct.
+      const hashes = new Set(rows.map((r) => r.hash));
+      assert.equal(hashes.size, 7, 'migration hashes must all be distinct');
 
       // Idempotent re-application.
       runMigrations(handle.sqlite);
@@ -82,9 +86,9 @@ describe('migrator: idempotency + cold-start coverage', () => {
           MigrationRow
         >('SELECT id, hash FROM __drizzle_migrations ORDER BY id ASC')
         .all();
-      assert.equal(after.length, 2, 'still 2 migrations after re-run');
+      assert.equal(after.length, 7, 'still 7 migrations after re-run');
 
-      // Two append-only triggers from 0001.
+      // Triggers from 0001 (2 append-only) + 0004 (4 FTS sync) + 0006 (2 FTS update) = 8 total.
       const triggers = handle.sqlite
         .prepare<
           unknown[],
@@ -92,7 +96,11 @@ describe('migrator: idempotency + cold-start coverage', () => {
         >("SELECT count(*) as count FROM sqlite_master WHERE type='trigger'")
         .get();
       assert.ok(triggers);
-      assert.equal(triggers.count, 2, `expected exactly 2 triggers (C-H1), got ${triggers.count}`);
+      assert.equal(
+        triggers.count,
+        8,
+        `expected 8 triggers (2 events + 4 FTS sync + 2 FTS update), got ${triggers.count}`
+      );
     } finally {
       handle.close();
     }
@@ -106,7 +114,7 @@ describe('migrator: idempotency + cold-start coverage', () => {
       const beforeCount = h1.sqlite
         .prepare<unknown[], CountRow>('SELECT count(*) as count FROM __drizzle_migrations')
         .get();
-      assert.equal(beforeCount?.count, 2);
+      assert.equal(beforeCount?.count, 7);
       h1.close();
 
       const h2 = openDatabase(dbPath);
@@ -116,7 +124,7 @@ describe('migrator: idempotency + cold-start coverage', () => {
           .get();
         assert.equal(
           afterCount?.count,
-          2,
+          7,
           'reopening must NOT replay migrations (idempotent on disk)'
         );
         const triggers = h2.sqlite
@@ -125,7 +133,7 @@ describe('migrator: idempotency + cold-start coverage', () => {
             CountRow
           >("SELECT count(*) as count FROM sqlite_master WHERE type='trigger'")
           .get();
-        assert.equal(triggers?.count, 2, 'triggers persist across reopen');
+        assert.equal(triggers?.count, 8, 'triggers persist across reopen');
       } finally {
         h2.close();
       }
@@ -152,6 +160,35 @@ describe('migrator: idempotency + cold-start coverage', () => {
       }
     } finally {
       rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test('test 6 (02-09 task 1): 0003 swaps UNIQUE idx_eventor_si_card for plain idx_eventor_si_card_lookup', () => {
+    interface IndexRow {
+      name: string;
+      unique: number;
+    }
+    const handle = openDatabase(':memory:');
+    try {
+      const indexes = handle.sqlite
+        .prepare<
+          unknown[],
+          IndexRow
+        >("SELECT name, [unique] FROM pragma_index_list('eventor_competitors')")
+        .all();
+      const names = new Set(indexes.map((r) => r.name));
+      assert.ok(
+        names.has('idx_eventor_si_card_lookup'),
+        `expected idx_eventor_si_card_lookup present, got: ${[...names].join(', ')}`
+      );
+      assert.ok(
+        !names.has('idx_eventor_si_card'),
+        `expected old UNIQUE idx_eventor_si_card to be DROPPED, still present in: ${[...names].join(', ')}`
+      );
+      const lookup = indexes.find((r) => r.name === 'idx_eventor_si_card_lookup');
+      assert.equal(lookup?.unique, 0, 'idx_eventor_si_card_lookup must NOT be unique');
+    } finally {
+      handle.close();
     }
   });
 

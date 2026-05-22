@@ -50,8 +50,8 @@
   import { t } from '$lib/i18n/index.ts';
   import { tweaks } from '$lib/stores/tweaks.svelte.ts';
   import { bridgeStatus } from '$lib/stores/bridgeStatus.svelte.ts';
-  import { WsClient } from '$lib/ws/client.ts';
-  import { readoutChannel, resultsChannel, type WsEnvelope } from '@fartol/shared-types';
+  import { resultsChannel } from '@fartol/shared-types';
+  import { createCardSubscription } from '$lib/services/cardSubscription.ts';
   import type {
     CompetitionDTO,
     ClassDTO,
@@ -64,12 +64,18 @@
     listCompetitors,
     manualDnf as apiManualDnf,
     unDnf as apiUnDnf,
+    setManualStatus as apiSetManualStatus,
+    clearManualStatus as apiClearManualStatus,
+    type ManualStatus,
     patchCompetition,
     devSimulateRead,
     printReceipt as apiPrintReceipt,
     setActiveCompetition,
     getBridgeStatus,
+    lookupEventorBySiCard,
+    returnHiredCard,
   } from '$lib/api/client.ts';
+  import type { EventorLookupHit } from '@fartol/shared-types';
   import LatestReadCard from '$lib/components/LatestReadCard.svelte';
   import PunchGrid from '$lib/components/PunchGrid.svelte';
   import SplitsTable from '$lib/components/SplitsTable.svelte';
@@ -78,6 +84,7 @@
   import WalkupModal from '$lib/screens/WalkupModal.svelte';
   import EditCompetitorModal from '$lib/components/EditCompetitorModal.svelte';
   import ConsentConfirmationToast from '$lib/components/ConsentConfirmationToast.svelte';
+  import HyrbrickaToast from '$lib/components/HyrbrickaToast.svelte';
   import type { ReceiptTemplate } from '$lib/components/receipt-templates/types.ts';
   import {
     type ReadoutResponse,
@@ -116,7 +123,7 @@
   let toastMessage: string | null = $state(null);
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
 
-  let wsClient: WsClient | null = null;
+  let subscription: ReturnType<typeof createCardSubscription> | null = null;
 
   // Walk-up overlay open flag — reactive from the URL. Plan 14 mounts a
   // modal when this is non-null; for plan 13 we expose the same signal
@@ -134,6 +141,43 @@
     return row?.card_holder_hint ?? null;
   });
 
+  // Phase 2.0 Plan 02-02 — fetch the Eventor cache lookup whenever the
+  // walkup card changes so the modal can pre-fill name + klubb. Stored
+  // as an EventorLookupHit (null when miss/network-down) so the modal's
+  // eventorHint prop can be passed without further reshaping.
+  let eventorHint: EventorLookupHit | null = $state(null);
+  let _lastLookedUpCard: number | null = $state(null);
+  $effect(() => {
+    // Re-evaluate when walkupCard changes.
+    const card = walkupCard;
+    if (card === null) {
+      eventorHint = null;
+      _lastLookedUpCard = null;
+      return;
+    }
+    const n = Number(card);
+    if (!Number.isInteger(n) || n <= 0) {
+      eventorHint = null;
+      return;
+    }
+    if (_lastLookedUpCard === n) return;
+    _lastLookedUpCard = n;
+    void (async () => {
+      try {
+        const r = await lookupEventorBySiCard(n);
+        // Only auto-fill the modal when the cache resolves to exactly one
+        // candidate. 'many' shapes (family-shared / replacement / rental
+        // cards) must NOT auto-prefill — picking one arbitrarily would
+        // silently mis-attribute the runner. The operator can still type
+        // the name into the SmartRunnerSearch box, which surfaces a
+        // disambiguation list against the same card number.
+        eventorHint = r.hit === true ? r : null;
+      } catch {
+        eventorHint = null;
+      }
+    })();
+  });
+
   // C-M4 consent-confirmation toast state (plan 14). Set when a card_read
   // resolves to a competitor with consent_status='pending_first_read' AND
   // the operator has not already dismissed it this session.
@@ -146,6 +190,23 @@
    * "Avfärda") so the toast doesn't re-pop on subsequent reads for the
    * same runner. consent_status stays 'pending_first_read' server-side. */
   const dismissedConsentForCompetitorIds: Set<string> = new Set();
+
+  // Phase 2.0 Plan 02-05 — Hyrbricka finish-readout toast state. Set when
+  // a card_read resolves to a row whose hired_card_open is non-null AND
+  // the operator hasn't already returned/dismissed for this card this
+  // session.
+  let pendingHyrbrickaToast: {
+    cardNumber: number;
+    contactName: string | null;
+    contactPhone: string | null;
+    contactEmail: string | null;
+    note: string | null;
+  } | null = $state(null);
+  /** Per-session set of card_numbers the operator has acknowledged (via
+   * Returnerad OR Ignorera). RESEARCH §Assumption A8: Svelte 5's
+   * reactivity on Set mutation is unreliable — use the replacement form
+   * `new Set([...prev, x])` everywhere this is updated. */
+  let returnedHiredCardNumbers: Set<number> = $state(new Set());
 
   // Edit-competitor modal — non-null = open with that competitor id loaded
   // from the competitors map. Save flows through editCompetitorProfile
@@ -254,7 +315,7 @@
   });
 
   onDestroy(() => {
-    if (wsClient) wsClient.close();
+    if (subscription) subscription.disconnect();
     if (flashTimer) clearTimeout(flashTimer);
     if (walkupTimer) clearTimeout(walkupTimer);
     if (toastTimer) clearTimeout(toastTimer);
@@ -287,16 +348,11 @@
           // Soft fail — operator can still toggle from settings.
         }
       }
-      // Prime bridgeStatus from the server's current view. Without this the
-      // StationCard sits at 'closed' until the next connection_changed
-      // envelope (which never comes if the bridge opened pre-page-load
-      // for a different active comp).
-      try {
-        const bs = await getBridgeStatus();
-        bridgeStatus.set(bs.state);
-      } catch {
-        // Soft fail.
-      }
+      // bridgeStatus is primed + kept fresh by the layout-level 2s poll
+      // (apps/web/src/routes/+layout.svelte). The WS connection_changed
+      // handler below still updates it eagerly for sub-second feedback
+      // while on /readout, but the prime fetch that used to live here is
+      // no longer needed.
     } catch (err) {
       // Surface a transient toast — readout still mounts so the WS
       // can paint the next card_read. Note: in dev this can fire when
@@ -308,15 +364,86 @@
   }
 
   function connectWs(): void {
-    if (typeof window === 'undefined') return;
-    const wsUrl =
-      window.location.protocol === 'https:'
-        ? `wss://${window.location.host}/ws`
-        : `ws://${window.location.host}/ws`;
-    wsClient = new WsClient(wsUrl, handleWs);
-    wsClient.preSubscribe(readoutChannel(competitionId));
-    wsClient.preSubscribe(resultsChannel(competitionId));
-    wsClient.connect();
+    // The shared cardSubscription service owns the WsClient + replay
+    // unwrap + dispatch loop (extracted by 02-02b-PLAN.md task 2).
+    // /readout supplies classifyCard so the existing
+    // silent-drop-when-modal-open semantics keep working; every other
+    // envelope (manual_dnf, card_bound, results_update, meos_merge,
+    // hired_card_returned) flows through onOtherEnvelope to the same
+    // dispatch logic Phase 1 inlined.
+    subscription = createCardSubscription({
+      competitionId,
+      onCardRead: (cardNumber, _hint, _classification) => {
+        // The classifyCard resolver already refetched /readout +
+        // /competitors; the projection is now authoritative for the
+        // post-read side effects (walkup redirect, consent toast,
+        // hyrbricka toast). The classification value is informational —
+        // triggerCardReadSideEffects re-checks history[0].unmatched
+        // (the existing C-M3 site) to decide the walkup branch.
+        triggerCardReadSideEffects(cardNumber);
+      },
+      classifyCard: async (cardNumber) => {
+        // Refetch BOTH endpoints so history[0].unmatched + competitor
+        // consent_status reflect the post-read state. This is the
+        // same Promise.all that the Phase 1 inline `onCardRead` ran.
+        await Promise.all([refetchReadout(), refetchCompetitors()]);
+        const top = history[0];
+        const isUnmatched = top !== undefined && top.card_number === cardNumber && top.unmatched;
+        const cardHolderHint = isUnmatched ? top?.card_holder_hint ?? null : null;
+        return { isUnmatched, cardHolderHint };
+      },
+      onConnectionChange: (state) => {
+        bridgeStatus.set(state);
+      },
+      onOtherEnvelope: (eventType, payload) => {
+        switch (eventType) {
+          case 'manual_dnf':
+          case 'un_dnf':
+          case 'results_update':
+            void refetchReadout();
+            break;
+          case 'card_bound':
+            void refetchCompetitors();
+            void refetchReadout();
+            break;
+          case 'meos_merge': {
+            // Phase 2.0 plan 02-04 (D-MOP-3): MOP receiver auto-merged
+            // N MeOS-only competitors into our competitors table;
+            // surface a Swedish toast so the operator sees the
+            // recovery happened. No re-fetch — the next card_read
+            // flow already re-queries competitors when needed
+            // (PATTERNS S-4 + RESEARCH "Plan 5 nuance").
+            const count = (payload as { count?: number } | null)?.count;
+            if (typeof count === 'number' && count > 0) {
+              toast(t('ro.meosMerge', { count }));
+            }
+            break;
+          }
+          case 'hired_card_returned': {
+            // Phase 2.0 plan 02-05: another operator marked this card
+            // returned (typically via the admin "Aktiva hyrbrickor"
+            // view). Add it to our dismissal Set so future card_reads
+            // for this card don't re-pop the toast. Same Set
+            // replacement pattern as onHyrbrickaReturn — Assumption A8.
+            const cn = (payload as { card_number?: number } | null)?.card_number;
+            if (typeof cn === 'number' && Number.isInteger(cn) && cn > 0) {
+              returnedHiredCardNumbers = new Set([...returnedHiredCardNumbers, cn]);
+              // If the toast is currently open for this same card,
+              // dismiss it — the cross-operator return obviates our
+              // own pending action.
+              if (pendingHyrbrickaToast && pendingHyrbrickaToast.cardNumber === cn) {
+                pendingHyrbrickaToast = null;
+              }
+            }
+            break;
+          }
+          default:
+            break;
+        }
+      },
+      extraChannels: [resultsChannel(competitionId)],
+    });
+    subscription.connect();
   }
 
   async function refetchReadout(): Promise<void> {
@@ -339,57 +466,11 @@
   }
 
   // --- WS envelope dispatch -------------------------------------------------
-
-  function handleWs(env: WsEnvelope): void {
-    // Replay envelopes wrap the live event payload one layer deeper:
-    // { type: 'replay', payload: { event_type, ...fields } }. Live
-    // broadcasts have type === event_type. Unwrap and re-dispatch so
-    // both paths share the same downstream logic.
-    if (env.type === 'replay') {
-      const inner = env.payload as { event_type?: string } | null;
-      if (!inner || typeof inner.event_type !== 'string') return;
-      handleLiveEvent(inner.event_type, inner);
-      return;
-    }
-    handleLiveEvent(env.type, env.payload);
-  }
-
-  function handleLiveEvent(eventType: string, payload: unknown): void {
-    switch (eventType) {
-      case 'card_read':
-        onCardRead(payload as { card_number: number; card_type: string });
-        break;
-      case 'manual_dnf':
-      case 'un_dnf':
-      case 'results_update':
-        void refetchReadout();
-        break;
-      case 'card_bound':
-        void refetchCompetitors();
-        void refetchReadout();
-        break;
-      case 'connection_changed': {
-        const state = (payload as { state: string }).state;
-        if (state === 'open' || state === 'opening' || state === 'closed' || state === 'error') {
-          bridgeStatus.set(state);
-        }
-        break;
-      }
-      default:
-        break;
-    }
-  }
-
-  function onCardRead(payload: { card_number: number; card_type: string }): void {
-    // The server-side broadcast carries the envelope but the readout-row
-    // status + competitor binding live in the projection. Refetch /readout
-    // AND /competitors for the authoritative shape — keeps card_number,
-    // status, AND consent_status in sync (C-M4 toast reads consent_status
-    // from the competitor row, not the readout history).
-    void Promise.all([refetchReadout(), refetchCompetitors()]).then(() =>
-      triggerCardReadSideEffects(payload.card_number)
-    );
-  }
+  //
+  // WS connect + replay-unwrap + dispatch loop live in cardSubscription
+  // (extracted by 02-02b-PLAN.md task 2). The per-event side effects
+  // below (triggerCardReadSideEffects + the consent/hyrbricka logic)
+  // stay in-screen because they read screen-local state.
 
   function triggerCardReadSideEffects(cardNumber: number): void {
     pinnedKey = null;
@@ -434,6 +515,49 @@
         };
       }
     }
+
+    // Phase 2.0 Plan 02-05: surface the Hyrbricka finish-readout toast on
+    // every card_read whose history row has a non-null hired_card_open
+    // payload AND the operator has not already returned/dismissed this
+    // card_number in the session (RESEARCH §"Pattern 6"). The readout
+    // refetch above guarantees `history[0].hired_card_open` is the
+    // authoritative server view.
+    if (
+      top &&
+      top.card_number === cardNumber &&
+      top.hired_card_open !== null &&
+      !returnedHiredCardNumbers.has(cardNumber) &&
+      pendingHyrbrickaToast === null
+    ) {
+      const hco = top.hired_card_open;
+      pendingHyrbrickaToast = {
+        cardNumber,
+        contactName: hco.contact_name,
+        contactPhone: hco.contact_phone,
+        contactEmail: hco.contact_email,
+        note: hco.note,
+      };
+    }
+  }
+
+  async function onHyrbrickaReturn(cardNumber: number): Promise<void> {
+    try {
+      await returnHiredCard(competitionId, cardNumber);
+    } catch (e) {
+      toast(`${t('err.network')} (${(e as Error).message})`);
+      return;
+    }
+    // Set replacement form — Assumption A8 (Svelte 5 mutation reactivity).
+    returnedHiredCardNumbers = new Set([...returnedHiredCardNumbers, cardNumber]);
+    pendingHyrbrickaToast = null;
+    toast(t('readout.hyrbricka.returnedConfirmed'));
+  }
+
+  function onHyrbrickaDismiss(cardNumber: number): void {
+    // Local dismissal — no server PATCH. The card stays open server-side;
+    // the Set-based suppression keeps the toast from re-popping this session.
+    returnedHiredCardNumbers = new Set([...returnedHiredCardNumbers, cardNumber]);
+    pendingHyrbrickaToast = null;
   }
 
   function onConsentToastResolved(action: 'confirmed' | 'dismissed'): void {
@@ -477,6 +601,31 @@
   async function onUnDnfHandler(competitorId: string): Promise<void> {
     try {
       await apiUnDnf(competitionId, competitorId);
+      await refetchReadout();
+    } catch (err) {
+      toast(`${t('err.network')} (${(err as Error).message})`);
+    }
+  }
+
+  // Phase 2.0 — generalized manual-status override + clear. Uses the new
+  // /status + /clear-status endpoints so the operator can pick DNF/DNS/DQ/
+  // CANCEL/MAX rather than only DNF.
+  async function onManualStatusHandler(
+    competitorId: string,
+    status: ManualStatus,
+    reason: string
+  ): Promise<void> {
+    try {
+      await apiSetManualStatus(competitionId, competitorId, status, reason);
+      await refetchReadout();
+    } catch (err) {
+      toast(`${t('err.network')} (${(err as Error).message})`);
+    }
+  }
+
+  async function onClearManualStatusHandler(competitorId: string): Promise<void> {
+    try {
+      await apiClearManualStatus(competitionId, competitorId);
       await refetchReadout();
     } catch (err) {
       toast(`${t('err.network')} (${(err as Error).message})`);
@@ -587,6 +736,8 @@
       onWalkup={onWalkupCta}
       onManualDnf={(id, reason) => void onManualDnfHandler(id, reason)}
       onUnDnf={(id) => void onUnDnfHandler(id)}
+      onManualStatus={(id, status, reason) => void onManualStatusHandler(id, status, reason)}
+      onClearManualStatus={(id) => void onClearManualStatusHandler(id)}
       onEdit={(id) => { editingCompetitorId = id; }}
     >
       {#snippet controls()}
@@ -675,6 +826,7 @@
       {competitionId}
       {classes}
       cardHolderHint={walkupHint}
+      {eventorHint}
     />
   {/if}
 
@@ -687,9 +839,22 @@
     />
   {/if}
 
+  {#if pendingHyrbrickaToast}
+    <HyrbrickaToast
+      cardNumber={pendingHyrbrickaToast.cardNumber}
+      contactName={pendingHyrbrickaToast.contactName}
+      contactPhone={pendingHyrbrickaToast.contactPhone}
+      contactEmail={pendingHyrbrickaToast.contactEmail}
+      note={pendingHyrbrickaToast.note}
+      onReturn={onHyrbrickaReturn}
+      onDismiss={onHyrbrickaDismiss}
+    />
+  {/if}
+
   <EditCompetitorModal
     open={editingCompetitorId !== null}
     competitor={editingCompetitorId ? competitorsById.get(editingCompetitorId) ?? null : null}
+    {competitionId}
     {classes}
     onClose={() => { editingCompetitorId = null; }}
     onSaved={(updated) => {

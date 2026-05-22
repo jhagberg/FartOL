@@ -57,6 +57,13 @@ import registerManualRoutes from './routes/manual.ts';
 import registerPrintRoute from './routes/print.ts';
 import registerExportRoutes from './routes/export.ts';
 import registerAdminRoutes from './routes/admin.ts';
+import registerEventorRoutes from './routes/eventor.ts';
+import registerEventorImportRoutes from './routes/eventorImport.ts';
+import registerHiredCardsRoutes from './routes/hiredCards.ts';
+import registerSettingsRoutes from './routes/settings.ts';
+import registerMipRoute from './integrations/meos/mip.ts';
+import registerMopRoute from './integrations/meos/mop.ts';
+import { LOGGER_REDACT_OPTIONS } from './log/redact.ts';
 import wsPlugin from './ws/index.ts';
 import type { DbHandle } from './db/index.ts';
 import type { PrinterSink } from './print/sink.ts';
@@ -83,8 +90,12 @@ export interface BroadcastSink {
 export type NextLocalSeqFn = (handle: DbHandle, nodeId: string) => number;
 
 export interface BuildServerOpts {
-  /** Pass `false` to silence the Fastify pino logger (tests). Defaults to true. */
-  logger?: boolean;
+  /** Pass `false` to silence the Fastify pino logger (tests). Defaults to true.
+   * Pass an object (pino options shape) to inject a custom stream / level —
+   * settings.test.ts uses this to capture pino chunks for the redaction
+   * assertion. The redact path list is merged in automatically. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  logger?: boolean | Record<string, any>;
   /** Opened SQLite handle (plan 02 openDatabase). When omitted, only the
    * legacy plan-01 routes are wired; the WS plugin + dev routes are
    * skipped. Tests that exercise WS / dev MUST pass a handle. */
@@ -115,6 +126,13 @@ export interface BuildServerOpts {
    * tarball populates dist/web/ via scripts/build-tarball.sh so the
    * installed binary auto-detects and serves the SPA. */
   staticRoot?: string;
+  /** Phase 2.0 — when true, the CORS allow-list AND the WebSocket origin
+   * allow-list both accept non-loopback Origin headers so the MeOS
+   * parallel-run laptop on the same LAN can open the FartOL UI at
+   * `http://<fartol-lan-ip>:3000/...` (D-WS-LAN). Wired from
+   * bin/fartol.ts when `--allow-lan` is set. Default false (loopback only,
+   * Phase 1 posture). Code-review F-001 (codex) BLOCKER fix. */
+  allowLan?: boolean;
 }
 
 /** Default static root resolution for the packaged binary. Mirrors the
@@ -147,18 +165,57 @@ function defaultStaticRoot(): string | undefined {
 }
 
 export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyInstance> {
+  // Wire pino's redact paths into the logger options so PUT
+  // /api/settings/integrations request bodies never leak the `value`
+  // field to stdout. Path list lives in apps/edge/src/log/redact.ts
+  // (Plan 02-07 task 1). When the caller passes `logger: false`
+  // (tests) we keep the silent path. When they pass an object (the
+  // streaming test that captures pino chunks for assertion), we merge
+  // redact on top of their config so the caller's stream still wins.
+  let loggerOpt: BuildServerOpts['logger'] | Record<string, unknown>;
+  if (opts.logger === false) {
+    loggerOpt = false;
+  } else if (typeof opts.logger === 'object' && opts.logger !== null) {
+    loggerOpt = {
+      ...(opts.logger as Record<string, unknown>),
+      redact: LOGGER_REDACT_OPTIONS,
+    };
+  } else {
+    loggerOpt = { redact: LOGGER_REDACT_OPTIONS };
+  }
   const app = fastify({
-    logger: opts.logger ?? true,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    logger: loggerOpt as any,
   });
 
   await app.register(sensible);
 
   // Localhost-loopback-only CORS — Phase 1 plan 01 has no LAN clients.
   // Plan 03 keeps the same allow-list because the SvelteKit dev server
-  // runs on the same loopback origin (port 5173).
-  await app.register(cors, {
-    origin: [/^http:\/\/127\.0\.0\.1(:\d+)?$/, /^http:\/\/localhost(:\d+)?$/],
-  });
+  // runs on the same loopback origin (port 5173). Phase 2.0 widens it
+  // when `opts.allowLan === true` (operator passed `--allow-lan` at the
+  // CLI) so the MeOS parallel-run laptop can open the SPA over LAN.
+  // Same-origin Host header is the implicit trust anchor — Fastify only
+  // serves bound interfaces, so an attacker on the LAN must already be
+  // on the LAN, which is the explicit Phase 2.0 trust model (D-MIP-1 /
+  // D-MOP-4 no-auth closed-LAN posture).
+  const corsOrigin: Array<RegExp> = [
+    /^http:\/\/127\.0\.0\.1(:\d+)?$/,
+    /^http:\/\/localhost(:\d+)?$/,
+  ];
+  if (opts.allowLan === true) {
+    // RFC1918 private LAN ranges (192.168/16, 10/8, 172.16/12) + IPv6
+    // link-local + .local mDNS hostnames. Use a precise IPv4 octet
+    // pattern (0–255) rather than `\d{1,3}` (which matches 0–999 and
+    // would let through malformed Host headers).
+    const oct = '(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)';
+    corsOrigin.push(new RegExp(`^http://192\\.168\\.${oct}\\.${oct}(:\\d+)?$`));
+    corsOrigin.push(new RegExp(`^http://10\\.${oct}\\.${oct}\\.${oct}(:\\d+)?$`));
+    corsOrigin.push(new RegExp(`^http://172\\.(1[6-9]|2\\d|3[01])\\.${oct}\\.${oct}(:\\d+)?$`));
+    corsOrigin.push(/^http:\/\/\[fe80::[^\]]+\](:\d+)?$/);
+    corsOrigin.push(/^http:\/\/[a-z0-9-]+\.local(:\d+)?$/);
+  }
+  await app.register(cors, { origin: corsOrigin });
 
   // Decorate the FastifyInstance BEFORE wsPlugin / dev routes register.
   // Both rely on app.fartolDb / app.fartolNodeId being present and the
@@ -174,6 +231,10 @@ export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyIn
     // Surface the SI bridge connection state to routes (GET /api/bridge/status).
     // The bin's BridgeLifecycle mutates this; --no-bridge boots stay 'closed'.
     app.decorate('bridgeState', 'closed');
+    // Phase 2.0 — surface --allow-lan to the WS plugin so its Origin
+    // allow-list can permit LAN origins when the operator explicitly
+    // opted in. Default false (loopback only). Code-review F-001 fix.
+    app.decorate('fartolAllowLan', opts.allowLan === true);
 
     await app.register(wsPlugin);
 
@@ -214,6 +275,10 @@ export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyIn
     await app.register(registerCourses);
     await app.register(registerCompetitors);
     await app.register(registerClubs);
+    // Phase 2.0 Plan 02-02 — Eventor lookup + status (walk-up autocomplete).
+    // Mounted after registerClubs since the lookup parallels clubs autocomplete.
+    await app.register(registerEventorRoutes);
+    await app.register(registerEventorImportRoutes);
     await app.register(registerImportRoutes);
     await app.register(registerCompetitionsFromWizard);
     // Sessions registers BEFORE dev routes so dev.ts can read
@@ -226,6 +291,24 @@ export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyIn
     await app.register(registerPrintRoute);
     await app.register(registerExportRoutes);
     await app.register(registerAdminRoutes);
+    // Phase 2.0 Plan 02-05 — Hyrbricka REST surface (GET list + PATCH
+    // return). Mounted under /api/competitions/:id/hired-cards/* — same
+    // namespace as the rest of the competition-scoped routes.
+    await app.register(registerHiredCardsRoutes);
+    // Phase 2.0 Plan 02-07 — Settings REST surface (GET + PUT
+    // /api/settings/integrations). Operator-facing API-key management
+    // so Windows operators can paste keys via UI without touching
+    // ~/.env.fartol. Boot precedence (env > config > absent) is
+    // enforced by apps/edge/src/config/secrets.ts (Plan 02-07 task 2).
+    await app.register(registerSettingsRoutes);
+    // Phase 2.0 Plan 02-03 — MIP server (GET /mip). Mounted at the ROOT,
+    // not /api/*, because MeOS hard-codes its poll URL and won't add a
+    // prefix. D-MIP-1: no auth (closed club LAN).
+    await app.register(registerMipRoute);
+    // Phase 2.0 Plan 02-04 — MOP receiver (POST /mop). Same root-mount
+    // posture as MIP — MeOS hard-codes its push URL. D-MOP-4: no auth,
+    // always-on; D-MOP-1..3 govern the shadow-table writes and auto-merge.
+    await app.register(registerMopRoute);
     await app.register(registerDevRoutes);
   }
 

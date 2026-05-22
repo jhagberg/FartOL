@@ -23,6 +23,18 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // tests/e2e/.tmp.db*` between runs if the WAL leaves cruft.
 const TMP_DB = path.resolve(__dirname, 'tests/e2e/.tmp.db');
 
+// E2E sandbox ports — distinct from the production-tarball defaults
+// (3000 edge, 5173 web). Why: 2026-05-18 we hit a pollution bug where
+// `reuseExistingServer: true` made Playwright silently piggyback on a
+// developer's locally-installed fartol on :3000, so every test POSTed
+// `Walkup E2E …` rows against ~/.local/share/fartol/fartol.db. Moving
+// the test edges off the prod ports guarantees the sandbox is the only
+// service the spec ever talks to. `reuseExistingServer` stays true for
+// dev ergonomics — re-using ON :3001 is still safe because nothing
+// else listens there. CI sets CI=1 which forces fresh spawns.
+const TEST_EDGE_PORT = 3001;
+const TEST_WEB_PORT = 5174;
+
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
@@ -30,13 +42,22 @@ export default defineConfig({
   retries: process.env['CI'] ? 2 : 0,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: `http://localhost:${TEST_WEB_PORT}`,
     trace: 'on-first-retry',
   },
   webServer: [
     {
-      command: 'pnpm --filter @fartol/edge dev',
-      port: 3000,
+      // Bypass the `pnpm run dev` script wrapper here on purpose: pnpm 10
+      // forwards the `--` separator INTO the script's argv instead of
+      // consuming it (caught in CI 2026-05-19), so
+      //   `pnpm --filter @fartol/edge dev -- --port=3001`
+      // ends up as
+      //   `tsx watch src/bin/fartol.ts -- --port=3001`
+      // and similarly the web's vite invocation gets two competing --port
+      // flags (vite binds 5173, playwright waits on 5174 → timeout). Using
+      // `pnpm exec` invokes the tool directly with the exact argv we want.
+      command: `pnpm --filter @fartol/edge exec tsx watch src/bin/fartol.ts --port=${TEST_EDGE_PORT}`,
+      port: TEST_EDGE_PORT,
       reuseExistingServer: !process.env['CI'],
       timeout: 60_000,
       env: {
@@ -52,10 +73,17 @@ export default defineConfig({
       },
     },
     {
-      command: 'pnpm --filter @fartol/web dev',
-      port: 5173,
+      // Custom Vite port + FARTOL_EDGE_PORT env so the web proxy routes
+      // /api and /ws to the sandbox edge instead of whatever happens to
+      // be on :3000. vite.config.ts reads FARTOL_EDGE_PORT. Direct
+      // `pnpm exec vite` for the same reason as the edge entry above.
+      command: `pnpm --filter @fartol/web exec vite dev --port ${TEST_WEB_PORT}`,
+      port: TEST_WEB_PORT,
       reuseExistingServer: !process.env['CI'],
       timeout: 60_000,
+      env: {
+        FARTOL_EDGE_PORT: String(TEST_EDGE_PORT),
+      },
     },
   ],
 });

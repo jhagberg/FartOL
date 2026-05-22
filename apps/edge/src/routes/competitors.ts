@@ -71,7 +71,7 @@ import { and, asc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { CompetitorCreateInput, type CompetitorDTO, readoutChannel } from '@fartol/shared-types';
-import { classes, clubs, competitions, competitors, events } from '../db/schema.ts';
+import { classes, clubs, competitions, competitors, events, hiredCards } from '../db/schema.ts';
 import type { Competitor } from '../db/types.ts';
 import { issuesToErrors } from './_zod-errors.ts';
 
@@ -330,6 +330,20 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
       return reply.code(422).send({ error: 'class does not belong to competition' });
     }
 
+    // (3.5) Phase 2.0 D-HB-3 — hired_card pre-flight (PATTERNS S-5: run
+    // BEFORE opening the transaction so a missing-contact rejection
+    // leaves zero side effects). If hired_card=true the operator MUST
+    // supply at least phone OR email; the rental is the lever for
+    // chasing down non-returners.
+    if (input.hired_card === true) {
+      const hc = input.hired_contact;
+      const phone = hc?.phone?.trim() ?? '';
+      const email = hc?.email?.trim() ?? '';
+      if (phone === '' && email === '') {
+        return reply.code(400).send({ error: 'hyrbricka_contact_required' });
+      }
+    }
+
     // (4) Card-taken check — D-11 partial unique index covers this at the
     // SQL layer but a pre-flight SELECT gives the operator a structured
     // 409 response (with the colliding competitor id) instead of a raw
@@ -405,6 +419,47 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
                 card_number: input.card_number,
                 walkup: true,
                 consent_at_ms: now,
+              },
+            })
+            .run();
+        }
+
+        // Phase 2.0 D-HB-1 / Plan 02-02 task 2 — write the hired_cards row
+        // inside the SAME transaction so a failure anywhere above rolls
+        // back the rental too (no orphan rentals).
+        //
+        // Compound PK [competitionId, cardNumber] uses onConflictDoUpdate
+        // (Pitfall 10 mitigation) so re-renting the same card after a
+        // delete-then-re-insert flow lands cleanly. The conflict path
+        // resets marked_at_ms + null returned_at_ms which is the desired
+        // "open rental again" semantics.
+        if (input.hired_card === true && input.card_number !== null) {
+          const hc = input.hired_contact ?? null;
+          const contactName = hc?.name && hc.name.trim() !== '' ? hc.name.trim() : null;
+          const contactPhone = hc?.phone && hc.phone.trim() !== '' ? hc.phone.trim() : null;
+          const contactEmail = hc?.email && hc.email.trim() !== '' ? hc.email.trim() : null;
+          const note = hc?.note && hc.note.trim() !== '' ? hc.note.trim() : null;
+          app.fartolDb.db
+            .insert(hiredCards)
+            .values({
+              competitionId: input.competition_id,
+              cardNumber: input.card_number,
+              markedAtMs: now,
+              returnedAtMs: null,
+              contactName,
+              contactPhone,
+              contactEmail,
+              note,
+            })
+            .onConflictDoUpdate({
+              target: [hiredCards.competitionId, hiredCards.cardNumber],
+              set: {
+                markedAtMs: now,
+                returnedAtMs: null,
+                contactName,
+                contactPhone,
+                contactEmail,
+                note,
               },
             })
             .run();
@@ -622,23 +677,43 @@ export default async function registerCompetitors(app: FastifyInstance): Promise
     return reply.code(200).send({ ok: true, competitor: competitorRowToDTO(updated) });
   });
 
-  // GET /api/competitions/:id/competitors — list competitors.
-  app.get<{ Params: { id: string } }>('/api/competitions/:id/competitors', async (req, reply) => {
-    const { id } = req.params;
-    const compRow = app.fartolDb.db
-      .select({ id: competitions.id })
-      .from(competitions)
-      .where(eq(competitions.id, id))
-      .get();
-    if (!compRow) return reply.code(404).send({ error: 'competition not found' });
-    const rows = app.fartolDb.db
-      .select()
-      .from(competitors)
-      .where(eq(competitors.competitionId, id))
-      .orderBy(asc(competitors.name))
-      .all();
-    return { competitors: rows.map(competitorRowToDTO) };
-  });
+  // GET /api/competitions/:id/competitors — list competitors. Optional
+  // `?card_number=N` filter (used by /registration to detect re-beep of
+  // an already-bound card before opening the walk-up form).
+  app.get<{ Params: { id: string }; Querystring: { card_number?: string } }>(
+    '/api/competitions/:id/competitors',
+    async (req, reply) => {
+      const { id } = req.params;
+      const compRow = app.fartolDb.db
+        .select({ id: competitions.id })
+        .from(competitions)
+        .where(eq(competitions.id, id))
+        .get();
+      if (!compRow) return reply.code(404).send({ error: 'competition not found' });
+
+      const cardFilter = req.query.card_number;
+      if (cardFilter !== undefined) {
+        const n = Number(cardFilter);
+        if (!Number.isInteger(n) || n <= 0) {
+          return { competitors: [] };
+        }
+        const rows = app.fartolDb.db
+          .select()
+          .from(competitors)
+          .where(and(eq(competitors.competitionId, id), eq(competitors.cardNumber, n)))
+          .all();
+        return { competitors: rows.map(competitorRowToDTO) };
+      }
+
+      const rows = app.fartolDb.db
+        .select()
+        .from(competitors)
+        .where(eq(competitors.competitionId, id))
+        .orderBy(asc(competitors.name))
+        .all();
+      return { competitors: rows.map(competitorRowToDTO) };
+    }
+  );
 
   // GET /api/competitions/:id/competitors/:competitorId — single competitor.
   app.get<{ Params: { id: string; competitorId: string } }>(

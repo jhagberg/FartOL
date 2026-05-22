@@ -173,3 +173,77 @@ describe('/api/__admin/run-retention-now — gate + happy path', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Phase 2.0 plan 02-01 task 4 — /api/__admin/eventor/refresh.
+// ---------------------------------------------------------------------------
+
+describe('/api/__admin/eventor/refresh — gate + happy path', () => {
+  const SAVED = process.env['FARTOL_DEV'];
+
+  afterEach(() => {
+    if (SAVED === undefined) delete process.env['FARTOL_DEV'];
+    else process.env['FARTOL_DEV'] = SAVED;
+  });
+
+  test('without FARTOL_DEV, POST returns 404', async () => {
+    delete process.env['FARTOL_DEV'];
+    const ctx = await boot();
+    try {
+      const res = await ctx.app.inject({
+        method: 'POST',
+        url: '/api/__admin/eventor/refresh',
+      });
+      assert.equal(res.statusCode, 404);
+    } finally {
+      await teardown(ctx);
+    }
+  });
+
+  test('with FARTOL_DEV=1 + eventor handle attached, POST returns 200 + row counts', async () => {
+    process.env['FARTOL_DEV'] = '1';
+    const ctx = await boot();
+    try {
+      // Recording stub mirrors the EventorBootResult shape for the
+      // success path. ok=true wraps the spread runNow result.
+      ctx.app.fartolEventor = {
+        runNow: async () => ({ skipped: false, competitors: 252919, clubs: 1234, nulledClubs: 0 }),
+        stop: () => {},
+      };
+      const res = await ctx.app.inject({
+        method: 'POST',
+        url: '/api/__admin/eventor/refresh',
+      });
+      assert.equal(res.statusCode, 200);
+      const body = res.json() as {
+        ok: boolean;
+        skipped: boolean;
+        competitors: number;
+        clubs: number;
+      };
+      assert.equal(body.ok, true);
+      assert.equal(body.skipped, false);
+      assert.equal(body.competitors, 252919);
+      assert.equal(body.clubs, 1234);
+    } finally {
+      await teardown(ctx);
+    }
+  });
+
+  test('with FARTOL_DEV=1 but no eventor handle, POST returns ok=false / no_eventor', async () => {
+    process.env['FARTOL_DEV'] = '1';
+    const ctx = await boot();
+    try {
+      const res = await ctx.app.inject({
+        method: 'POST',
+        url: '/api/__admin/eventor/refresh',
+      });
+      assert.equal(res.statusCode, 200);
+      const body = res.json() as { ok: boolean; error: string };
+      assert.equal(body.ok, false);
+      assert.equal(body.error, 'no_eventor');
+    } finally {
+      await teardown(ctx);
+    }
+  });
+});

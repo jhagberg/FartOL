@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OrganisationList iofVersion="3.0" createTime="2026-05-16T20:00:00Z" creator="fartol-test"
+                  xmlns="http://www.orienteering.org/datastandard/3.0">
+  <Organisation type="Club" modifyTime="2026-03-16T08:25:36Z">
+    <Id type="Sweden">637</Id>
+    <Name>Stora Tuna OK</Name>
+    <ShortName>STK</ShortName>
+    <MediaName>Stora Tuna</MediaName>
+    <ParentOrganisationId>8</ParentOrganisationId>
+  </Organisation>
+  <Organisation type="Club" modifyTime="2026-02-01T10:00:00Z">
+    <Id type="Sweden">320</Id>
+    <Name>Sala OK</Name>
+    <ShortName>SOK</ShortName>
+  </Organisation>
+  <Organisation type="OrganisationGroup" modifyTime="2025-12-01T10:00:00Z">
+    <Id type="Sweden">8</Id>
+    <Name>Dalarnas OF</Name>
+  </Organisation>
+</OrganisationList>

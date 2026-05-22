@@ -22,14 +22,12 @@ function App() {
   const t = useT(tw.locale);
 
   // Routing state
-  const [route, setRoute] = useState('readout'); // home | readout | results | export
+  const [route, setRoute] = useState('readout'); // home | readout | results | export | hyrbrickor | registration
   const [wizardOpen, setWizardOpen] = useState(false);
   const [walkupOpen, setWalkupOpen] = useState(false);
   const [walkupCard, setWalkupCard] = useState(null);
   const [editingCompetitor, setEditingCompetitor] = useState(null);
-  const [consentToast, setConsentToast] = useState(null);
   const [resultsFullscreen, setResultsFullscreen] = useState(false);
-  const [dismissedConsent, setDismissedConsent] = useState(() => new Set());
 
   // Live state
   const [currentRead, setCurrentRead] = useState(window.MOCK_READS[0]);
@@ -58,7 +56,7 @@ function App() {
   const simRef = useRef(0);
   const simulateRead = () => {
     const candidates = [
-      window.MOCK_READS[1], // Anna — D21 OK — has pending_first_read → triggers consent toast
+      window.MOCK_READS[1], // Anna — D21 OK
       window.MOCK_READS[2], // Mikael — H45 MP
       // walk-up unknown card
       { cardNumber: 9128344, unknown: true, readTime: clock, status: 'PEND' },
@@ -73,16 +71,8 @@ function App() {
     if (next.unknown) {
       setPendingUnknown(p => p.includes(next.cardNumber) ? p : [next.cardNumber, ...p]);
       setTimeout(() => { setWalkupCard(next.cardNumber); setWalkupOpen(true); }, 600);
-    } else {
-      // C-M4 consent toast: surface on first card_read for runners whose
-      // consent_status is 'pending_first_read'.
-      const consent = (window.CONSENT_BY_CARD || {})[next.cardNumber];
-      if (consent === 'pending_first_read' && !dismissedConsent.has(next.cardNumber)) {
-        setConsentToast({ cardNumber: next.cardNumber, name: next.name, className: next.cls });
-      }
-      if (autoPrint && next.punches) {
-        setTimeout(() => onPrint(), 400);
-      }
+    } else if (autoPrint && next.punches) {
+      setTimeout(() => onPrint(), 400);
     }
   };
 
@@ -146,17 +136,6 @@ function App() {
     setWalkupOpen(true);
   };
 
-  const onConsentConfirm = () => {
-    setConsentToast(null);
-    showSavedToast();
-  };
-  const onConsentDismiss = () => {
-    if (consentToast) {
-      setDismissedConsent(s => new Set(s).add(consentToast.cardNumber));
-    }
-    setConsentToast(null);
-  };
-
   const rootClass = [
     ACCENT_CLASS[tw.accent] || '',
     tw.contrast ? 'contrast-high' : '',
@@ -195,6 +174,17 @@ function App() {
           <span className="badge" style={{fontSize: 9}}>IOF 3.0</span>
         </button>
 
+        {/* Phase 2.0 — separator + parallel-MeOS surfaces */}
+        <div style={{margin: '14px 8px 6px', padding: '0 8px', fontSize: 9, color: 'var(--fg-faint)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, fontFamily: 'var(--font-mono)'}}>Phase 2 · 4-klubbs</div>
+        <button className={'nav-item ' + (route === 'registration' ? 'active' : '')} onClick={() => setRoute('registration')}>
+          <span style={{width: 16, textAlign: 'center'}}>⌗</span> Registreringsdisk
+          <span className="badge" style={{fontSize: 9}}>{(window.MOCK_PHASE2.registrationQueue || []).length} i kö</span>
+        </button>
+        <button className={'nav-item ' + (route === 'hyrbrickor' ? 'active' : '')} onClick={() => setRoute('hyrbrickor')}>
+          <span style={{width: 16, textAlign: 'center'}}>⌬</span> Hyrbrickor
+          <span className="badge" style={{fontSize: 9}}>{(window.MOCK_PHASE2.hyrbrickor || []).filter(h => !h.returnedAt).length} öppna</span>
+        </button>
+
         <div className="sidebar-footer">
           <div className="station-card">
             <div className="row"><b style={{fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--fg-muted)'}}>{t('ro.station')}</b></div>
@@ -210,11 +200,14 @@ function App() {
         <div className="topbar">
           <div className="crumb">
             {route === 'home' && <>FartOL / <strong>{t('nav.competitions')}</strong></>}
-            {route === 'readout' && <>FartOL / Onsdagsträning v.20 / <strong>{t('nav.readout')}</strong></>}
-            {route === 'results' && <>FartOL / Onsdagsträning v.20 / <strong>{t('nav.results')}</strong></>}
-            {route === 'export' && <>FartOL / Onsdagsträning v.20 / <strong>{t('nav.export')}</strong></>}
+            {route === 'readout' && <>FartOL / 4-klubbs 2026-05-20 / <strong>{t('nav.readout')}</strong></>}
+            {route === 'results' && <>FartOL / 4-klubbs 2026-05-20 / <strong>{t('nav.results')}</strong></>}
+            {route === 'export' && <>FartOL / 4-klubbs 2026-05-20 / <strong>{t('nav.export')}</strong></>}
+            {route === 'registration' && <>FartOL / 4-klubbs 2026-05-20 / <strong>Registreringsdisk</strong></>}
+            {route === 'hyrbrickor' && <>FartOL / 4-klubbs 2026-05-20 / <strong>Hyrbrickor</strong></>}
           </div>
           <div className="spacer"></div>
+          <Phase2StatusStrip phase2={window.MOCK_PHASE2} />
           {route === 'readout' && (
             <div className="row" style={{fontSize: 13}}>
               <span className="pulse-dot"></span>
@@ -265,6 +258,12 @@ function App() {
           {route === 'export' && (
             <ExportView t={t} />
           )}
+          {route === 'registration' && (
+            <RegistrationDeskView t={t} queue={window.MOCK_PHASE2.registrationQueue} classes={window.MOCK_CLASSES} onSaved={() => { showSavedToast(); setRoute('readout'); }} />
+          )}
+          {route === 'hyrbrickor' && (
+            <HyrbrickorView t={t} rows={window.MOCK_PHASE2.hyrbrickor} onReturn={() => showSavedToast()} />
+          )}
         </div>
       </main>
 
@@ -293,16 +292,6 @@ function App() {
           classes={window.MOCK_CLASSES}
           onCancel={() => setEditingCompetitor(null)}
           onSave={onEditSave}
-        />
-      )}
-
-      {consentToast && (
-        <ConsentConfirmationToast
-          t={t}
-          name={consentToast.name}
-          className={consentToast.className}
-          onConfirm={onConsentConfirm}
-          onDismiss={onConsentDismiss}
         />
       )}
 

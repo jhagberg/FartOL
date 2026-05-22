@@ -37,6 +37,7 @@
 import type { FastifyInstance } from 'fastify';
 
 import type { BackupHandle } from '../backup/daily.ts';
+import type { EventorHandle } from '../eventor/boot.ts';
 
 // Forward declaration: the full implementation lives in
 // apps/edge/src/privacy/retention.ts (created in plan 17 task 2). The
@@ -87,15 +88,42 @@ export default async function registerAdminRoutes(app: FastifyInstance): Promise
       return reply.code(500).send({ ok: false, error: 'retention_failed' });
     }
   });
+
+  // Phase 2.0 plan 02-01 task 4 — admin trigger for the Eventor cache
+  // refresh (D-EV-1 "operator can force a refresh"). The runNow handle
+  // is responsible for its own warn-and-run degradation (D-EV-3); the
+  // route just surfaces whatever it returns.
+  app.post('/api/__admin/eventor/refresh', async (_req, reply) => {
+    const eventor = app.fartolEventor;
+    if (!eventor) {
+      return reply.code(200).send({ ok: false, error: 'no_eventor' });
+    }
+    try {
+      const r = await eventor.runNow();
+      // Spread the EventorBootResult into the body — `skipped`,
+      // `reason`/`error` for the skip paths; `competitors`/`clubs` for
+      // the success path. ok=true means the call completed without
+      // throwing (which boot.ts guarantees per D-EV-3).
+      return reply.code(200).send({ ok: true, ...r });
+    } catch (err) {
+      // boot.ts.runNow is supposed to never throw; if it does, surface
+      // a 500 so the operator notices something is wrong.
+      app.log.error({ err }, 'eventor refresh failed');
+      return reply.code(500).send({ ok: false, error: 'eventor_failed' });
+    }
+  });
 }
 
 // FastifyInstance decoration: bin/fartol.ts (Task 2) wires these from the
 // real scheduleDailyBackup + scheduleDailyRetention. Tests that exercise the
 // admin endpoints decorate them directly with recording stubs. Default
 // is undefined — the route detects that and returns no_backup/no_retention.
+//
+// Phase 2.0 plan 02-01 task 4 adds fartolEventor (wired in bin/fartol.ts).
 declare module 'fastify' {
   interface FastifyInstance {
     fartolBackup?: BackupHandle | undefined;
     fartolRetention?: RetentionHandle | undefined;
+    fartolEventor?: EventorHandle | undefined;
   }
 }

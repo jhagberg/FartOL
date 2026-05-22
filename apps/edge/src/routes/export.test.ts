@@ -50,8 +50,8 @@ async function boot(): Promise<Ctx> {
 function seedCompetitionWithThreeReads(handle: DbHandle, nodeId: string, id: string): void {
   handle.sqlite
     .prepare(
-      `INSERT INTO competitions (id, name, date, receipt_template, auto_print, created_at_ms)
-       VALUES (?, ?, ?, 'classic', 0, ?)`
+      `INSERT INTO competitions (id, name, date, receipt_template, auto_print, created_at_ms, race_started_at_ms)
+       VALUES (?, ?, ?, 'classic', 0, ?, 0)`
     )
     .run(id, 'StorTuna Tisdag', '2026-05-19', 1_000);
   const h21Id = `cls-${id}-h21`;
@@ -203,8 +203,8 @@ function seedCompetitionWithThreeReads(handle: DbHandle, nodeId: string, id: str
 function seedEmptyCompetition(handle: DbHandle, id: string): void {
   handle.sqlite
     .prepare(
-      `INSERT INTO competitions (id, name, date, receipt_template, auto_print, created_at_ms)
-       VALUES (?, ?, ?, 'classic', 0, ?)`
+      `INSERT INTO competitions (id, name, date, receipt_template, auto_print, created_at_ms, race_started_at_ms)
+       VALUES (?, ?, ?, 'classic', 0, ?, 0)`
     )
     .run(id, 'Empty Tävling', '2026-05-19', 1_000);
   const h21Id = `cls-${id}-h21`;

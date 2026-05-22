@@ -39,7 +39,7 @@
     competitor_id: string;
     name: string;
     club: string | null;
-    status: 'PEND' | 'OK' | 'MP' | 'DNF';
+    status: 'PEND' | 'OK' | 'MP' | 'DNF' | 'DNS' | 'DQ' | 'CANCEL' | 'MAX';
     elapsed_time_ms: number | null;
     place: number | null;
     behind_leader_ms: number | null;

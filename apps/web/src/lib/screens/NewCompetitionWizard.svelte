@@ -33,6 +33,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { t } from '$lib/i18n/index.ts';
+  import Icon from '$lib/ui/Icon.svelte';
   import WizardStep1 from './WizardStep1.svelte';
   import WizardStep2 from './WizardStep2.svelte';
   import WizardStep3 from './WizardStep3.svelte';
@@ -60,6 +61,15 @@
   let dropError: string | null = $state(null);
   let importError: string | null = $state(null);
 
+  /** Dirty-check (UI/UX audit #2, 2026-05-17). Accidental scrim tap on
+   * a 3-step wizard would drop the operator's name + date + file work —
+   * confirm first if any of those have been touched. Esc + the explicit
+   * Avbryt button still close without prompt (explicit intent). */
+  const dirty = $derived(
+    name !== '' || date !== '' || pendingFile !== null
+  );
+  let confirmingClose = $state(false);
+
   const isoDate = /^\d{4}-\d{2}-\d{2}$/;
   const canAdvanceFromStep1 = $derived(name.trim().length > 0 && isoDate.test(date));
   const canAdvanceFromStep2 = $derived(pendingFile !== null && preview !== null && !dropError);
@@ -69,6 +79,27 @@
   }
   function setDate(v: string): void {
     date = v;
+  }
+
+  /** Step 1 quickstart import: pre-fills name + date + sets pendingFile
+   * so Step 2's DropZone sees the file as already loaded. Operator can
+   * still edit name + date and / or replace the file in Step 2. */
+  function acceptQuickstart(
+    f: File,
+    parsedName: string,
+    parsedDate: string,
+    p: PreviewMeta
+  ): void {
+    pendingFile = f;
+    preview = p;
+    dropError = null;
+    if (parsedName) name = parsedName;
+    if (parsedDate) date = parsedDate;
+  }
+  function clearQuickstart(): void {
+    pendingFile = null;
+    preview = null;
+    dropError = null;
   }
 
   function acceptFile(f: File, p: PreviewMeta): void {
@@ -101,6 +132,17 @@
     void goto(cancelHref);
   }
 
+  function onScrimTap(): void {
+    if (dirty && !confirmingClose) {
+      confirmingClose = true;
+      return;
+    }
+    cancel();
+  }
+  function cancelClose(): void {
+    confirmingClose = false;
+  }
+
   function onScrimKey(e: KeyboardEvent): void {
     if (e.key === 'Escape') cancel();
   }
@@ -111,7 +153,7 @@
 <div
   class="modal-scrim"
   role="presentation"
-  onclick={cancel}
+  onclick={onScrimTap}
   data-testid="wizard-scrim"
 >
   <div
@@ -119,6 +161,7 @@
     role="dialog"
     aria-modal="true"
     aria-labelledby="wiz-title"
+    tabindex={-1}
     onclick={(e) => e.stopPropagation()}
     onkeydown={(e) => e.stopPropagation()}
   >
@@ -130,7 +173,13 @@
     <div class="wiz-steps" aria-label="wizard progress">
       {#each [1, 2, 3] as n (n)}
         <div class="wiz-step {step === n ? 'active' : step > n ? 'done' : ''}">
-          <span class="num">{step > n ? '✓' : n}</span>
+          <span class="num">
+            {#if step > n}
+              <Icon name="check" size={16} />
+            {:else}
+              {n}
+            {/if}
+          </span>
           <span class="lbl">
             <b>{t(`wiz.step${n}.title`)}</b>
             <span class="small">{n === 1 ? 'Skapa' : n === 2 ? 'Importera' : 'Klar'}</span>
@@ -144,8 +193,11 @@
         <WizardStep1
           {name}
           {date}
+          preimportedFile={pendingFile}
           onnamechange={setName}
           ondatechange={setDate}
+          onquickstart={acceptQuickstart}
+          onquickstartclear={clearQuickstart}
         />
       {:else if step === 2}
         <WizardStep2
@@ -171,6 +223,29 @@
       {/if}
     </div>
 
+    {#if confirmingClose}
+      <div class="discard-confirm" role="alert" data-testid="wizard-discard-confirm">
+        <p class="discard-msg">{t('wiz.discard.msg')}</p>
+        <div class="discard-actions">
+          <button
+            type="button"
+            class="btn ghost"
+            onclick={cancelClose}
+            data-testid="wizard-discard-cancel"
+          >
+            {t('wiz.discard.keep')}
+          </button>
+          <button
+            type="button"
+            class="btn danger"
+            onclick={cancel}
+            data-testid="wizard-discard-confirm-btn"
+          >
+            {t('wiz.discard.discard')}
+          </button>
+        </div>
+      </div>
+    {/if}
     <footer class="modal-foot">
       {#if step > 1}
         <button type="button" class="btn ghost" onclick={back} data-testid="wiz-back">
@@ -250,6 +325,26 @@
     border-top: 1px solid var(--border);
     background: var(--bg-sunken);
     align-items: center;
+  }
+  @media (max-width: 480px) {
+    .modal-scrim {
+      padding: var(--space-sm);
+    }
+    .modal-head {
+      padding: 14px 16px;
+    }
+    .modal-body {
+      padding: 16px;
+    }
+    .modal-foot {
+      padding: var(--space-sm) 16px;
+    }
+    .wiz-steps {
+      padding: 8px 16px 0;
+    }
+    .discard-confirm {
+      margin: 0 16px 10px;
+    }
   }
   .spacer {
     flex: 1;
@@ -351,5 +446,34 @@
     border-radius: var(--radius);
     color: var(--dnf);
     font-size: 14px;
+  }
+  /* Discard-confirm bar — shown only when the scrim is tapped with
+     unsaved input. Lives outside .modal-body so it sits between body and
+     foot for visual separation. */
+  .discard-confirm {
+    margin: 0 22px 12px;
+    padding: 10px 12px;
+    background: var(--mp-soft);
+    border: 1px solid var(--mp);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .discard-msg {
+    margin: 0;
+    color: var(--fg);
+    font-size: 13.5px;
+    font-weight: 500;
+  }
+  .discard-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .btn.danger {
+    background: var(--dnf);
+    color: #fff;
+    border-color: var(--dnf);
   }
 </style>

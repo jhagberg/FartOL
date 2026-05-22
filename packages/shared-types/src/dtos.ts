@@ -89,6 +89,11 @@ export const CompetitionDTO = z.object({
   receipt_template: RECEIPT_TEMPLATE,
   auto_print: z.boolean(),
   created_at_ms: z.number().int().nonnegative(),
+  /** Phase 2.1 race-phase gate. NULL = pre-race (card_reads are
+   * identity scans only); ms-epoch = race has started at that wall
+   * clock instant. Frontend uses this to render the phase pill and
+   * enable/disable the "Starta tävling" CTA. */
+  race_started_at_ms: z.number().int().nonnegative().nullable(),
 });
 export type CompetitionDTO = z.infer<typeof CompetitionDTO>;
 
@@ -239,6 +244,23 @@ export const CompetitorCreateInput = z
      * competitor's card_number (operator-corrected misread) instead of
      * creating a new row. consent_at_ms is preserved. */
     replace_card_for_competitor_id: UUID.optional(),
+    /** Phase 2.0 D-HB-1 / Plan 02-02 — when true, the route ALSO writes
+     * a `hired_cards` row inside the same transaction as the competitor
+     * INSERT. Default false preserves the Phase 1 wire shape exactly. */
+    hired_card: z.boolean().optional().default(false),
+    /** Phase 2.0 D-HB-3 — contact info for the rental. Required when
+     * `hired_card === true` AND at least one of phone OR email must be
+     * non-null non-empty (server-side; the UI also blocks save but the
+     * server is authoritative). */
+    hired_contact: z
+      .object({
+        name: z.string().nullable(),
+        phone: z.string().nullable(),
+        email: z.string().nullable(),
+        note: z.string().nullable(),
+      })
+      .nullable()
+      .optional(),
   })
   .superRefine((val, ctx) => {
     if (val.replace_card_for_competitor_id !== undefined) {
@@ -293,6 +315,29 @@ export const UnDnfInput = z.object({}).passthrough();
 export type UnDnfInput = z.infer<typeof UnDnfInput>;
 
 // ---------------------------------------------------------------------------
+// Phase 2.0 — generalized manual status override.
+//
+// REST input for POST /api/competitions/:id/competitors/:competitorId/status.
+// Lets the operator assert any of the five manual states (DNF/DNS/DQ/CANCEL/
+// MAX). The legacy /manual-dnf endpoint stays available for back-compat;
+// internally both write to the same view.manual_status field.
+//
+// IOF v3 mapping (apps/edge/src/xml/iofExport.ts):
+//   DNF → DidNotFinish | DNS → DidNotStart | DQ → Disqualified
+//   CANCEL → Cancelled | MAX → OverTime
+// ---------------------------------------------------------------------------
+
+export const ManualStatusInput = z.object({
+  status: z.enum(['DNF', 'DNS', 'DQ', 'CANCEL', 'MAX']),
+  reason: z.string().min(1).max(500),
+});
+export type ManualStatusInput = z.infer<typeof ManualStatusInput>;
+
+/** Clearing the override takes no body — symmetric with UnDnfInput. */
+export const ClearManualStatusInput = z.object({}).passthrough();
+export type ClearManualStatusInput = z.infer<typeof ClearManualStatusInput>;
+
+// ---------------------------------------------------------------------------
 // Club — walk-up autocomplete cache.
 // ---------------------------------------------------------------------------
 
@@ -301,6 +346,134 @@ export const ClubDTO = z.object({
   last_seen_at_ms: z.number().int().nonnegative(),
 });
 export type ClubDTO = z.infer<typeof ClubDTO>;
+
+// ---------------------------------------------------------------------------
+// Phase 2.0 Plan 02-02 — Eventor walk-up autocomplete shapes.
+//
+// GET /api/eventor/lookup?si_card=N → EventorLookupResult (discriminated
+//   on hit: true (single) | 'many' (ambiguous) | false (miss)).
+// GET /api/eventor/lookup?prefix=S → { suggestions: EventorNameSuggestion[] }.
+// GET /api/eventor/status → EventorStatusDTO.
+//
+// 2026-05-20: si_card is non-unique in the cache schema (family-shared
+// cards, replacement cards, rental pool) so the API can return >1 candidate
+// for one number. Callers MUST disambiguate before pre-filling — auto-
+// picking one row would silently fill the wrong runner.
+// ---------------------------------------------------------------------------
+
+export const EventorLookupCandidate = z.object({
+  person_id: z.number().int().positive(),
+  family_name: z.string(),
+  given_name: z.string(),
+  club_id: z.number().int().nullable(),
+  club_name: z.string().nullable(),
+});
+export type EventorLookupCandidate = z.infer<typeof EventorLookupCandidate>;
+
+export const EventorLookupHit = EventorLookupCandidate.extend({
+  hit: z.literal(true),
+});
+export type EventorLookupHit = z.infer<typeof EventorLookupHit>;
+
+export const EventorLookupMany = z.object({
+  hit: z.literal('many'),
+  candidates: z.array(EventorLookupCandidate),
+});
+export type EventorLookupMany = z.infer<typeof EventorLookupMany>;
+
+export const EventorLookupMiss = z.object({ hit: z.literal(false) });
+export type EventorLookupMiss = z.infer<typeof EventorLookupMiss>;
+
+export type EventorLookupResult = EventorLookupHit | EventorLookupMany | EventorLookupMiss;
+
+export const EventorNameSuggestion = z.object({
+  person_id: z.number().int().positive(),
+  family_name: z.string(),
+  given_name: z.string(),
+  club_name: z.string().nullable(),
+  si_card: z.number().int().nullable(),
+});
+export type EventorNameSuggestion = z.infer<typeof EventorNameSuggestion>;
+
+/** Federation-club autocomplete row served by GET /api/eventor/clubs?q=.
+ * Backed by the eventor_clubs_fts FTS5 mirror — matches across name +
+ * short_name + media_name with diacritic folding so "stk", "stora tuna",
+ * and "stortuna" all resolve to the same row. */
+export const EventorClubSuggestion = z.object({
+  club_id: z.number().int().positive(),
+  name: z.string(),
+  short_name: z.string().nullable(),
+  media_name: z.string().nullable(),
+});
+export type EventorClubSuggestion = z.infer<typeof EventorClubSuggestion>;
+
+export const EventorStatusDTO = z.object({
+  state: z.enum(['ready', 'stale', 'offline', 'no_key']),
+  ageDays: z.number().int().nullable(),
+  competitorCount: z.number().int().nonnegative(),
+  /** Phase 2.0 Plan 02-07 task 2 — source of the resolved EVENTOR_API_KEY.
+   * 'env' = process.env wins (~/.env.fartol / CLI export); 'config' = UI
+   * wrote it via PUT /api/settings/integrations; 'absent' = neither set
+   * (paired with state='no_key'). SettingsView reads this to render the
+   * "Värdet kommer från ~/.env.fartol …" banner so the operator knows
+   * env will trump any UI save on next boot. */
+  source: z.enum(['env', 'config', 'absent']),
+  fartol_dev: z.boolean(),
+});
+export type EventorStatusDTO = z.infer<typeof EventorStatusDTO>;
+
+// ---------------------------------------------------------------------------
+// Phase 2.0 Plan 02-05 — Hyrbricka (hired card) REST shapes.
+//
+// GET   /api/competitions/:id/hired-cards
+//   → { open: HiredCardRow[], returned: HiredCardRow[] }
+//   Backs the admin "Aktiva hyrbrickor" view; ReadoutView reads
+//   hired_card_open from /readout instead (single source of truth).
+//
+// PATCH /api/competitions/:id/hired-cards/:cardNumber/return
+//   → 200 { ok: true, returned_at_ms: number, already_returned?: boolean }
+//   → 404 { error: 'not_found' }
+//   Idempotent: second PATCH preserves the original timestamp.
+// ---------------------------------------------------------------------------
+
+export const HiredCardRow = z.object({
+  competition_id: UUID,
+  card_number: POSITIVE_INT,
+  marked_at_ms: z.number().int().nonnegative(),
+  returned_at_ms: z.number().int().nonnegative().nullable(),
+  /** PII per REQ-PRIV-002 — scrubbed by privacy/retention.ts after 30 days. */
+  contact_name: z.string().nullable(),
+  /** PII per REQ-PRIV-002. */
+  contact_phone: z.string().nullable(),
+  /** PII per REQ-PRIV-002. */
+  contact_email: z.string().nullable(),
+  /** PII per REQ-PRIV-002 — free-form operator note. */
+  note: z.string().nullable(),
+});
+export type HiredCardRow = z.infer<typeof HiredCardRow>;
+
+export const HiredCardsListResponse = z.object({
+  open: z.array(HiredCardRow),
+  returned: z.array(HiredCardRow),
+});
+export type HiredCardsListResponse = z.infer<typeof HiredCardsListResponse>;
+
+export const HiredCardReturnResponse = z.object({
+  ok: z.literal(true),
+  returned_at_ms: z.number().int().nonnegative(),
+  already_returned: z.boolean().optional(),
+});
+export type HiredCardReturnResponse = z.infer<typeof HiredCardReturnResponse>;
+
+/** Per-row payload on the readout history when a card has an open
+ * hired_cards entry. Drives the Hyrbricka finish-readout toast. */
+export const HiredCardOpen = z.object({
+  contact_name: z.string().nullable(),
+  contact_phone: z.string().nullable(),
+  contact_email: z.string().nullable(),
+  note: z.string().nullable(),
+});
+export type HiredCardOpen = z.infer<typeof HiredCardOpen>;
 
 // ---------------------------------------------------------------------------
 // Health — plan 01 baseline. Kept here so apps/edge keeps a single import

@@ -47,6 +47,8 @@ import { createNodeThermalPrinterSink, type PrinterTypeId } from '../print/escpo
 import { createCupsPrinterSink } from '../print/cups-sink.ts';
 import { scheduleDailyBackup } from '../backup/daily.ts';
 import { scheduleDailyRetention } from '../privacy/retention.ts';
+import { scheduleEventorBoot } from '../eventor/boot.ts';
+import { resolveSecret } from '../config/secrets.ts';
 
 export interface CliOpts {
   port: number;
@@ -163,6 +165,13 @@ export function parseArgs(argv: string[]): CliOpts {
 
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i] as string;
+    // POSIX `--` end-of-options separator. pnpm 9+ forwards a bare `--` from
+    // `pnpm run dev -- --port=3001` into the script's argv on some platforms
+    // (caught in CI 2026-05-19); we treat it as a no-op so the CLI stays
+    // portable across pnpm versions.
+    if (a === '--') {
+      continue;
+    }
     if (a === '--port' || a.startsWith('--port=')) {
       const { value, consumed } = valueFor('--port', a, i);
       const parsed = Number.parseInt(value, 10);
@@ -375,15 +384,25 @@ class BridgeLifecycle {
     // Coalesce: only one timer in flight at a time. station.close() racing
     // a catch-block scheduleReconnect must not produce parallel chains.
     if (this.reconnectTimer !== null) return;
-    if (this.attempt >= BACKOFF_MS.length) {
-      this.app.log.error(
-        'SI bridge reconnect exhausted — operator can POST /api/sessions/reconnect-bridge'
-      );
-      return;
-    }
-    const delay = BACKOFF_MS[this.attempt]!;
+    // Hardware-just-works: never give up. Ramp up through the backoff
+    // schedule, then steady-state at the last step (5 s) forever. Operator
+    // can still force an immediate retry via the "Återanslut" sidebar
+    // button (POST /api/sessions/reconnect-bridge). Without this clamp the
+    // operator had to restart the stack every time they unplugged the
+    // USB for more than ~9 s.
+    const cappedAttempt = Math.min(this.attempt, BACKOFF_MS.length - 1);
+    const delay = BACKOFF_MS[cappedAttempt]!;
     this.attempt++;
-    this.app.log.info({ delay, attempt: this.attempt }, 'scheduling SI bridge reconnect');
+    // Log dampening: chatter during the ramp (attempts 1..5), then one
+    // line at the moment we cross into steady-state, then one every minute
+    // (12 × 5 s) so journalctl stays readable on a long unplugged stretch.
+    const verbose =
+      this.attempt <= BACKOFF_MS.length ||
+      this.attempt === BACKOFF_MS.length + 1 ||
+      this.attempt % 12 === 0;
+    if (verbose) {
+      this.app.log.info({ delay, attempt: this.attempt }, 'scheduling SI bridge reconnect');
+    }
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       void this.openAttempt();
@@ -465,6 +484,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
     dbHandle: handle,
     nodeId,
     printerSink,
+    allowLan: opts.allowLan,
   });
 
   // Optional CLI override for the active competition. Routes/sessions.ts
@@ -517,6 +537,24 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
   app.fartolBackup = backup;
   app.fartolRetention = retention;
 
+  // Phase 2.0 plan 02-01 task 4 — Eventor cache refresher (D-EV-1 /
+  // D-EV-2 / D-EV-3). The handle exposes runNow + stop; we kick off the
+  // first runNow() as fire-and-forget AFTER app.listen below so a missing
+  // EVENTOR_API_KEY or a network failure NEVER blocks bridge startup
+  // (Pitfall 5 mitigation).
+  //
+  // Plan 02-07 task 2 — env→config→absent precedence. The UI write
+  // path (PUT /api/settings/integrations) lands the key in the config
+  // table; resolveSecret is called fresh on every runNow() (code-review
+  // F-001) so saving a key in the settings UI then clicking "Uppdatera
+  // Eventor" works WITHOUT a bridge restart. process.env still wins so
+  // headless / CI installs keep working unchanged.
+  const eventor = scheduleEventorBoot(handle, {
+    apiKey: () => resolveSecret(handle, 'EVENTOR_API_KEY'),
+    logger: app.log,
+  });
+  app.fartolEventor = eventor;
+
   const shutdown = async (code: number): Promise<void> => {
     try {
       if (lifecycle) await lifecycle.stop();
@@ -530,6 +568,11 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
     }
     try {
       retention.stop();
+    } catch {
+      /* best-effort */
+    }
+    try {
+      eventor.stop();
     } catch {
       /* best-effort */
     }
@@ -561,6 +604,15 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
   });
 
   await app.listen({ port: opts.port, host: opts.bindHost });
+
+  // Phase 2.0 plan 02-01 task 4 — fire-and-forget Eventor refresh AFTER
+  // app.listen so a slow/missing network never blocks /api/health from
+  // responding. boot.ts.runNow already converts network failures into
+  // logged warnings (D-EV-3); the void+catch here is belt-and-suspenders
+  // for any unexpected throw.
+  void eventor.runNow().catch((err: unknown) => {
+    app.log.warn({ err }, 'eventor boot failed');
+  });
 }
 
 const isEntrypoint = ((): boolean => {

@@ -486,7 +486,15 @@ function ReadoutView({ t, density, currentRead, history, pendingUnknown, onSimul
 }
 
 function StatusPill({ status, t, small }) {
-  const cls = status === 'OK' ? 'ok' : status === 'MP' ? 'mp' : status === 'DNF' ? 'dnf' : 'pend';
+  // Status model in line with IOF / Eventor:
+  //   OK · MP (missing punch) · DNF · DNS (did not start) · DQ (disqualified)
+  //   · CANCEL · MAX (overtime / time cap)
+  // Fatal terminations group under .dnf; penalty/non-fatal under .mp; neutral under .pend.
+  const cls =
+    status === 'OK' ? 'ok'
+    : status === 'MP' || status === 'MAX' ? 'mp'
+    : status === 'DNF' || status === 'DNS' || status === 'DQ' ? 'dnf'
+    : 'pend';
   return (
     <span className={'status ' + cls} style={small ? {fontSize: 10, padding: '2px 6px'} : null}>
       {status}
@@ -1118,7 +1126,6 @@ function WalkupModal({ t, cardNumber, classes, onCancel, onSave }) {
   const [club, setClub] = useState('');
   const [cls, setCls] = useState(classes[0]?.id || '');
   const [card, setCard] = useState(cardNumber || '');
-  const [consent, setConsent] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
 
   const onClubChange = (v) => {
@@ -1131,7 +1138,7 @@ function WalkupModal({ t, cardNumber, classes, onCancel, onSave }) {
     }
   };
 
-  const valid = name.trim().length >= 2 && cls && card && consent;
+  const valid = name.trim().length >= 2 && cls && card;
 
   return (
     <div className="modal-scrim" onClick={onCancel}>
@@ -1172,26 +1179,6 @@ function WalkupModal({ t, cardNumber, classes, onCancel, onSave }) {
                 ))}
               </select>
             </div>
-            <label className="consent-row" style={{
-              display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 12,
-              alignItems: 'start', padding: 14,
-              background: consent ? 'var(--ok-soft)' : 'var(--bg-sunken)',
-              border: '1px solid ' + (consent ? 'var(--ok)' : 'var(--border-strong)'),
-              borderRadius: 'var(--radius)',
-              cursor: 'pointer',
-              transition: 'background 0.15s, border 0.15s',
-            }}>
-              <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)}
-                style={{width: 20, height: 20, marginTop: 2, accentColor: 'var(--ok)'}} />
-              <span>
-                <span style={{fontSize: 14, fontWeight: 500, color: 'var(--fg)'}}>
-                  {t('walk.consent')}
-                </span>
-                <span style={{display: 'block', marginTop: 4, fontSize: 12, color: 'var(--fg-muted)'}}>
-                  {t('walk.consent.hint')}
-                </span>
-              </span>
-            </label>
           </div>
         </div>
         <div className="modal-foot">
@@ -1289,34 +1276,4 @@ function EditCompetitorModal({ t, competitor, classes, onCancel, onSave }) {
   );
 }
 
-// ---------- ConsentConfirmationToast (C-M4) ----------
-// Surfaces on the first card_read for a competitor with consent_status
-// === 'pending_first_read'. Mirrors ConsentConfirmationToast.svelte.
-function ConsentConfirmationToast({ t, name, className, onConfirm, onDismiss }) {
-  const [pending, setPending] = useState(false);
-  return (
-    <div role="alertdialog" style={{
-      position: 'fixed', right: 24, bottom: 24,
-      width: 'min(380px, calc(100vw - 32px))',
-      background: 'var(--bg-elev)',
-      border: '1px solid var(--border-strong)',
-      borderLeft: '4px solid var(--accent)',
-      borderRadius: 'var(--radius-lg)',
-      boxShadow: 'var(--shadow-lg)',
-      padding: '16px 18px',
-      zIndex: 90,
-      display: 'flex', flexDirection: 'column', gap: 10,
-    }}>
-      <h3 style={{margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--accent-strong)'}}>{t('consent.title')}</h3>
-      <p style={{margin: 0, fontSize: 13, color: 'var(--fg-muted)', lineHeight: 1.45}}>
-        {t('consent.body').replace('{name}', name).replace('{className}', className)}
-      </p>
-      <div style={{display: 'flex', justifyContent: 'flex-end', gap: 8}}>
-        <button className="btn ghost sm" onClick={onDismiss} disabled={pending}>{t('consent.dismiss')}</button>
-        <button className="btn primary sm" onClick={() => { setPending(true); setTimeout(onConfirm, 250); }} disabled={pending}>{t('consent.confirm')}</button>
-      </div>
-    </div>
-  );
-}
-
-Object.assign(window, { ReadoutView, StatusPill, WalkupModal, EditCompetitorModal, ConsentConfirmationToast });
+Object.assign(window, { ReadoutView, StatusPill, WalkupModal, EditCompetitorModal });

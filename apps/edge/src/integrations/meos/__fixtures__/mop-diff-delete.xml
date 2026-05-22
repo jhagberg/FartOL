@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MOPDiff xmlns="http://www.melin.nu/mop">
+  <org id="637" delete="true">Stora Tuna OK</org>
+  <cmp id="5490" delete="true">
+    <base cls="1"/>
+  </cmp>
+</MOPDiff>

@@ -24,11 +24,16 @@
 
 set -euo pipefail
 
-TARBALL="${1:?usage: install-smoke.sh <tarball>}"
-if [ ! -f "$TARBALL" ]; then
-  echo "FAIL: tarball not found at $TARBALL"
+TARBALL_INPUT="${1:?usage: install-smoke.sh <tarball>}"
+if [ ! -f "$TARBALL_INPUT" ]; then
+  echo "FAIL: tarball not found at $TARBALL_INPUT"
   exit 1
 fi
+# Resolve to absolute path. A relative path like `dist/fartol-0.1.0.tgz` is
+# interpreted by npm 9+ as a GitHub `<user>/<repo>` shorthand and triggers a
+# git clone attempt instead of a local-file install. Both `./<path>` and an
+# absolute path avoid the shorthand parser; absolute is unambiguous.
+TARBALL="$(readlink -f "$TARBALL_INPUT")"
 
 TMPDIR_PATH="$(mktemp -d /tmp/fartol-install-XXXXXX)"
 PORT="${FARTOL_SMOKE_PORT:-30001}"
@@ -132,6 +137,71 @@ fi
 API_404_STATUS="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT/api/__missing__")"
 if [ "$API_404_STATUS" != "404" ]; then
   echo "FAIL: /api/* missing route returned $API_404_STATUS (expected 404)"
+  exit 1
+fi
+
+# Stage 2: bridge-enabled boot to assert the `serialport` native dep ships
+# with the tarball. Stage 1 above uses --no-bridge, which short-circuits the
+# SerialTransport import — so a missing `serialport` runtime dep slips
+# through (regression caught 2026-05-17 mid-runbook: bridge crashed on first
+# open with "Cannot find module 'serialport'" after the global install).
+#
+# Strategy: boot a second instance against a guaranteed-absent device path
+# so the bridge tries (and is expected to fail) to open it. Required failure
+# mode is ENOENT-flavoured (the module loaded, the device just isn't there).
+# The forbidden failure mode is "Cannot find module 'serialport'", which
+# means the dep wasn't shipped.
+kill "$SERVER_PID" 2>/dev/null || true
+wait "$SERVER_PID" 2>/dev/null || true
+SERVER_PID=""
+
+PORT2="$((PORT + 1))"
+BRIDGE_LOG="$TMPDIR_PATH/server-bridge.log"
+FAKE_SERIAL="$TMPDIR_PATH/no-such-device-fartol-smoke"
+echo "Booting $BIN on port $PORT2 with bridge → $FAKE_SERIAL (expected ENOENT)..."
+"$BIN" --port "$PORT2" --db-path "$DB_PATH" --backup-dir "$BACKUP_DIR" \
+  --serial-path "$FAKE_SERIAL" \
+  > "$BRIDGE_LOG" 2>&1 &
+SERVER_PID=$!
+
+# Wait for the listening socket (bridge open attempt happens during boot;
+# the reconnect loop then fires on the same backoff schedule).
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+    echo "FAIL: bridge-enabled server exited; tail of bridge log:"
+    tail -40 "$BRIDGE_LOG"
+    exit 1
+  fi
+  if curl -fs "http://127.0.0.1:$PORT2/api/health" > /dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+
+# Give the reconnect loop at least one open-attempt cycle so the log captures
+# the failure mode (first attempt fires at 250ms; second at +500ms).
+sleep 1
+
+if grep -q "Cannot find module 'serialport'" "$BRIDGE_LOG"; then
+  echo "FAIL: serialport native dep missing from tarball install (regression!)"
+  echo "Tail of bridge log:"
+  tail -40 "$BRIDGE_LOG"
+  exit 1
+fi
+
+# Bridge failure must not take the HTTP server down.
+if ! curl -fs "http://127.0.0.1:$PORT2/api/health" > /dev/null 2>&1; then
+  echo "FAIL: /api/health unreachable after bridge open failure"
+  tail -40 "$BRIDGE_LOG"
+  exit 1
+fi
+
+# Positive signal: at least one SI bridge open attempt was logged (proves
+# the SerialTransport module loaded — only way we get here is if `require
+# ('serialport')` succeeded).
+if ! grep -q 'SI bridge open attempt' "$BRIDGE_LOG"; then
+  echo "FAIL: no 'SI bridge open attempt' in log — SerialTransport may not have loaded"
+  tail -40 "$BRIDGE_LOG"
   exit 1
 fi
 

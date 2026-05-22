@@ -10,10 +10,16 @@
 // structurally identical CompetitionState. Events are sorted by
 // (event_time_ms, local_seq) before the walk so shuffled inputs converge.
 //
-// Manual-DNF semantics: once `manual_dnf` is observed for a competitor,
-// subsequent card_read events do NOT overwrite the status. `un_dnf`
-// clears the override and re-applies dnfMp.detectStatus against the most
-// recent card_read state.
+// Manual-override semantics: once a manual_status_set event is observed
+// for a competitor (or the legacy manual_dnf from Phase-1 logs), subsequent
+// card_read events do NOT overwrite the status. `clear_manual_status`
+// (legacy alias: `un_dnf`) clears the override and re-applies
+// dnfMp.detectStatus against the most recent card_read state.
+//
+// Phase 2.0 extension: manual_status_set lets the operator assert any of
+// DNF/DNS/DQ/CANCEL/MAX. The legacy manual_dnf event is equivalent to
+// manual_status_set{status:'DNF'} — both write the same view.manual_status
+// field so mixed-vintage event logs project deterministically.
 //
 // Cross-competition isolation (T-CROSS-COMP-LEAK): the loop short-
 // circuits any event whose `competitionId` doesn't match
@@ -47,17 +53,43 @@ export type CourseWithControlCodes = Course & { control_codes: readonly number[]
 
 export interface ReduceInput {
   competition_id: string;
+  /** Phase 2.1 (2026-05-18) — race-phase gate. The loader passes the
+   * value of competitions.race_started_at_ms:
+   *   - `null`      → pre-race phase. card_reads are identity scans
+   *                   only — never run detectStatus.
+   *   - `number`    → race has started at that ms-epoch. card_reads at
+   *                   or after this timestamp run through detectStatus
+   *                   normally; reads before stay PEND (audit-trail
+   *                   only, e.g. cards with stale punches from another
+   *                   race scanned at the registration desk).
+   *   - `undefined` → omitted. Treated as "no phase gate" — every
+   *                   card_read scores. This is the back-compat branch
+   *                   for Phase-1 reducer tests that pre-date the
+   *                   phase concept; production callers always set it
+   *                   explicitly via the loader. */
+  race_started_at_ms?: number | null;
   events: readonly Event[];
   competitors: readonly Competitor[];
   classes: readonly Class[];
   courses: readonly CourseWithControlCodes[];
 }
 
+// Sort order on results tables: finished runners first (OK → MP), then runners
+// who failed to complete (DNF), then operator rule states (DQ — more severe
+// assertion than the time-domain MAX), then time-cap exceeded (MAX), then
+// runners absent on race day (DNS), then pre-race withdrawals (CANCEL), then
+// runners with no read yet (PEND). DQ-before-MAX matches Eventor + the IOF
+// v3 convention where Disqualified outranks OverTime; broad shape (finished
+// > unfinished > absent) is universal across orienteering software.
 const STATUS_ORDER: Record<CompetitorView['status'], number> = {
   OK: 0,
   MP: 1,
   DNF: 2,
-  PEND: 3,
+  DQ: 3,
+  MAX: 4,
+  DNS: 5,
+  CANCEL: 6,
+  PEND: 7,
 };
 
 /**
@@ -113,10 +145,20 @@ export function reduce(input: ReduceInput): CompetitionState {
       out_of_order_codes: [],
       elapsed_time_ms: null,
       manual_dnf_reason: null,
+      manual_status: null,
     });
   }
   const pendingUnknownCards = new Set<number>();
   let lastEventSeq = 0;
+  // Phase 2.1 race-phase gate. Seeded from the loader (competitions.
+  // race_started_at_ms), but a replayed `race_started` event below can
+  // re-seed this mid-walk if the column got out of sync. Three states:
+  //   - undefined: caller omitted the field (Phase-1 test fixture) →
+  //                gate is OFF; every card_read scores.
+  //   - null:      pre-race phase → card_reads are identity scans only.
+  //   - number:    race started at this ms-epoch → card_reads at/after
+  //                this stamp score; earlier ones stay PEND.
+  let raceStartedAtMs: number | null | undefined = input.race_started_at_ms;
 
   for (const e of sortedEvents) {
     if (e.competitionId !== input.competition_id) continue;
@@ -142,9 +184,19 @@ export function reduce(input: ReduceInput): CompetitionState {
         view.latest_punches = payload.punches;
         view.latest_start = payload.start;
         view.latest_finish = payload.finish;
-        // manual_dnf wins: don't overwrite status/elapsed when an explicit
-        // operator override is in force.
-        if (view.manual_dnf_reason === null) {
+        // Phase 2.1 race-phase gate: card_reads from before the race
+        // started are identity scans (e.g. registration-desk lookup with
+        // a card that still has punches from a previous race). Append
+        // them to history so the audit trail stays complete, but DON'T
+        // run detectStatus — the runner stays PEND. Manual overrides
+        // applied later still win in the same way. `undefined` here
+        // means the caller (Phase-1 tests) opted out of the gate.
+        const inRacePhase =
+          raceStartedAtMs === undefined ||
+          (raceStartedAtMs !== null && e.eventTimeMs >= raceStartedAtMs);
+        // Manual override wins: don't overwrite status/elapsed when an
+        // operator-asserted state (DNF/DNS/DQ/CANCEL/MAX) is in force.
+        if (view.manual_status === null && inRacePhase) {
           const course = courseByClass.get(competitor.classId);
           const expected = course?.control_codes ?? [];
           const detected = detectStatus(
@@ -165,18 +217,87 @@ export function reduce(input: ReduceInput): CompetitionState {
         pendingUnknownCards.delete(payload.card_number);
         break;
       }
+      case 'race_started': {
+        // Phase 2.1: flip the in-pass race-phase gate so subsequent
+        // card_read events in this same reduce() pass score. The DB
+        // column is the durable source of truth (set by the route);
+        // this event arm keeps the reducer correct under pure replay
+        // when the column happens to be empty (test fixtures that seed
+        // events but not the column). Earliest-wins: if a duplicate
+        // race_started event lands, the first one keeps the column.
+        if (
+          raceStartedAtMs === undefined ||
+          raceStartedAtMs === null ||
+          payload.started_at_ms < raceStartedAtMs
+        ) {
+          raceStartedAtMs = payload.started_at_ms;
+        }
+        break;
+      }
+      case 'race_reset': {
+        // Phase 2.1: rollback. Returns the projection to pre-race phase
+        // so subsequent card_reads in this pass stop scoring. The DB
+        // column is the durable source of truth; this arm keeps replay
+        // correct when the events table holds a started→reset pair but
+        // the cached column is stale. We set to `null` (pre-race) not
+        // `undefined` (gate-off) — once a race_started has been recorded,
+        // the gate stays meaningful.
+        raceStartedAtMs = null;
+        // Un-score any auto-detected statuses already applied in this
+        // pass. Manual overrides survive (the operator's assertion is
+        // independent of the race-phase gate). card_read_history stays
+        // intact as an audit trail.
+        for (const v of competitorViews.values()) {
+          if (v.manual_status === null) {
+            v.status = 'PEND';
+            v.missing_codes = [];
+            v.extra_codes = [];
+            v.out_of_order_codes = [];
+            v.elapsed_time_ms = null;
+          }
+        }
+        break;
+      }
       case 'manual_dnf': {
+        // Legacy event — pre-Phase-2.0 logs only carry this. Equivalent to
+        // manual_status_set{status:'DNF'}; both write the same view fields
+        // so the projection of a mixed-vintage log is identical.
         const view = competitorViews.get(payload.competitor_id);
         if (view !== undefined) {
           view.status = 'DNF';
+          view.manual_status = 'DNF';
           view.manual_dnf_reason = payload.reason;
         }
         break;
       }
-      case 'un_dnf': {
+      case 'manual_status_set': {
+        const view = competitorViews.get(payload.competitor_id);
+        if (view !== undefined) {
+          view.status = payload.status;
+          view.manual_status = payload.status;
+          view.manual_dnf_reason = payload.reason;
+          // Operator-asserted absence/withdrawal: clear computed split fields
+          // so the receipt/UI doesn't show stale punches from a prior read
+          // that was then overridden to DNS/CANCEL. DNF/MAX/DQ keep the punch
+          // history because the runner did at least attempt the course.
+          if (payload.status === 'DNS' || payload.status === 'CANCEL') {
+            view.missing_codes = [];
+            view.extra_codes = [];
+            view.out_of_order_codes = [];
+            view.elapsed_time_ms = null;
+          }
+        }
+        break;
+      }
+      case 'un_dnf':
+      case 'clear_manual_status': {
+        // Both event types do the same thing: clear the override and re-derive
+        // from the latest card_read. un_dnf is the Phase-1 alias kept for
+        // back-compat with existing event logs and tests.
         const view = competitorViews.get(payload.competitor_id);
         if (view !== undefined) {
           view.manual_dnf_reason = null;
+          view.manual_status = null;
           const competitor = competitorsByCompetition.find((c) => c.id === payload.competitor_id);
           const course = competitor ? courseByClass.get(competitor.classId) : undefined;
           const expected = course?.control_codes ?? [];

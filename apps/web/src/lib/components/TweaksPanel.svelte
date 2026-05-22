@@ -36,6 +36,11 @@
   } from '../stores/tweaks.svelte.ts';
   import { setLocale, t } from '../i18n/index.ts';
   import { devSimulateRead } from '../api/client.ts';
+  import {
+    getEventorStatus as getEventorStatusStore,
+    refreshEventorStatus,
+    triggerEventorRefresh,
+  } from '../stores/eventorStatus.svelte.ts';
 
   interface Props {
     open: boolean;
@@ -47,6 +52,46 @@
   }
 
   let { open, onClose, competitionId }: Props = $props();
+
+  // Phase 2.0 Plan 02-02 — Eventor cache status row. Refresh once on
+  // first mount, and again when the panel is reopened so the operator
+  // always sees fresh data (the cache state can change between opens).
+  const eventorState = $derived(getEventorStatusStore());
+  let _refreshed = $state(false);
+  $effect(() => {
+    if (open && !_refreshed) {
+      _refreshed = true;
+      void refreshEventorStatus();
+    }
+  });
+
+  /** Compose the Swedish status string for the current state. The
+   * 'ready' branch interpolates ageDays via i18next. */
+  function eventorLabel(): string {
+    const s = eventorState;
+    if (s.state === 'ready' && s.ageDays !== null) {
+      return t('tweaks.eventor.ready', { days: s.ageDays });
+    }
+    if (s.state === 'stale' && s.ageDays !== null) {
+      return t('tweaks.eventor.stale');
+    }
+    if (s.state === 'offline') return t('tweaks.eventor.offline');
+    if (s.state === 'no_key') return t('tweaks.eventor.no_key');
+    if (s.state === 'refreshing') return t('tweaks.eventor.refreshing');
+    return t('tweaks.eventor.unknown');
+  }
+
+  function eventorDotClass(): string {
+    const s = eventorState.state;
+    if (s === 'ready') return 'dot dot-ok';
+    if (s === 'stale' || s === 'refreshing') return 'dot dot-warn';
+    if (s === 'offline' || s === 'no_key') return 'dot dot-err';
+    return 'dot dot-muted';
+  }
+
+  async function onClickRefreshEventor(): Promise<void> {
+    await triggerEventorRefresh();
+  }
 
   // Dev-only gate. `import.meta.env.DEV` is statically dead-stripped in
   // production builds; the `?dev` query-string fallback gives Jonas an
@@ -202,6 +247,40 @@
         </Select>
       </Field>
 
+      <!-- Phase 2.0 — Eventor cache status. Always rendered (D-EV-3). -->
+      <Field label={t('tweaks.eventor.title')}>
+        <div class="eventor-row" data-testid="eventor-status-row">
+          <span class={eventorDotClass()} aria-hidden="true"></span>
+          <span class="eventor-label" data-testid="eventor-status-label">
+            {eventorLabel()}
+          </span>
+          {#if eventorState.fartol_dev}
+            <Button
+              variant="ghost"
+              onclick={() => void onClickRefreshEventor()}
+              data-testid="eventor-refresh-btn"
+            >
+              {t('tweaks.eventor.refreshButton')}
+            </Button>
+          {/if}
+        </div>
+      </Field>
+
+      <!-- Plan 02-07 — Settings deep-link. Operators rotate API keys
+           via /installningar instead of editing ~/.env.fartol. The
+           link closes the panel so the route swap is the only
+           visible state change. -->
+      <Field label={t('settings.integrations.title')}>
+        <a
+          href="/installningar"
+          class="settings-link"
+          data-testid="tweaks-manage-keys-link"
+          onclick={() => onClose?.()}
+        >
+          {t('tweaks.settings.manageKeys')}
+        </a>
+      </Field>
+
       <!-- Dev-only Simulate read -->
       {#if devGate}
         <Field label={t('tw.sim')}>
@@ -299,5 +378,48 @@
     width: 18px;
     height: 18px;
     accent-color: var(--accent);
+  }
+  .eventor-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+  }
+  .eventor-label {
+    font-size: var(--fs-label);
+    color: var(--fg);
+    flex: 1;
+    min-width: 0;
+  }
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dot-ok {
+    background: oklch(0.6 0.13 145);
+  }
+  .dot-warn {
+    background: oklch(0.7 0.15 80);
+  }
+  .dot-err {
+    background: oklch(0.55 0.18 25);
+  }
+  .dot-muted {
+    background: var(--border-strong);
+  }
+  .settings-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--hit);
+    padding: 0 var(--space-sm);
+    color: var(--accent);
+    text-decoration: none;
+    font-size: var(--fs-label);
+    font-weight: 500;
+  }
+  .settings-link:hover {
+    text-decoration: underline;
   }
 </style>

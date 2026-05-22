@@ -70,6 +70,7 @@ interface CompetitionRow {
   receiptTemplate: string;
   autoPrint: boolean;
   createdAtMs: number;
+  raceStartedAtMs: number | null;
 }
 
 interface ClassRow {
@@ -90,6 +91,7 @@ function competitionRowToDTO(row: CompetitionRow): CompetitionDTO {
     receipt_template: row.receiptTemplate as CompetitionDTO['receipt_template'],
     auto_print: row.autoPrint,
     created_at_ms: row.createdAtMs,
+    race_started_at_ms: row.raceStartedAtMs,
   };
 }
 
