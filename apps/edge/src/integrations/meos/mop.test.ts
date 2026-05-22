@@ -190,7 +190,7 @@ describe('POST /mop — integrations/meos/mop', () => {
     assert.equal(res.status, 200);
     assert.match(res.payload, /<MOPStatus status="OK"\/>/);
     const ct = res.payload;
-    assert.match(ct, /<\?xml version="1\.0"\?>/);
+    assert.match(ct, /<\?xml version="1\.0" encoding="UTF-8"\?>/);
 
     const cmpRows = ctx.handle.db.select().from(meosCompetitors).all();
     assert.equal(cmpRows.length, 1);

@@ -208,14 +208,22 @@ export default async function registerMipRoute(app: FastifyInstance): Promise<vo
       })
       .filter((id): id is string => id !== null);
 
-    const competitorRows =
-      competitorIds.length === 0
-        ? []
-        : app.fartolDb.db
-            .select()
-            .from(competitors)
-            .where(inArray(competitors.id, competitorIds))
-            .all();
+    // Chunk the inArray to stay clear of SQLite's default
+    // SQLITE_LIMIT_VARIABLE_NUMBER (999 on legacy builds). 4-klubbs polls
+    // are tiny (delta since last lastid) but a fresh-restart catchup could
+    // see a thousand+ card_bound events on one call.
+    const INARRAY_CHUNK = 500;
+    type CompetitorRow = typeof competitors.$inferSelect;
+    const competitorRows: CompetitorRow[] = [];
+    for (let i = 0; i < competitorIds.length; i += INARRAY_CHUNK) {
+      const slice = competitorIds.slice(i, i + INARRAY_CHUNK);
+      const partial = app.fartolDb.db
+        .select()
+        .from(competitors)
+        .where(inArray(competitors.id, slice))
+        .all();
+      for (const row of partial) competitorRows.push(row);
+    }
     const competitorMap = new Map(competitorRows.map((c) => [c.id, c]));
 
     const classIds = Array.from(new Set(competitorRows.map((c) => c.classId)));

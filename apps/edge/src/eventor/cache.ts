@@ -106,7 +106,9 @@ export async function ingestEventorCache(
           parentId: c.parent_id,
           modifyDateMs: c.modify_date_ms,
         }));
-        handle.db.insert(eventorClubs).values(chunk).run();
+        // onConflictDoNothing — survive duplicate club_id rows in the
+        // upstream feed without rolling back the whole snapshot.
+        handle.db.insert(eventorClubs).values(chunk).onConflictDoNothing().run();
         clubsInserted += chunk.length;
       }
     }
@@ -135,7 +137,9 @@ export async function ingestEventorCache(
           modifyDateMs: r.modify_date_ms,
         };
       });
-      handle.db.insert(eventorCompetitors).values(chunk).run();
+      // onConflictDoNothing — same defense as the clubs insert. A duplicate
+      // person_id in cachedcompetitors.xml shouldn't tank the snapshot.
+      handle.db.insert(eventorCompetitors).values(chunk).onConflictDoNothing().run();
       competitorsInserted += chunk.length;
     }
 

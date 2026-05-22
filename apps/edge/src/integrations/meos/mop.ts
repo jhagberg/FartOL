@@ -66,7 +66,9 @@ type MopStatus = 'OK' | 'BADCMP' | 'BADPWD' | 'NOZIP' | 'ERROR';
  * doesn't have to do anything fancy. */
 function mopStatus(reply: FastifyReply, status: MopStatus): FastifyReply {
   void reply.header('Content-Type', 'application/xml; charset=utf-8');
-  return reply.code(200).send(`<?xml version="1.0"?><MOPStatus status="${status}"/>`);
+  return reply
+    .code(200)
+    .send(`<?xml version="1.0" encoding="UTF-8"?><MOPStatus status="${status}"/>`);
 }
 
 export default async function registerMopRoute(app: FastifyInstance): Promise<void> {
@@ -122,10 +124,13 @@ export default async function registerMopRoute(app: FastifyInstance): Promise<vo
     }
 
     // (3) Pre-flight: T-FILE-IMPORT DOCTYPE/ENTITY guard. Same regex pattern
-    // as apps/edge/src/xml/parse.ts:115-124. Fails closed on either match
-    // so a malicious `<!ENTITY foo SYSTEM "file:///etc/passwd">` never
-    // reaches the parser.
-    if (/<!DOCTYPE/i.test(body) || /<!ENTITY/i.test(body)) {
+    // as apps/edge/src/xml/parse.ts:115-124. Scan only the first 8 KB —
+    // both declarations must appear at the top of an XML document, so
+    // scanning the full 50 MB body is wasteful. Fails closed on either
+    // match so a malicious `<!ENTITY foo SYSTEM "file:///etc/passwd">`
+    // never reaches the parser.
+    const head = body.length > 8192 ? body.slice(0, 8192) : body;
+    if (/<!DOCTYPE/i.test(head) || /<!ENTITY/i.test(head)) {
       return mopStatus(reply, 'ERROR');
     }
 

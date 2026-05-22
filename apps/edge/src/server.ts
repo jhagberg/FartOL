@@ -205,10 +205,13 @@ export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyIn
   ];
   if (opts.allowLan === true) {
     // RFC1918 private LAN ranges (192.168/16, 10/8, 172.16/12) + IPv6
-    // link-local + .local mDNS hostnames.
-    corsOrigin.push(/^http:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$/);
-    corsOrigin.push(/^http:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/);
-    corsOrigin.push(/^http:\/\/172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}(:\d+)?$/);
+    // link-local + .local mDNS hostnames. Use a precise IPv4 octet
+    // pattern (0–255) rather than `\d{1,3}` (which matches 0–999 and
+    // would let through malformed Host headers).
+    const oct = '(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)';
+    corsOrigin.push(new RegExp(`^http://192\\.168\\.${oct}\\.${oct}(:\\d+)?$`));
+    corsOrigin.push(new RegExp(`^http://10\\.${oct}\\.${oct}\\.${oct}(:\\d+)?$`));
+    corsOrigin.push(new RegExp(`^http://172\\.(1[6-9]|2\\d|3[01])\\.${oct}\\.${oct}(:\\d+)?$`));
     corsOrigin.push(/^http:\/\/\[fe80::[^\]]+\](:\d+)?$/);
     corsOrigin.push(/^http:\/\/[a-z0-9-]+\.local(:\d+)?$/);
   }

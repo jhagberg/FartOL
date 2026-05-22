@@ -37,6 +37,7 @@
 // - .planning/phases/02-4-klubbs-mvp/02-CONTEXT.md D-EV-1 / D-EV-2 / D-EV-3
 // - .planning/phases/02-4-klubbs-mvp/02-PATTERNS.md §2
 
+import { promises as fsp } from 'node:fs';
 import { eq } from 'drizzle-orm';
 import type { FastifyBaseLogger } from 'fastify';
 
@@ -138,7 +139,9 @@ export function scheduleEventorBoot(handle: DbHandle, opts: EventorBootOpts): Ev
     }
 
     // (4) Ingest — same defensive wrapper. A failed ingest leaves the
-    //     prior snapshot intact (cache.ts is transactional).
+    //     prior snapshot intact (cache.ts is transactional). The finally
+    //     block unlinks the ~86 MB tempfiles regardless of outcome so a
+    //     long-running bridge doesn't fill its disk over weeks of refreshes.
     try {
       const result = await ingestFn(handle, paths.competitorsPath, paths.clubsPath, nowFn());
       // Code-review F-005: surface nulledClubs in the log. A jump in
@@ -172,6 +175,9 @@ export function scheduleEventorBoot(handle: DbHandle, opts: EventorBootOpts): Ev
       // rollback. Network errors are handled by the (3) catch above.
       opts.logger.warn({ err }, 'Eventor: ingest failed');
       return { skipped: true, reason: 'ingest_error', error: err };
+    } finally {
+      await fsp.unlink(paths.competitorsPath).catch(() => undefined);
+      await fsp.unlink(paths.clubsPath).catch(() => undefined);
     }
   }
 
