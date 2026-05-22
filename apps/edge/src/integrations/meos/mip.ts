@@ -237,15 +237,31 @@ export default async function registerMipRoute(app: FastifyInstance): Promise<vo
             .all();
     const classNameMap = new Map(classRows.map((c) => [c.id, c.name]));
 
-    // Pre-fetch hired-card numbers for the active competition. A row counts
-    // as "open" regardless of returned_at — MeOS wants hired=true
-    // throughout the rental lifecycle.
-    const hiredCardRows = app.fartolDb.db
-      .select({ cardNumber: hiredCards.cardNumber })
-      .from(hiredCards)
-      .where(eq(hiredCards.competitionId, activeCompetitionId))
-      .all();
-    const hiredCardSet = new Set<number>(hiredCardRows.map((h) => h.cardNumber));
+    // Pre-fetch hired-card numbers, scoped to the cards we'll actually
+    // look up in this poll. Narrower than the whole-competition fetch —
+    // a sanctioned event with hundreds of rentals only pays for the
+    // delta. A row counts as "open" regardless of returned_at; MeOS
+    // wants hired=true throughout the rental lifecycle.
+    const pollCardNumbers = competitorRows
+      .map((c) => c.cardNumber)
+      .filter((n): n is number => n !== null);
+    const hiredCardSet = new Set<number>();
+    if (pollCardNumbers.length > 0) {
+      for (let i = 0; i < pollCardNumbers.length; i += INARRAY_CHUNK) {
+        const slice = pollCardNumbers.slice(i, i + INARRAY_CHUNK);
+        const partial = app.fartolDb.db
+          .select({ cardNumber: hiredCards.cardNumber })
+          .from(hiredCards)
+          .where(
+            and(
+              eq(hiredCards.competitionId, activeCompetitionId),
+              inArray(hiredCards.cardNumber, slice)
+            )
+          )
+          .all();
+        for (const h of partial) hiredCardSet.add(h.cardNumber);
+      }
+    }
 
     for (const row of rows) {
       if (row.localSeq > maxSeq) maxSeq = row.localSeq;
