@@ -126,7 +126,7 @@ export function parseIofXml(xmlSource: string): ParsedXml {
   try {
     parsed = parser.parse(xmlSource) as Record<string, unknown>;
   } catch (e) {
-    throw new Error(`Malformed XML: ${(e as Error).message}`, { cause: e });
+    throw new Error(`Malformed XML: ${e instanceof Error ? e.message : String(e)}`, { cause: e });
   }
 
   // Find the first non-prolog top-level key — the document's root element.
