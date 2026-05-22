@@ -19,7 +19,8 @@ a 9.4 MB gzipped (86 MB raw) XML payload containing 252 919 Swedish
 orienteering competitors with names, birth years, club affiliations,
 and 96 918 SI card numbers. The endpoint is open to club-level API
 keys (`STK` works) and is the exact endpoint MeOS itself uses at
-`/home/jonas/src/meos/code/TabCompetition.cpp:3107-3108`.
+`code/TabCompetition.cpp:3107-3108` (upstream
+<https://github.com/melinsoftware/meos>).
 
 Caching this payload locally on the bridge laptop is materially more
 PII than anything Phase 1 carried: Phase 1's `competitors` table only
@@ -156,5 +157,6 @@ bridge laptop) is mitigated by:
 - Implementation: `apps/edge/src/eventor/`
 - Originating research: `.planning/research/eventor-api-smoke.md`
   (privacy + Eventor terms-of-service considerations).
-- MeOS reference: `/home/jonas/src/meos/code/TabCompetition.cpp:3107-3108`
-  (the upstream that proves the endpoint is open to club keys).
+- MeOS reference: `code/TabCompetition.cpp:3107-3108` in
+  <https://github.com/melinsoftware/meos> (the upstream that proves the
+  endpoint is open to club keys).

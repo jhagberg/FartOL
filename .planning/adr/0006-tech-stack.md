@@ -14,13 +14,19 @@ the stack?
 
 ## Decision Outcome
 
+Concrete runtime/library versions are NOT pinned here — the
+package manifests (`package.json` `engines`, lockfiles) and platform
+manifests (Postgres major in the deploy guide) are the source of truth
+and rotate on their own cadence. This ADR captures the *choice of
+technology*, not the *current pinned version*.
+
 | Layer | Choice | Reason |
 |---|---|---|
-| Edge backend | Node.js 22 LTS + Fastify | Shared TS types with frontend; mature `@serialport` |
+| Edge backend | Node.js (current LTS) + Fastify | Shared TS types with frontend; mature `@serialport` |
 | Edge DB | SQLite via `better-sqlite3` | Synchronous, ~10k writes/sec on Pi 5 |
-| Central backend | Node.js 22 LTS + Fastify | Symmetric with edge; no language switch |
-| Central DB | Postgres 16 | Partitionable, Electric-compatible |
-| Read sync (central→client) | ElectricSQL Shapes | GA Mar 2025; Durable Streams Dec 2025 |
+| Central backend | Node.js (current LTS) + Fastify | Symmetric with edge; no language switch |
+| Central DB | Postgres (current stable) | Partitionable, Electric-compatible |
+| Read sync (central→client) | ElectricSQL Shapes | Read-path sync (see ADR-0004) |
 | Collab edits (forms only) | Yjs | Only for shared forms, not punches |
 | Frontend | SvelteKit (PWA) | Smaller bundles than React; matters on forest 4G |
 | Mobile (optional) | Capacitor wrapper of PWA | Only if iOS-as-operator becomes critical |
