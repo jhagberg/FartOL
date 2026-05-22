@@ -53,7 +53,6 @@ The **primary operator surface during the event**. Card reads land
 here in real time over WebSocket.
 
 Information to display per card read:
-
 - Card number (SI number, large).
 - Matched competitor (name, class) — OR walk-up state if unmatched.
 - Punch sequence vs expected course: ✓ ✓ ✓ ✗ — missing controls
@@ -84,7 +83,6 @@ Triggered when an unknown SI card is read at the readout table.
 in front of them — the modal must not block other readouts.
 
 Fields:
-
 - Name (required).
 - Club (free-text + autocomplete from past entries).
 - Class (dropdown of imported classes for this competition).
@@ -101,7 +99,7 @@ projection rerenders from the same event log.
   ≥ 16 px, large hit targets (≥ 44 px), no 12 px gray-on-white
   (REQ-UI-007).
 - **MeOS UX bar:** Look up "MeOS Open Orienteering" — that is the
-  baseline operators know. Don't be _too_ clever; be familiar.
+  baseline operators know. Don't be *too* clever; be familiar.
 - **Thermal receipt mirror:** The on-screen "print confirmation"
   should visually echo the thermal receipt layout
   (split list, status, control sequence).
@@ -186,5 +184,5 @@ Full context: `.planning/phases/01-single-laptop-training-mvp/01-CONTEXT.md`.
 
 ---
 
-_Phase: 1-Single-laptop-training-mvp_
-_Brief authored: 2026-05-13_
+*Phase: 1-Single-laptop-training-mvp*
+*Brief authored: 2026-05-13*

@@ -10,41 +10,36 @@ The page hosts **four** separate downloads (not one zip). Together they
 document **four distinct mechanisms** for talking to/from MeOS:
 
 ### `mop.zip` — MeOS Online Protocol (MOP)
-
-| File                          | Type          | Purpose                                           |
-| ----------------------------- | ------------- | ------------------------------------------------- |
-| `MeOS Online Protocol.pdf`    | PDF (5 pages) | Informal spec + examples + setup guide            |
-| `mop.xsd`                     | XSD           | Formal schema, version 2.0 (dated **March 2025**) |
-| `show.php`                    | PHP           | Reference web UI that renders results             |
-| `update.php`                  | PHP           | Reference server endpoint that MeOS POSTs to      |
-| `zipupdate.php`               | PHP           | Same as `update.php` but accepts gzipped uploads  |
-| `setup.php`                   | PHP           | One-shot MySQL table creator                      |
-| `functions.php`, `config.php` | PHP           | Helpers / DB config                               |
+| File | Type | Purpose |
+|---|---|---|
+| `MeOS Online Protocol.pdf` | PDF (5 pages) | Informal spec + examples + setup guide |
+| `mop.xsd` | XSD | Formal schema, version 2.0 (dated **March 2025**) |
+| `show.php` | PHP | Reference web UI that renders results |
+| `update.php` | PHP | Reference server endpoint that MeOS POSTs to |
+| `zipupdate.php` | PHP | Same as `update.php` but accepts gzipped uploads |
+| `setup.php` | PHP | One-shot MySQL table creator |
+| `functions.php`, `config.php` | PHP | Helpers / DB config |
 
 ### `mip.zip` — MeOS Input Protocol (MIP)
-
-| File                          | Type          | Purpose                                                                                                                          |
-| ----------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `MeOS Input Protocol.pdf`     | PDF (4 pages) | Informal spec + examples                                                                                                         |
-| `mip.xsd`                     | XSD           | Formal schema, version **3.0** (header says "Date: May 2026, Updated April 2025"; freshly bumped — page lists upload 2026-05-14) |
-| `input.php`                   | PHP           | Reference server endpoint that MeOS polls                                                                                        |
-| `enterpunch.php`              | PHP           | Reference web form for manual punch entry                                                                                        |
-| `functions.php`, `config.php` | PHP           | Helpers / DB config                                                                                                              |
+| File | Type | Purpose |
+|---|---|---|
+| `MeOS Input Protocol.pdf` | PDF (4 pages) | Informal spec + examples |
+| `mip.xsd` | XSD | Formal schema, version **3.0** (header says "Date: May 2026, Updated April 2025"; freshly bumped — page lists upload 2026-05-14) |
+| `input.php` | PHP | Reference server endpoint that MeOS polls |
+| `enterpunch.php` | PHP | Reference web form for manual punch entry |
+| `functions.php`, `config.php` | PHP | Helpers / DB config |
 
 ### `sendpunch.zip` — TCP punch injection example
-
-| File             | Type                     | Purpose                                                                                                     |
-| ---------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| File | Type | Purpose |
+|---|---|---|
 | `SendPunch.java` | Java source (~180 lines) | Shows how to **push** a single punch or a full SI card into MeOS over **raw TCP socket to localhost:10000** |
 
 ### `listen_meos.zip` — UDP punch broadcast listener
-
-| File              | Type                     | Purpose                                                                               |
-| ----------------- | ------------------------ | ------------------------------------------------------------------------------------- |
+| File | Type | Purpose |
+|---|---|---|
 | `ListenMeOS.java` | Java source (~100 lines) | Shows how to **receive** punch events that MeOS broadcasts over **UDP on port 21338** |
 
 So there are effectively **four protocols**:
-
 1. **MOP** — HTTP+XML push, MeOS → web server (result publishing)
 2. **MIP** — HTTP+XML pull, MeOS ← web server (punches/entries in)
 3. **SendPunch line protocol** — raw TCP+binary, third party → MeOS
@@ -68,10 +63,10 @@ snippets and the XSDs are fully annotated.
   - `<MOPComplete>` — full snapshot; receiver should drop prior state and
     replace it. Sent on initial connect and periodically.
   - `<MOPDiff>` — incremental updates (also used for deletes via `delete="true"`).
-    Both contain `<competition>`, `<ctrl>` (radio controls), `<cls>` (classes),
-    `<org>` (clubs), `<cmp>` (competitors), `<tm>` (teams).
-    All times are **tenths of a second**; start times are tenths after
-    competition zerotime.
+  Both contain `<competition>`, `<ctrl>` (radio controls), `<cls>` (classes),
+  `<org>` (clubs), `<cmp>` (competitors), `<tm>` (teams).
+  All times are **tenths of a second**; start times are tenths after
+  competition zerotime.
 - **Auth**: Plain-text password in `pwd` HTTP header. Spec explicitly admits
   "unless your web connection is encrypted, this password is sent in plain
   text… it is not a strong protection." No tokens, no OAuth.
@@ -81,7 +76,6 @@ snippets and the XSDs are fully annotated.
   no DSI-style frames. MeOS has already attributed the punches to a competitor.
 
 Representative payload (from PDF, abridged):
-
 ```xml
 <MOPDiff xmlns="http://www.melin.nu/mop">
   <cmp id="5490" card="12345">
@@ -91,7 +85,6 @@ Representative payload (from PDF, abridged):
   </cmp>
 </MOPDiff>
 ```
-
 Server replies `<MOPStatus status="OK"/>` or `BADCMP|BADPWD|NOZIP|ERROR`.
 
 ### 2.2 MIP — MeOS Input Protocol (HTTP+XML, MeOS ← us)
@@ -105,9 +98,9 @@ Server replies `<MOPStatus status="OK"/>` or `BADCMP|BADPWD|NOZIP|ERROR`.
   - `<card number="...">` — full read-out card with `<start>`, `<finish>`, `<check>`, `<p>` punches
   - `<entry>` — new/updated competitor registration (name, club, classid, card, fee, paid, bib…)
   - `<response type="config|entrystatus|entries"/>` — request MeOS-side data back
-    All times **tenths of a second**.
-    Hyrbricka flag: `<card hired="true">12345</card>` — explicitly documented as
-    triggering a "reminder to return it after the race" in MeOS.
+  All times **tenths of a second**.
+  Hyrbricka flag: `<card hired="true">12345</card>` — explicitly documented as
+  triggering a "reminder to return it after the race" in MeOS.
 - **Auth**: Optional `pwd` header, same plain-text scheme as MOP.
 - **Sportident integration**: **Yes — carries either raw card dumps OR free
   punches.** A `<card>` element with embedded `<p>` records is essentially the
@@ -116,7 +109,6 @@ Server replies `<MOPStatus status="OK"/>` or `BADCMP|BADPWD|NOZIP|ERROR`.
   read-out without spoofing the SI line protocol itself.
 
 Representative payload (from PDF):
-
 ```xml
 <MIPData xmlns="http://www.melin.nu/mip" lastid="3">
   <p code="33" card="12345" time="36070"/>
@@ -137,7 +129,7 @@ Representative payload (from PDF):
 - **Message shape**: **Little-endian binary**, no framing beyond the socket close:
   - Punch (15 bytes): `type=0` (1 B) + `codeNumber` (2 B LE) + `SICardNo` (4 B LE) + `codeDay=0` (4 B LE, obsolete) + `codeTime` (4 B LE, tenths after 00:00).
   - Card: `type=64` + same 14-byte header (where `codeNumber` becomes punch count) + repeated 8-byte `(codeNumber, codeTime)` per punch.
-    Special control codes: 1=Start, 2=Finish, 3=Check.
+  Special control codes: 1=Start, 2=Finish, 3=Check.
 - **Auth**: **None.** Trust is "you are on the local machine". The example
   hard-codes `localhost`; pointing it at a remote IP requires MeOS to bind on
   that interface, which the user must enable.
@@ -181,7 +173,6 @@ read-out into MeOS via the SendPunch TCP line protocol (§2.3) or, preferably,
 via MIP `<card>` (§2.2).**
 
 Sketch (SendPunch TCP — simplest):
-
 1. fartOLa's finish station reads the SI card from the serial port (we already
    do this in phase 1).
 2. After our own pipeline accepts the read, we open a TCP connection to
@@ -192,7 +183,6 @@ Sketch (SendPunch TCP — simplest):
    its own SI reader hooked up.
 
 Sketch (MIP — more future-proof):
-
 1. fartOLa exposes an HTTP endpoint that MeOS polls (we are the server, MeOS
    the client).
 2. We buffer card read-outs and respond with `<MIPData><card number="…">…</card></MIPData>`.
@@ -215,7 +205,6 @@ manually in MeOS using the same card number. For 4-klubbs walk-up registration,
 ### B — One-way push fartOLa → MeOS (results / registrations)
 
 Two channels:
-
 - **Registrations/entries:** MIP `<entry>` (§2.2). Supports name, club,
   classid, card (with `hired="true"`), fee, paid, bib, birthdate. MeOS replies
   with `entrystatus` so we know if the registration was accepted, rejected
@@ -248,13 +237,13 @@ for the Wednesday event as a passive "did fartOLa match MeOS?" debugging tool.
 
 ## 4. Implementation cost estimate
 
-| Use case                       | Protocol      | Effort             | Windows-only blockers?                                                                           |
-| ------------------------------ | ------------- | ------------------ | ------------------------------------------------------------------------------------------------ |
-| A (shared SI reader)           | SendPunch TCP | ~1 day             | None for fartOLa side; MeOS must run the "TCP punch input" service on Windows, which is built-in |
-| A (shared SI reader, polished) | MIP `<card>`  | ~2 days            | None                                                                                             |
-| B (push entries)               | MIP `<entry>` | ~1 day on top of A | None                                                                                             |
-| B (push punches)               | covered by A  | —                  | —                                                                                                |
-| C (pull results)               | MOP receiver  | ~0.5 day           | None                                                                                             |
+| Use case | Protocol | Effort | Windows-only blockers? |
+|---|---|---|---|
+| A (shared SI reader) | SendPunch TCP | ~1 day | None for fartOLa side; MeOS must run the "TCP punch input" service on Windows, which is built-in |
+| A (shared SI reader, polished) | MIP `<card>` | ~2 days | None |
+| B (push entries) | MIP `<entry>` | ~1 day on top of A | None |
+| B (push punches) | covered by A | — | — |
+| C (pull results) | MOP receiver | ~0.5 day | None |
 
 **Total for full A+B+C via MIP+MOP: ~3.5 days.** Total for "minimum
 Wednesday-viable" (A via SendPunch + C via MOP for safety net): **~1.5 days**.

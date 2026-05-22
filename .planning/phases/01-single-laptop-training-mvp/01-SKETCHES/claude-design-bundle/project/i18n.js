@@ -296,7 +296,7 @@ window.STRINGS = {
   },
 };
 
-window.useT = function (locale) {
+window.useT = function(locale) {
   const dict = window.STRINGS[locale] || window.STRINGS.sv;
   return (key) => dict[key] ?? key;
 };

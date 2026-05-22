@@ -5,8 +5,11 @@ pnpm-lock.yaml
 
 # GSD planning files use specific list/indent structure that the GSD CLI
 # parser depends on; prettier reformats break `roadmap.analyze` and
-# adjacent parsers. Skip them.
-.planning/ROADMAP.md
+# adjacent parsers. They also contain unfenced technical content
+# (TS exports, paths like /api/__dev/*, comment markers like /* ... */)
+# that prettier escapes as markdown emphasis — corrupting identifiers
+# like SET_MS → SET*MS and */ → \_/. Historical artifacts; never reformat.
+.planning/
 
 # NDJSON fixture outputs — one JSON object per line, NOT valid JSON-the-file-
 # format. Prettier treats them as JSON and rejects multi-object content. They

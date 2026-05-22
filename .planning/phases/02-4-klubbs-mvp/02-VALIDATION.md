@@ -19,15 +19,15 @@ updated: 2026-05-16 (plan-checker BL-1 — Nyquist gate)
 
 ## Test Infrastructure
 
-| Property                                           | Value                                                                                              |
-| -------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| **Framework (apps/edge/, packages/shared-types/)** | `node:test` + `tsx` (Phase 1 carry-forward)                                                        |
-| **Framework (apps/web/)**                          | `vitest` 4.x (SvelteKit default; Phase 1 carry-forward)                                            |
-| **Framework (E2E)**                                | `@playwright/test` 1.x (repo-root `tests/e2e/*` + per-app `e2e/*`)                                 |
-| **New dep (Wave 0 gate)**                          | `saxes@^6` (streaming XML parser; Plan 01 Task 0 npm-verify gate)                                  |
-| **Quick run command (phase scope)**                | `pnpm --filter @fartola/edge test --test-name-pattern="eventor\|mip\|mop\|hyrbricka\|hired"` (~5s) |
-| **Full suite command**                             | `pnpm -r test && pnpm e2e` (~5 min including Phase 1 carry tests)                                  |
-| **Estimated runtime (phase only)**                 | quick ~5s · full ~120s + ~30s new e2e                                                              |
+| Property | Value |
+|----------|-------|
+| **Framework (apps/edge/, packages/shared-types/)** | `node:test` + `tsx` (Phase 1 carry-forward) |
+| **Framework (apps/web/)** | `vitest` 4.x (SvelteKit default; Phase 1 carry-forward) |
+| **Framework (E2E)** | `@playwright/test` 1.x (repo-root `tests/e2e/*` + per-app `e2e/*`) |
+| **New dep (Wave 0 gate)** | `saxes@^6` (streaming XML parser; Plan 01 Task 0 npm-verify gate) |
+| **Quick run command (phase scope)** | `pnpm --filter @fartola/edge test --test-name-pattern="eventor\|mip\|mop\|hyrbricka\|hired"` (~5s) |
+| **Full suite command** | `pnpm -r test && pnpm e2e` (~5 min including Phase 1 carry tests) |
+| **Estimated runtime (phase only)** | quick ~5s · full ~120s + ~30s new e2e |
 
 ---
 
@@ -47,15 +47,15 @@ updated: 2026-05-16 (plan-checker BL-1 — Nyquist gate)
 > in `02-RESEARCH.md` §"Validation Architecture" (lines ~1908-1964) — this
 > table is the index plan-checker dimension 8 reads.
 
-| Plan   | Wave | Requirement(s) Covered                                                 | Test Type(s)                              | Automated Command                                                                                                                                                                     | File Exists |
-| ------ | ---- | ---------------------------------------------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| 02-01  | 0    | REQ-STD-004 (partial), REQ-EXT-MEOS-001, REQ-PRIV-002, REQ-OPS-001     | unit + integration                        | `pnpm --filter @fartola/edge test --test-name-pattern="eventor"`                                                                                                                      | ⬜ pending  |
-| 02-02  | 1    | REQ-STD-004 (partial), REQ-EVT-CMP-004, REQ-PRIV-002, REQ-EXT-MEOS-001 | unit + integration + component            | `pnpm --filter @fartola/edge test --test-name-pattern="competitors\|eventor/lookup" && pnpm --filter @fartola/web test --testPathPattern="(eventorStatus\|WalkupModal\|TweaksPanel)"` | ⬜ pending  |
-| 02-02b | 2    | REQ-UI-005, REQ-UI-006, REQ-UI-007                                     | unit + e2e                                | `pnpm --filter @fartola/web test --testPathPattern="cardQueue\|cardSubscription" && npx playwright test tests/e2e/registration-queue.spec.ts`                                         | ⬜ pending  |
-| 02-03  | 1    | REQ-EXT-MEOS-001                                                       | unit + integration + contract (XSD)       | `pnpm --filter @fartola/edge test --test-name-pattern="integrations/meos/mip"`                                                                                                        | ⬜ pending  |
-| 02-04  | 2    | REQ-EXT-MEOS-001                                                       | unit + integration + contract (XSD)       | `pnpm --filter @fartola/edge test --test-name-pattern="integrations/meos/mop"`                                                                                                        | ⬜ pending  |
-| 02-05  | 2    | REQ-EVT-CMP-004, REQ-UI-003, REQ-PRIV-002                              | unit + e2e                                | `pnpm --filter @fartola/edge test --test-name-pattern="hired-cards\|readout" && npx playwright test tests/e2e/hyrbricka.spec.ts`                                                      | ⬜ pending  |
-| 02-06  | 3    | REQ-PRIV-002, REQ-OPS-001, REQ-EXT-MEOS-001 (operational)              | unit + integration + bench-smoke + manual | `pnpm --filter @fartola/edge test --test-name-pattern="retention\|bench-smoke-phase2" && bash apps/edge/scripts/bench-smoke-phase2.sh`                                                | ⬜ pending  |
+| Plan | Wave | Requirement(s) Covered | Test Type(s) | Automated Command | File Exists |
+|------|------|------------------------|--------------|-------------------|-------------|
+| 02-01 | 0 | REQ-STD-004 (partial), REQ-EXT-MEOS-001, REQ-PRIV-002, REQ-OPS-001 | unit + integration | `pnpm --filter @fartola/edge test --test-name-pattern="eventor"` | ⬜ pending |
+| 02-02 | 1 | REQ-STD-004 (partial), REQ-EVT-CMP-004, REQ-PRIV-002, REQ-EXT-MEOS-001 | unit + integration + component | `pnpm --filter @fartola/edge test --test-name-pattern="competitors\|eventor/lookup" && pnpm --filter @fartola/web test --testPathPattern="(eventorStatus\|WalkupModal\|TweaksPanel)"` | ⬜ pending |
+| 02-02b | 2 | REQ-UI-005, REQ-UI-006, REQ-UI-007 | unit + e2e | `pnpm --filter @fartola/web test --testPathPattern="cardQueue\|cardSubscription" && npx playwright test tests/e2e/registration-queue.spec.ts` | ⬜ pending |
+| 02-03 | 1 | REQ-EXT-MEOS-001 | unit + integration + contract (XSD) | `pnpm --filter @fartola/edge test --test-name-pattern="integrations/meos/mip"` | ⬜ pending |
+| 02-04 | 2 | REQ-EXT-MEOS-001 | unit + integration + contract (XSD) | `pnpm --filter @fartola/edge test --test-name-pattern="integrations/meos/mop"` | ⬜ pending |
+| 02-05 | 2 | REQ-EVT-CMP-004, REQ-UI-003, REQ-PRIV-002 | unit + e2e | `pnpm --filter @fartola/edge test --test-name-pattern="hired-cards\|readout" && npx playwright test tests/e2e/hyrbricka.spec.ts` | ⬜ pending |
+| 02-06 | 3 | REQ-PRIV-002, REQ-OPS-001, REQ-EXT-MEOS-001 (operational) | unit + integration + bench-smoke + manual | `pnpm --filter @fartola/edge test --test-name-pattern="retention\|bench-smoke-phase2" && bash apps/edge/scripts/bench-smoke-phase2.sh` | ⬜ pending |
 
 ---
 

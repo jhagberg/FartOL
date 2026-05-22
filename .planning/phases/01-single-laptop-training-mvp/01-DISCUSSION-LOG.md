@@ -76,7 +76,7 @@
 | ----------------------------- | ------------------------------------------------------------------------------------- | -------- |
 | Single binary, adapter-static | One Fastify process serves built SvelteKit + REST + WS. SEO irrelevant for localhost. | ✓        |
 | adapter-node SvelteKit server | SvelteKit's own Node server in-process; SSR + form actions.                           |          |
-| Two binaries                  | fartola-bridge + fartola-web; violates REQ-OPS-001.                                   |          |
+| Two binaries                  | fartola-bridge + fartola-web; violates REQ-OPS-001.                                     |          |
 
 **User's clarifying question:** "yes can you give me some pros and cons for the different options and do we have any best-pratice here can /context7 help us?"
 

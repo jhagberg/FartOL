@@ -87,9 +87,7 @@ Overall risk: **MEDIUM-HIGH**. The architecture is sound and the test strategy i
 **Brief:** validate codex's fixes are substantial (not word-painting), surface what codex missed, check cross-plan invariants, residual-risk delta.
 
 ### 1. Spot-check of codex's 8 fixes
-
 Ja, de är tekniskt verifierbara och påverkar arkitekturen, inte bara dokumentationen.
-
 - **Fix 1 (onFrameError):** Implementerad i Plan 02 (`siProtocol.ts`) och vidarebefordrad i Plan 04/05. Detta tar bort behovet av skör "monkey-patching" av `console.warn`.
 - **Fix 3 & 4 (Registries/Page 4):** Plan 03 separerar `si5DetectionRegistry` och `si8DetectionRegistry`. Detta är kritiskt eftersom SI5 och SI8-kommandon kan returnera krockande ID-rymder. Att tvinga fram Page 4-läsning för moderna kort är korrekt enligt protokollet för att få ut alla stämplingar.
 - **Fix 6 (Directional transcript):** Plan 06 implementerar `out <hex>` / `in <hex>`. Utan detta är replay-tester värdelösa för race-condition-detektering.
@@ -97,26 +95,22 @@ Ja, de är tekniskt verifierbara och påverkar arkitekturen, inte bara dokumenta
 
 ### 2. What Codex Missed (Gemini's independent findings)
 
-- **MEDIUM — Receive buffer overflow.** I Plan 04 (`SiTargetMultiplexer.ts`) ackumuleras bytes i `receiveBuffer`. Om en enhet (eller brus) skickar oändligt med data utan STX/ETX kommer Node-processen till slut att krascha på minne. _Rekommendation:_ Hård gräns (t.ex. 64 KB) som rensar buffer + kastar `frame_error: "overflow"` när den överskrids.
+- **MEDIUM — Receive buffer overflow.** I Plan 04 (`SiTargetMultiplexer.ts`) ackumuleras bytes i `receiveBuffer`. Om en enhet (eller brus) skickar oändligt med data utan STX/ETX kommer Node-processen till slut att krascha på minne. *Rekommendation:* Hård gräns (t.ex. 64 KB) som rensar buffer + kastar `frame_error: "overflow"` när den överskrids.
 
-- **MEDIUM — Zombie processes on serialport hang.** Om hårdvaran kopplas ur mitt under en async `typeSpecificRead` kan kvarvarande `sendMessage`-promiser "hänga" om inte `transport.on('close')` proaktivt avbryter kön. _Status:_ Delvis täckt i Plan 04 (SiSendTask abort), men säkerställ att queue-rejection faktiskt händer vid transport-close — annars hänger `bin/fartola-readout` kvar trots urkoppling.
+- **MEDIUM — Zombie processes on serialport hang.** Om hårdvaran kopplas ur mitt under en async `typeSpecificRead` kan kvarvarande `sendMessage`-promiser "hänga" om inte `transport.on('close')` proaktivt avbryter kön. *Status:* Delvis täckt i Plan 04 (SiSendTask abort), men säkerställ att queue-rejection faktiskt händer vid transport-close — annars hänger `bin/fartola-readout` kvar trots urkoppling.
 
 - **LOW (Phase 1 gap) — Timestamp semantics card-vs-host.** Plan 05 blandar host-tid (`ts_ms`) med kort-tid (`seconds_in_half_day`). Vid midnatt-passering / orienteringstävlingar över flera dagar räcker inte `half_day` för att korrelera stämplingar utan en referenspunkt. Acceptabelt för Phase 0; flagga som "Phase 1 gap".
 
 ### 3. Cross-plan invariants (Drift-check)
-
 Kontrakten ser stabila ut genom kedjan:
-
 - **`parseAll` signature:** Plan 02 definierar, Plan 04 konsumerar, Plan 05 testar. Ingen drift.
 - **Error types:** Plan 04 introducerar `transport/errors.ts` som Task 0 — utmärkt för att undvika cirkulära beroenden mellan `SerialTransport` och `SiSendTask`.
 - **NDJSON namn:** Snake_case (`card_number`, `card_type`) hålls konsekvent i Plan 05.
 
 ### 4. Residual Risk post-revision
-
 **LOW / MEDIUM.** Största kvarvarande risken är **hårdvaruspecifik**. CP210x-drivrutiner på Linux kan kräva en "Wakeup-burst" (skicka 0xFF flera gånger) efter att porten öppnats för att väcka BSM8 från strömsparläge. Plan 04's centrala WAKEUP-prepending täcker detta men kan kräva finjustering i Plan 06 hardware smoke.
 
 ### 5. Bottom Line
-
 **Kör `/gsd-execute-phase 0` nu.** Fix-listan är redan inarbetad i planerna (codex-concerns + verifierat av plan-checker). Gemini's tillägg om buffer-overflow och zombie-processer är små kodändringar som kan hanteras under exekvering av Plan 04/06. Planerna är ovanligt mogna för en greenfield-port.
 
 **Sista check innan start:** Säkerställ att lokal användare är med i `dialout`-gruppen (vanligaste orsaken till att Phase 0-projekt dör vid första hårdvarutestet — redan verifierat i RESEARCH.md bench check, men värt att re-confirma vid körning).
@@ -136,16 +130,16 @@ Two reviewers: codex (pre-revision) and gemini-3-pro (post-revision).
 
 ### Status After Revision
 
-| Codex HIGH finding              | Status (per gemini spot-check) |
-| ------------------------------- | ------------------------------ |
-| #1 parseAll callback            | VERIFIED FIXED                 |
-| #2 modern station tests         | VERIFIED FIXED                 |
-| #3 page-4 punch chain           | VERIFIED FIXED                 |
-| #4 SI5/SI8 registry split       | VERIFIED FIXED                 |
-| #5 transport/errors.ts Task 0   | VERIFIED FIXED                 |
-| #6 directional transcript       | VERIFIED FIXED                 |
-| #7 allowedRoots path validation | VERIFIED FIXED                 |
-| #8 per-card --record --once     | VERIFIED FIXED                 |
+| Codex HIGH finding | Status (per gemini spot-check) |
+|---|---|
+| #1 parseAll callback | VERIFIED FIXED |
+| #2 modern station tests | VERIFIED FIXED |
+| #3 page-4 punch chain | VERIFIED FIXED |
+| #4 SI5/SI8 registry split | VERIFIED FIXED |
+| #5 transport/errors.ts Task 0 | VERIFIED FIXED |
+| #6 directional transcript | VERIFIED FIXED |
+| #7 allowedRoots path validation | VERIFIED FIXED |
+| #8 per-card --record --once | VERIFIED FIXED |
 
 ### New Findings (gemini, post-revision)
 

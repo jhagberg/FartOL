@@ -189,11 +189,11 @@ None.
 
 | Check                                                                                 | Result                                       |
 | ------------------------------------------------------------------------------------- | -------------------------------------------- |
-| `pnpm --filter @fartola/web typecheck`                                                | PASS                                         |
-| `pnpm --filter @fartola/web test` (vitest)                                            | PASS — 14 tests across 4 files               |
-| `pnpm --filter @fartola/web build` (SvelteKit + adapter-static)                       | PASS                                         |
-| `pnpm --filter @fartola/edge build` (tsup CJS + DTS)                                  | PASS                                         |
-| `npx playwright test tests/e2e/wizard.spec.ts` (with FARTOLA_DEV=1)                   | PASS — 2 / 2                                 |
+| `pnpm --filter @fartola/web typecheck`                                                 | PASS                                         |
+| `pnpm --filter @fartola/web test` (vitest)                                             | PASS — 14 tests across 4 files               |
+| `pnpm --filter @fartola/web build` (SvelteKit + adapter-static)                        | PASS                                         |
+| `pnpm --filter @fartola/edge build` (tsup CJS + DTS)                                   | PASS                                         |
+| `npx playwright test tests/e2e/wizard.spec.ts` (with FARTOLA_DEV=1)                    | PASS — 2 / 2                                 |
 | Full e2e suite (`npx playwright test`)                                                | PASS — 2 / 2 active (2 skipped placeholders) |
 | C-H3 wire-shape regression (1 from-wizard POST, 0 /api/competitions POSTs)            | PASS                                         |
 | C-H3 rollback regression (competitions row count unchanged after corrupt-XML failure) | PASS                                         |

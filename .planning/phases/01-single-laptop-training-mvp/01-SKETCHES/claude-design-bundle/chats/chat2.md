@@ -157,9 +157,9 @@ The wizard's date input is now a text field locked to `YYYY-MM-DD` format with a
 
 ## User
 
-color wont work on the thermal print out right?
+color wont work on the thermal print out right? 
 
-and can you see that the kvitto chooser is not working good it is overflowing . so is will this design work on a phone and on tablet size?
+and can you see that the kvitto chooser is not working good it is overflowing .  so  is will this design work on a phone and on tablet size?
 
 ## Assistant
 
@@ -202,7 +202,6 @@ A few notes on your three questions:
 **3. Phone/tablet** — Honestly, no, not yet. This is a desktop-first layout: 240px sidebar + main area, and inside Avläsning a 1fr/380px grid for the readout + history. Below ~1280px the side rail shrinks; below ~900px it'd start overlapping. That's intentional for a Phase 1 readout station that lives on a laptop or all-in-one PC by the finish line.
 
 For tablet/phone you'd want a different mental model — probably:
-
 - **Tablet (landscape)**: same layout, just tighter spacing — works ~iPad Pro and up
 - **Tablet (portrait) / phone**: stack to single column, sidebar becomes a top bar or drawer, history collapses into a sheet, receipt mirror only opens on demand
 - Plus: bigger hit targets (44px+), no hover-dependent affordances
@@ -216,3 +215,4 @@ Verifier agent check completed
 ## Assistant
 
 Both fixes verified — Skogis is fully mono, chooser wraps cleanly to two rows. Let me know if you want me to take a swing at the responsive pass.
+

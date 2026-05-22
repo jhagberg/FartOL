@@ -6,20 +6,20 @@
 
 ## File Classification
 
-| New/Modified File                                      | Role                                       | Data Flow                                   | Closest Analog                                                                                               | Match Quality                        |
-| ------------------------------------------------------ | ------------------------------------------ | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------ |
-| `apps/edge/src/eventor/cache.ts`                       | Background job (streaming ingest)          | File-I/O + transactional bulk-upsert        | `apps/edge/src/ingest/entryImport.ts` + `apps/edge/src/xml/parse.ts`                                         | role-match (no streaming analog yet) |
-| `apps/edge/src/eventor/boot.ts`                        | Background job (boot hook + admin trigger) | Event-driven (boot, admin button)           | `apps/edge/src/backup/daily.ts` (handle pattern) + `apps/edge/src/bin/fartola.ts` (wiring)                   | role-match (no on-boot analog yet)   |
-| `apps/edge/src/integrations/meos/mip.ts`               | Fastify route plugin                       | request-response (GET, serializes XML)      | `apps/edge/src/routes/export.ts` (XML serialize) + `apps/edge/src/routes/clubs.ts` (param query)             | role-match                           |
-| `apps/edge/src/integrations/meos/mop.ts`               | Fastify route plugin                       | request-response (POST XML body)            | `apps/edge/src/routes/import.ts` (XML upload) + `apps/edge/src/ingest/entryImport.ts` (transactional ingest) | role-match                           |
-| `apps/edge/src/integrations/meos/shared.ts`            | Shared types                               | n/a (pure types + parser glue)              | `apps/edge/src/xml/parse.ts` (typed normalizers)                                                             | role-match                           |
-| `apps/edge/drizzle/0002_phase2.sql` (+ `meta`)         | Migration                                  | n/a                                         | `apps/edge/drizzle/0000_initial.sql` + `apps/edge/src/db/schema.ts`                                          | exact                                |
-| `apps/edge/src/db/schema.ts` (extend)                  | DB schema                                  | n/a (Drizzle TS table defs)                 | itself (same file)                                                                                           | exact                                |
-| `apps/edge/src/privacy/retention.ts` (extend)          | Background job (scrub extension)           | CRUD (UPDATE)                               | itself (same file)                                                                                           | exact                                |
-| `apps/web/src/lib/screens/WalkupModal.svelte` (extend) | Svelte form                                | request-response (POST competitor + lookup) | itself + `apps/web/src/lib/components/ClubAutocomplete.svelte` (debounced autocomplete)                      | exact + role-match                   |
-| `apps/web/src/lib/screens/ReadoutView.svelte` (extend) | Svelte view                                | event-driven (WS subscribe)                 | itself (extend pendingConsentToast pattern)                                                                  | exact                                |
-| `docs/ops/parallel-meos-runbook.md`                    | Operator docs                              | n/a                                         | no analog (first ops doc) — use README markdown conventions                                                  | no analog                            |
-| `.planning/adr/0009-eventor-runner-cache.md`           | ADR                                        | n/a                                         | `.planning/adr/0008-pii-in-append-only-event-log.md`                                                         | exact                                |
+| New/Modified File | Role | Data Flow | Closest Analog | Match Quality |
+|---|---|---|---|---|
+| `apps/edge/src/eventor/cache.ts` | Background job (streaming ingest) | File-I/O + transactional bulk-upsert | `apps/edge/src/ingest/entryImport.ts` + `apps/edge/src/xml/parse.ts` | role-match (no streaming analog yet) |
+| `apps/edge/src/eventor/boot.ts` | Background job (boot hook + admin trigger) | Event-driven (boot, admin button) | `apps/edge/src/backup/daily.ts` (handle pattern) + `apps/edge/src/bin/fartola.ts` (wiring) | role-match (no on-boot analog yet) |
+| `apps/edge/src/integrations/meos/mip.ts` | Fastify route plugin | request-response (GET, serializes XML) | `apps/edge/src/routes/export.ts` (XML serialize) + `apps/edge/src/routes/clubs.ts` (param query) | role-match |
+| `apps/edge/src/integrations/meos/mop.ts` | Fastify route plugin | request-response (POST XML body) | `apps/edge/src/routes/import.ts` (XML upload) + `apps/edge/src/ingest/entryImport.ts` (transactional ingest) | role-match |
+| `apps/edge/src/integrations/meos/shared.ts` | Shared types | n/a (pure types + parser glue) | `apps/edge/src/xml/parse.ts` (typed normalizers) | role-match |
+| `apps/edge/drizzle/0002_phase2.sql` (+ `meta`) | Migration | n/a | `apps/edge/drizzle/0000_initial.sql` + `apps/edge/src/db/schema.ts` | exact |
+| `apps/edge/src/db/schema.ts` (extend) | DB schema | n/a (Drizzle TS table defs) | itself (same file) | exact |
+| `apps/edge/src/privacy/retention.ts` (extend) | Background job (scrub extension) | CRUD (UPDATE) | itself (same file) | exact |
+| `apps/web/src/lib/screens/WalkupModal.svelte` (extend) | Svelte form | request-response (POST competitor + lookup) | itself + `apps/web/src/lib/components/ClubAutocomplete.svelte` (debounced autocomplete) | exact + role-match |
+| `apps/web/src/lib/screens/ReadoutView.svelte` (extend) | Svelte view | event-driven (WS subscribe) | itself (extend pendingConsentToast pattern) | exact |
+| `docs/ops/parallel-meos-runbook.md` | Operator docs | n/a | no analog (first ops doc) — use README markdown conventions | no analog |
+| `.planning/adr/0009-eventor-runner-cache.md` | ADR | n/a | `.planning/adr/0008-pii-in-append-only-event-log.md` | exact |
 
 ## Pattern Assignments
 
@@ -29,7 +29,6 @@
 **Analog 2 (XML parser config + entity-safe guard):** `apps/edge/src/xml/parse.ts`
 
 **Why these analogs:**
-
 - entryImport.ts is the only existing bulk-insert-from-XML pipeline. It already
   uses the inner-function + outer-`sqlite.transaction()` shape we need for
   the 252 919-row competitor upsert (atomic rollback on partial failure).
@@ -41,7 +40,6 @@
   bytes show up on disk," not "what bytes Eventor sent."
 
 **Imports pattern (from entryImport.ts lines 40-45):**
-
 ```typescript
 import { sql } from 'drizzle-orm';
 import crypto from 'node:crypto';
@@ -52,7 +50,6 @@ import type { ParsedEntryList } from '../xml/parse.ts';
 ```
 
 **Transactional bulk-upsert pattern (from entryImport.ts lines 91-135):**
-
 ```typescript
 const distinctClubs = new Set<string>();
 for (const e of data.competitors) {
@@ -74,14 +71,10 @@ for (const clubName of distinctClubs) {
 ```
 
 **Outer-transaction wrapper (from entryImport.ts lines 157-173):**
-
 ```typescript
 export function ingestEntryList(
-  handle: DbHandle,
-  competitionId: string,
-  data: ParsedEntryList,
-  nowMs: number,
-  opts: EntryImportOpts = {}
+  handle: DbHandle, competitionId: string, data: ParsedEntryList,
+  nowMs: number, opts: EntryImportOpts = {}
 ): EntryImportResult {
   if (opts.outerTransaction) return doIngest(handle, competitionId, data, nowMs);
   let result: EntryImportResult = { competitors_created: 0, classes_missing: [] };
@@ -93,12 +86,11 @@ export function ingestEntryList(
 ```
 
 **Entity-safe XMLParser config (from xml/parse.ts lines 93-104):**
-
 ```typescript
 const parser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: '@_',
-  processEntities: false, // T-FILE-IMPORT: disable entity expansion.
+  processEntities: false,          // T-FILE-IMPORT: disable entity expansion.
   allowBooleanAttributes: true,
   parseAttributeValue: true,
   trimValues: true,
@@ -106,7 +98,6 @@ const parser = new XMLParser({
 ```
 
 **Pre-flight DOCTYPE/ENTITY guard (from xml/parse.ts lines 115-124):**
-
 ```typescript
 if (typeof xmlSource !== 'string' || xmlSource.length === 0) {
   throw new Error('Empty XML input');
@@ -120,7 +111,6 @@ if (/<!ENTITY/i.test(xmlSource)) {
 ```
 
 **What to copy / what to change:**
-
 - **Copy verbatim:** the doIngest() inner-function + outer-`sqlite.transaction()`
   pattern; the distinctClubs set-after-success pattern (WR-001 in entryImport);
   the `processEntities: false` parser config; the DOCTYPE/ENTITY guard.
@@ -142,7 +132,6 @@ if (/<!ENTITY/i.test(xmlSource)) {
 **Analog 2 (RetentionHandle / BackupHandle pattern):** `apps/edge/src/backup/daily.ts`
 
 **Why these analogs:**
-
 - bin/fartola.ts is where the daily backup + retention schedulers are wired
   today. Plan 2 should add the Eventor on-boot fetch (D-EV-1) at the same
   hook point (after buildServer, before listen) and decorate the app the
@@ -154,7 +143,6 @@ if (/<!ENTITY/i.test(xmlSource)) {
   route consumes.
 
 **Existing wiring pattern (from bin/fartola.ts lines 510-518):**
-
 ```typescript
 // Plan 17 — start the daily backup + retention schedulers. ...
 const backup = scheduleDailyBackup(handle, { backupDir: opts.backupDir });
@@ -164,7 +152,6 @@ app.fartolaRetention = retention;
 ```
 
 **Shutdown wiring (from bin/fartola.ts lines 520-547):**
-
 ```typescript
 const shutdown = async (code: number): Promise<void> => {
   try { if (lifecycle) await lifecycle.stop(); } catch { /* best-effort */ }
@@ -176,7 +163,6 @@ const shutdown = async (code: number): Promise<void> => {
 ```
 
 **Handle shape (from backup/daily.ts lines 44-49):**
-
 ```typescript
 export interface BackupHandle {
   /** Trigger a one-off backup right now (admin endpoint + tests). */
@@ -187,7 +173,6 @@ export interface BackupHandle {
 ```
 
 **Admin route binding (from routes/admin.ts lines 59-71):**
-
 ```typescript
 app.post('/api/__admin/run-backup-now', async (_req, reply) => {
   const backup = app.fartolaBackup;
@@ -205,7 +190,6 @@ app.post('/api/__admin/run-backup-now', async (_req, reply) => {
 ```
 
 **FastifyInstance decoration (from routes/admin.ts lines 96-101):**
-
 ```typescript
 declare module 'fastify' {
   interface FastifyInstance {
@@ -216,7 +200,6 @@ declare module 'fastify' {
 ```
 
 **What to copy / what to change:**
-
 - **Copy verbatim:** the `{ runNow(), stop() }` handle shape; the
   `app.fartolaEventor` decoration pattern; the FARTOLA_DEV admin-route gate
   (mirror admin.ts's `if (process.env['FARTOLA_DEV'] !== '1') return;`).
@@ -237,7 +220,6 @@ declare module 'fastify' {
 **Analog 2 (param/querystring parsing):** `apps/edge/src/routes/clubs.ts`
 
 **Why these analogs:**
-
 - export.ts is the only existing route that builds an XML string from a DB
   query and streams it with `application/xml` Content-Type. MIP is the
   same shape: read events → serialize XML → return.
@@ -245,7 +227,6 @@ declare module 'fastify' {
   optional integer (we need `lastid: z.coerce.number().int().nonnegative()`).
 
 **Route registration shape (from export.ts lines 105-152):**
-
 ```typescript
 export default async function registerExportRoutes(app: FastifyInstance): Promise<void> {
   app.get<{ Params: { id: string }; Querystring: { status?: string } }>(
@@ -270,7 +251,6 @@ export default async function registerExportRoutes(app: FastifyInstance): Promis
 ```
 
 **XML response wiring (from export.ts lines 203-207):**
-
 ```typescript
 const slug = slugifyName(compRow.name);
 void reply.header('Content-Type', 'application/xml; charset=utf-8');
@@ -279,7 +259,6 @@ return reply.code(200).send(result.build.xml);
 ```
 
 **Querystring schema (from clubs.ts lines 21-26):**
-
 ```typescript
 const ClubsQuery = z.object({
   prefix: z.string().max(120).optional(),
@@ -288,7 +267,6 @@ const ClubsQuery = z.object({
 ```
 
 **Events query by local_seq (use seq.ts pattern — `nextLocalSeq` reverse):**
-
 ```typescript
 // Equivalent of "WHERE local_seq > ?" — Drizzle ORM:
 import { gt, and, eq } from 'drizzle-orm';
@@ -297,13 +275,11 @@ import { events } from '../../db/schema.ts';
 const rows = app.fartolaDb.db
   .select()
   .from(events)
-  .where(
-    and(
-      eq(events.competitionId, competitionId),
-      gt(events.localSeq, lastid),
-      eq(events.eventType, 'card_bound')
-    )
-  )
+  .where(and(
+    eq(events.competitionId, competitionId),
+    gt(events.localSeq, lastid),
+    eq(events.eventType, 'card_bound'),
+  ))
   .orderBy(events.localSeq)
   .all();
 ```
@@ -311,7 +287,6 @@ const rows = app.fartolaDb.db
 **XMLBuilder pattern (from xml/iofExport.ts):** import and use `new XMLBuilder({ ignoreAttributes: false, attributeNamePrefix: '@_', format: true })` — see iofExport.ts header for XSD-aware element ordering.
 
 **What to copy / what to change:**
-
 - **Copy verbatim:** the `registerXxx(app: FastifyInstance)` plugin shape;
   the `Querystring` typing; the `application/xml` content-type header; the
   XMLBuilder usage from iofExport.ts.
@@ -337,7 +312,6 @@ const rows = app.fartolaDb.db
 **Analog 2 (transactional ingest):** `apps/edge/src/ingest/entryImport.ts`
 
 **Why these analogs:**
-
 - import.ts is the only existing endpoint that accepts an XML body and
   routes it to a transactional ingester. Same data flow: read body → parse
   XML → validate → write inside `sqlite.transaction()` → respond.
@@ -345,7 +319,6 @@ const rows = app.fartolaDb.db
   TRUNCATE+INSERT inside a single transaction — partial-parse safe).
 
 **Body parsing pattern (from import.ts lines 58-100):**
-
 ```typescript
 app.post<{ Params: { id: string } }>('/api/competitions/:id/import', async (req, reply) => {
   const competitionId = req.params.id;
@@ -371,7 +344,6 @@ app.post<{ Params: { id: string } }>('/api/competitions/:id/import', async (req,
 ```
 
 **Multipart cap (from import.ts lines 53-56):**
-
 ```typescript
 await app.register(multipart, {
   limits: { fileSize: 5 * 1024 * 1024, files: 1 },
@@ -379,7 +351,6 @@ await app.register(multipart, {
 ```
 
 **Transactional shadow-table write (from entryImport.ts lines 59-156):**
-
 ```typescript
 function doIngest(handle: DbHandle, ...): EntryImportResult {
   // ... pre-load lookup maps ...
@@ -399,7 +370,6 @@ export function ingestMop(handle, ...): IngestResult {
 ```
 
 **What to copy / what to change:**
-
 - **Copy verbatim:** the `registerXxx(app)` plugin shape; the
   `sqlite.transaction(() => doIngest(...))();` rollback-on-throw template;
   the per-row pre-flight check (replace with TRUNCATE+INSERT for `<MOPComplete>`).
@@ -412,8 +382,8 @@ export function ingestMop(handle, ...): IngestResult {
   one transaction; `<MOPDiff>` → UPSERT by id + DELETE rows with
   `delete="true"`. D-MOP-3 reconciliation: after every successful MOP write,
   run the auto-merge subquery `INSERT INTO competitors SELECT ... FROM
-meos_competitors mc WHERE NOT EXISTS (SELECT 1 FROM competitors WHERE
-card_number = mc.card_number)` with `source='meos'` and
+  meos_competitors mc WHERE NOT EXISTS (SELECT 1 FROM competitors WHERE
+  card_number = mc.card_number)` with `source='meos'` and
   `consent_status='pending_first_read'`. If insertions > 0, broadcast
   `wsBroadcast(readoutChannel(competitionId), { type: 'meos_merge', payload: { count: N }, ... })`
   so the readout view's toast picks it up. D-MIP-1 / D-MOP-4: NO auth; the
@@ -426,7 +396,6 @@ card_number = mc.card_number)` with `source='meos'` and
 **Analog:** `apps/edge/src/xml/parse.ts`
 
 **Why this analog:**
-
 - parse.ts already establishes the convention for "normalized output shapes"
   (the `ParsedCourseData` / `ParsedEntryList` discriminated unions) plus
   the helper functions (`toArray`, `asNumber`, `asInt`, `asString`) that
@@ -434,7 +403,6 @@ card_number = mc.card_number)` with `source='meos'` and
   helpers and the same discriminated-union output style.
 
 **Discriminated-union output shape (from xml/parse.ts lines 67-86):**
-
 ```typescript
 export interface ParsedEntryList {
   kind: 'EntryList';
@@ -453,7 +421,6 @@ export type ParsedXml =
 ```
 
 **Normalization helpers (from xml/parse.ts lines 171-200):**
-
 ```typescript
 type RawNode = Record<string, unknown> | undefined | null;
 
@@ -477,12 +444,11 @@ function asInt(x: unknown): number | null {
 ```
 
 **What to copy / what to change:**
-
 - **Copy verbatim:** the `RawNode` type alias; `toArray`/`asString`/`asNumber`/`asInt`
   helpers (consider exporting them from `xml/parse.ts` so we don't fork);
   the discriminated-union `Parsed*` output shape.
 - **Change:** new union members for `ParsedMop = { kind: 'MOPComplete' | 'MOPDiff';
-competitions: ..., classes: ..., clubs: ... }`. XML namespace handling:
+  competitions: ..., classes: ..., clubs: ... }`. XML namespace handling:
   the MOP XSD declares an explicit namespace (`xmlns="http://www.melin.nu/mop"`
   per the v2.0 spec) while the MIP XSD declares
   `xmlns="http://www.melin.nu/mip"`; fast-xml-parser by default strips
@@ -500,7 +466,6 @@ competitions: ..., classes: ..., clubs: ... }`. XML namespace handling:
 **Analog 3 (hand-authored migration co-existence):** `apps/edge/drizzle/0001_append_only_triggers.sql`
 
 **Why these analogs:**
-
 - 0000_initial.sql is the canonical example of the SQL-shape drizzle-kit
   generates: `CREATE TABLE`, `--> statement-breakpoint` separators,
   partial unique indexes on nullable columns.
@@ -509,7 +474,6 @@ competitions: ..., classes: ..., clubs: ... }`. XML namespace handling:
   `meta/_journal.json` ordering (codex C-H1 documented this).
 
 **Existing partial-unique-index pattern (from 0000_initial.sql line 38):**
-
 ```sql
 CREATE UNIQUE INDEX `competitors_card_per_comp`
   ON `competitors` (`competition_id`,`card_number`)
@@ -517,7 +481,6 @@ CREATE UNIQUE INDEX `competitors_card_per_comp`
 ```
 
 **Existing FK + cascade (from 0000_initial.sql lines 33-36):**
-
 ```sql
 CREATE TABLE `competitors` (
   `id` text PRIMARY KEY NOT NULL,
@@ -531,7 +494,6 @@ CREATE TABLE `competitors` (
 ```
 
 **TS schema idiom (from db/schema.ts lines 227-266):**
-
 ```typescript
 export const competitors = sqliteTable(
   'competitors',
@@ -553,7 +515,6 @@ export const competitors = sqliteTable(
 ```
 
 **Hand-authored migration pattern (from 0001_append_only_triggers.sql lines 12-16):**
-
 ```sql
 CREATE TRIGGER IF NOT EXISTS events_no_update BEFORE UPDATE ON events
   BEGIN SELECT RAISE(ABORT, 'events table is append-only'); END;
@@ -563,19 +524,18 @@ CREATE TRIGGER IF NOT EXISTS events_no_delete BEFORE DELETE ON events
 ```
 
 **What to copy / what to change:**
-
 - **Copy verbatim:** the FK + ON DELETE cascade pattern (every new
   competition-scoped table); `--> statement-breakpoint` separators between
   CREATE statements; partial unique indexes on nullable columns; the TS
   table-definition idiom in db/schema.ts.
 - **Change:** the 6 new tables are NOT append-only (they're mutable mirrors —
   D-09 says CRUD is fine for non-event tables), so NO triggers. Use
-  drizzle-kit's `pnpm db:generate` to produce 0002*phase2.sql (do NOT
+  drizzle-kit's `pnpm db:generate` to produce 0002_phase2.sql (do NOT
   hand-author the SQL; let drizzle-kit derive it from the schema.ts
   additions). `eventor_competitors` should use `(family_name, given_name)`
   as a unique key OR a UUID PK plus an index — research/eventor-api-smoke.md
   recommends UUID PK + indexes on `(family_name, given_name)` and `si_card`.
-  `hired_cards` PK = `(competition_id, card_number)` per D-HB-1. `meos*\*`
+  `hired_cards` PK = `(competition_id, card_number)` per D-HB-1. `meos_*`
   tables have NO competition_id FK — MeOS state is global to the bridge
   session, not scoped per-competition (per-competition would require MeOS
   to know our competition ids, which it doesn't).
@@ -587,14 +547,12 @@ CREATE TRIGGER IF NOT EXISTS events_no_delete BEFORE DELETE ON events
 **Analog:** itself — same file, same idiom.
 
 **Why this analog:**
-
 - Drizzle's schema-as-TS is the established pattern. We add 6 new
   `sqliteTable()` calls in the same file, mirroring the column-typing and
   index-declaration conventions already established for `competitors`,
   `events`, `clubs`.
 
 **Existing table-definition idiom (from schema.ts lines 156-167 for `classes`):**
-
 ```typescript
 export const classes = sqliteTable(
   'classes',
@@ -613,7 +571,6 @@ export const classes = sqliteTable(
 **Existing autocomplete-cache table (`clubs`, schema.ts lines 275-278):** the
 closest direct analog for `eventor_clubs` because it's also a mutable
 text-PK-name autocomplete source:
-
 ```typescript
 export const clubs = sqliteTable('clubs', {
   name: text('name').primaryKey(),
@@ -622,7 +579,6 @@ export const clubs = sqliteTable('clubs', {
 ```
 
 **Existing scrub-column convention (from schema.ts lines 227-266 — `competitors`):**
-
 ```typescript
 scrubbedAtMs: integer('scrubbed_at_ms'),
 // + JSDoc: "REQ-PRIV-002 — set when PII columns nulled by plan 17 daily scrub;
@@ -630,7 +586,6 @@ scrubbedAtMs: integer('scrubbed_at_ms'),
 ```
 
 **What to copy / what to change:**
-
 - **Copy verbatim:** the JSDoc header pattern (lock-by references); the
   `text('column_name')` snake_case at the SQL boundary while keeping
   TS field names camelCase; the `(t) => [uniqueIndex(...)]` index declarations.
@@ -661,14 +616,12 @@ scrubbedAtMs: integer('scrubbed_at_ms'),
 **Analog:** itself — same file, same UPDATE-with-subquery pattern.
 
 **Why this analog:**
-
 - The existing `runOnce()` already updates `competitors.name/club/scrubbed_at_ms`
-  with a single UPDATE using `sql\`competition*id IN (SELECT id FROM competitions
+  with a single UPDATE using `sql\`competition_id IN (SELECT id FROM competitions
   WHERE date < ${cutoffDate})\``. The extension adds a second UPDATE
-inside the same function targeting `hired_cards.contact*\*`.
+  inside the same function targeting `hired_cards.contact_*`.
 
 **Existing scrub UPDATE (from retention.ts lines 110-120):**
-
 ```typescript
 const result = handle.db
   .update(competitors)
@@ -684,7 +637,6 @@ return { scrubbed_count: result.changes, cutoff_date: cutoffDate };
 ```
 
 **Existing JSDoc PII-call-out (from retention.ts lines 8-22):**
-
 ```typescript
 // IMPORTANT — what is scrubbed:
 //   - competitors.name (PII per REQ-PRIV-002) → 'Anonymiserad'
@@ -697,7 +649,6 @@ return { scrubbed_count: result.changes, cutoff_date: cutoffDate };
 ```
 
 **What to copy / what to change:**
-
 - **Copy verbatim:** the UPDATE-with-`IN` subquery pattern; the idempotency
   guard (`isNull(scrubbedAtMs)`); the per-row JSDoc PII call-out.
 - **Change:** add a second UPDATE in the same `runOnce()` body:
@@ -705,9 +656,7 @@ return { scrubbed_count: result.changes, cutoff_date: cutoffDate };
   const hiredResult = handle.db
     .update(hiredCards)
     .set({
-      contactName: null,
-      contactPhone: null,
-      contactEmail: null,
+      contactName: null, contactPhone: null, contactEmail: null,
       note: null, // note can carry PII per D-HB-3
     })
     .where(
@@ -733,7 +682,6 @@ return { scrubbed_count: result.changes, cutoff_date: cutoffDate };
 **Analog 2 (debounced autocomplete):** `apps/web/src/lib/components/ClubAutocomplete.svelte`
 
 **Why these analogs:**
-
 - The existing WalkupModal already has the consent + Bricka + Klubb form
   surface. The extension is additive: relabel + new checkbox + expandable
   fieldset + new autocomplete source for the name field.
@@ -742,7 +690,6 @@ return { scrubbed_count: result.changes, cutoff_date: cutoffDate };
   with a new API endpoint (`/api/eventor/lookup?prefix=` or `?si_card=`).
 
 **Existing form-field pattern (from WalkupModal.svelte lines 197-205):**
-
 ```svelte
 <Field label={t('walk.class')} htmlFor="walkup-class">
   <Select id="walkup-class" data-testid="walkup-class" bind:value={classId} required>
@@ -755,7 +702,6 @@ return { scrubbed_count: result.changes, cutoff_date: cutoffDate };
 ```
 
 **Existing 409 error path (from WalkupModal.svelte lines 116-128):**
-
 ```typescript
 try { await createCompetitor({ ... }); close(); }
 catch (e) {
@@ -773,7 +719,6 @@ catch (e) {
 ```
 
 **Existing debounced autocomplete (from ClubAutocomplete.svelte lines 30-46):**
-
 ```typescript
 function scheduleFetch(prefix: string): void {
   if (debounceTimer) clearTimeout(debounceTimer);
@@ -785,7 +730,9 @@ function scheduleFetch(prefix: string): void {
 async function doFetch(prefix: string): Promise<void> {
   try {
     const trimmed = prefix.trim();
-    const res = trimmed.length > 0 ? await listClubs(trimmed, 50) : await listClubs(undefined, 50);
+    const res = trimmed.length > 0
+      ? await listClubs(trimmed, 50)
+      : await listClubs(undefined, 50);
     suggestions = res.clubs.map((c) => c.name);
   } catch {
     suggestions = []; // Soft fail — autocomplete is non-essential.
@@ -794,7 +741,6 @@ async function doFetch(prefix: string): Promise<void> {
 ```
 
 **Existing pre-fill hint pattern (from WalkupModal.svelte lines 53-69 — cardHolderHint):**
-
 ```typescript
 interface Props {
   cardNumber: number;
@@ -808,7 +754,6 @@ let name = $state(cardHolderHint && cardHolderHint.length > 0 ? cardHolderHint :
 ```
 
 **What to copy / what to change:**
-
 - **Copy verbatim:** the `Field` + `Input` + `Select` form layout; the
   `consent-row` checkbox pattern (replicate for Hyrbricka); the `cardHolderHint`
   pre-fill pattern (add `eventorHint` for the Eventor lookup); the
@@ -840,14 +785,12 @@ let name = $state(cardHolderHint && cardHolderHint.length > 0 ? cardHolderHint :
 `pendingConsentToast` pattern.
 
 **Why this analog:**
-
 - ReadoutView already subscribes to the WS readoutChannel and dispatches on
   envelope type. The Hyrbricka finish-readout toast is structurally
   identical to the existing C-M4 consent toast: a derived state on each
   card_read that fires a one-time toast.
 
 **Existing WS subscribe (from ReadoutView.svelte lines 310-320):**
-
 ```typescript
 function connectWs(): void {
   if (typeof window === 'undefined') return;
@@ -864,7 +807,6 @@ function connectWs(): void {
 
 **Existing card_read side-effect handler (the C-M4 consent toast pattern —
 ReadoutView.svelte lines 416-437):**
-
 ```typescript
 // C-M4: first card_read for a competitor whose consent_status ===
 // 'pending_first_read' surfaces the one-time confirmation toast.
@@ -886,7 +828,6 @@ if (top && top.competitor_id && !top.unmatched && pendingConsentToast === null) 
 ```
 
 **Existing toast helper (from ReadoutView.svelte lines 570-577):**
-
 ```typescript
 function toast(msg: string): void {
   toastMessage = msg;
@@ -898,7 +839,6 @@ function toast(msg: string): void {
 ```
 
 **Toast render (from ReadoutView.svelte lines 668-670):**
-
 ```svelte
 {#if toastMessage}
   <div class="toast" role="status" data-testid="toast">{toastMessage}</div>
@@ -906,7 +846,6 @@ function toast(msg: string): void {
 ```
 
 **Existing modal-on-derived-state render (ReadoutView.svelte lines 681-688 — pendingConsentToast):**
-
 ```svelte
 {#if pendingConsentToast}
   <ConsentConfirmationToast
@@ -919,7 +858,6 @@ function toast(msg: string): void {
 ```
 
 **What to copy / what to change:**
-
 - **Copy verbatim:** the WS connect/subscribe shape; the C-M4
   pendingConsentToast pattern (extend with `pendingHyrbrickaToast`); the
   `dismissedConsentForCompetitorIds: Set<string>` pattern (mirror as
@@ -928,7 +866,7 @@ function toast(msg: string): void {
 - **Change:**
   - Add `pendingHyrbrickaToast: { cardNumber, contactName, contactPhone, ... } | null`
     state. On every card_read, query `EXISTS (SELECT 1 FROM hired_cards
-WHERE card_number = ? AND returned_at_ms IS NULL)` via a new endpoint
+    WHERE card_number = ? AND returned_at_ms IS NULL)` via a new endpoint
     `GET /api/competitions/:id/hired-cards/:cardNumber` (or include in
     `/readout` response — single source of truth). If hit AND
     `!returnedHiredCardNumbers.has(cardNumber)`, set the toast.
@@ -951,7 +889,6 @@ WHERE card_number = ? AND returned_at_ms IS NULL)` via a new endpoint
 `apps/edge/README.md` (operator deployment guidance per ADR-0008).
 
 **Why no analog:**
-
 - `docs/` today contains demo HTML, screenshots, and event fixtures; no
   Markdown ops runbook exists. The closest tone is `apps/edge/README.md`
   (referenced from ADR-0008 line 96 for "disk-encryption advice in
@@ -959,7 +896,6 @@ WHERE card_number = ? AND returned_at_ms IS NULL)` via a new endpoint
   event-procedural.
 
 **Suggested skeleton (operator-procedural format):**
-
 ```markdown
 # Parallel MeOS + fartOLa runbook
 
@@ -973,7 +909,7 @@ with MeOS as parallel safety backup (locked decision #2).
 2. Power on the MeOS laptop. Connect both laptops to the same LAN switch.
    Verify ping: `ping <fartola-laptop-ip>` from MeOS.
 3. On fartOLa: `fartola --port 3000 --bind-host 0.0.0.0 --allow-lan
---competition-id <id>`. Confirm the readout page is reachable at
+   --competition-id <id>`. Confirm the readout page is reachable at
    `http://<fartola-ip>:3000/competition/<id>/readout` from the MeOS laptop.
 4. On MeOS: open Anmälningsläge. Tools → Online → Configure MIP+MOP:
    - MIP URL: `http://<fartola-ip>:3000/mip` (no password — closed club LAN).
@@ -1006,7 +942,6 @@ with MeOS as parallel safety backup (locked decision #2).
 ```
 
 **What to copy / what to change:**
-
 - **Copy:** the project's existing Conventional-Commits headline tone +
   Swedish-first audience framing (Phase 1 D-02). Use the same Markdown
   heading hierarchy as `.planning/phases/01-single-laptop-training-mvp/01-CONTEXT.md`.
@@ -1021,14 +956,12 @@ with MeOS as parallel safety backup (locked decision #2).
 **Analog:** `.planning/adr/0008-pii-in-append-only-event-log.md`
 
 **Why this analog:**
-
 - ADR-0008 is the most recent ADR and follows the same `MADR 3.0` template
   used across `.planning/adr/`. ADR-0009 is structurally similar: a
   trade-off ADR (privacy vs. operational utility) requested by a parallel
   agent's research output (`.planning/research/eventor-api-smoke.md`).
 
 **Existing frontmatter (from 0008 lines 1-7):**
-
 ```markdown
 ---
 status: accepted
@@ -1040,63 +973,53 @@ informed: []
 ```
 
 **Existing structure (0008 lines 9-108):**
-
 ```markdown
 # {Title}
 
 ## Context and Problem Statement
-
 {2-3 paragraphs}
 
 ## Decision Drivers
-
 - {bulleted, evidence-anchored}
 
 ## Considered Options
-
 - **A. {option}.** {explanation + trade-offs}
 - **B. {option}.** ...
 - **C. {option}.** ...
 
 ## Decision Outcome
-
 Chosen option: **{letter} — {summary}.**
 {paragraph explaining the choice}
 
 The {pattern at the implementation site is locked here}.
 
 The residual {trade-off} is mitigated by:
-
 1. ...
 2. ...
 3. ...
 
 ### Consequences
-
 - Good, because ...
 - Good, because ...
 - Bad, because ...
 - Bad, because ...
 
 ### Confirmation
-
 - `path/to/file.ts` comment block in lines N-M documents the trade-off at
   the implementation site.
 - ...
 - This ADR is the cross-reference target from REQ-XXX.
 
 ## More Information
-
 - REQ-XXX — `.planning/REQUIREMENTS.md`
 - Implementation: `path/to/file.ts`
 - Originating: {issue / PR / research output}
 ```
 
 **What to copy / what to change:**
-
 - **Copy verbatim:** the MADR frontmatter; the section headings (Context,
   Decision Drivers, Considered Options, Decision Outcome with Consequences
-  - Confirmation, More Information); the "residual exposure is mitigated by:
+  + Confirmation, More Information); the "residual exposure is mitigated by:
   1. 2. 3." pattern.
 - **Change:** title is "Eventor löpardatabasen cached locally for walk-up
   autocomplete". Context covers the 252 919 PII records (name + birth
@@ -1120,7 +1043,6 @@ The residual {trade-off} is mitigated by:
 ### S-1: Fastify route plugin shape (apply to: mip.ts, mop.ts)
 
 **Source:** `apps/edge/src/routes/clubs.ts` (smallest example)
-
 ```typescript
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -1134,7 +1056,6 @@ export default async function registerXxx(app: FastifyInstance): Promise<void> {
   });
 }
 ```
-
 **And:** wire the plugin in `apps/edge/src/server.ts` via `await app.register(registerXxx);`
 **Per ADR-0002 + ADR-0007:** Fastify is the locked HTTP framework; do not
 introduce express/koa.
@@ -1142,7 +1063,6 @@ introduce express/koa.
 ### S-2: Transactional DB ingest (apply to: cache.ts, mop.ts)
 
 **Source:** `apps/edge/src/ingest/entryImport.ts` lines 157-173
-
 ```typescript
 function doIngest(handle, ...) { /* per-row work inside */ }
 
@@ -1155,7 +1075,6 @@ export function ingestXxx(handle, ..., opts: { outerTransaction?: boolean } = {}
   return result;
 }
 ```
-
 **Why:** rollback-on-throw atomicity; supports both standalone and
 `from-wizard`-style atomic compositions. Phase 2.0 only needs the
 standalone path, but keep the `opts.outerTransaction` seam for Phase 2.1.
@@ -1163,7 +1082,6 @@ standalone path, but keep the `opts.outerTransaction` seam for Phase 2.1.
 ### S-3: events table inserts via `app.fartolaNextLocalSeq` (apply to: routes that emit events)
 
 **Source:** `apps/edge/src/routes/competitors.ts` lines 220-241
-
 ```typescript
 seq = app.fartolaNextLocalSeq(app.fartolaDb, app.fartolaNodeId);
 app.fartolaDb.db
@@ -1178,7 +1096,6 @@ app.fartolaDb.db
   })
   .run();
 ```
-
 **Why:** PATTERNS S-2 injection — tests swap in throwing fn to verify
 transactional atomicity. MIP needs this if Plan 3 ever extends to emit
 synthetic events for state changes (D-MIP-3 says it should NOT, but a
@@ -1187,7 +1104,6 @@ future card-replace UPDATE may).
 ### S-4: PATTERNS S-2 broadcast wiring (apply to: mop.ts — D-MOP-3 toast)
 
 **Source:** `apps/edge/src/routes/competitors.ts` lines 269-282
-
 ```typescript
 app.wsBroadcast(readoutChannel(competition_id), {
   type: 'card_bound',  // or 'meos_merge', 'hired_card_marked', etc.
@@ -1196,14 +1112,12 @@ app.wsBroadcast(readoutChannel(competition_id), {
 });
 app.projectionStore.markDirty(competition_id);
 ```
-
 **Why:** broadcast AFTER commit so subscribers only see committed state.
 markDirty triggers debounced results recompute.
 
 ### S-5: Drizzle pre-flight checks before transaction (apply to: cache.ts, mop.ts)
 
 **Source:** `apps/edge/src/routes/competitors.ts` lines 145-204
-
 - Verify FK target exists → return 404
 - Verify partial-unique-index won't collide → return 409 with
   `existing_xxx_id` for structured client handling
@@ -1224,7 +1138,6 @@ DTOs in `@fartola/shared-types` use snake_case (`competition_id`, `card_number`)
 ### S-7: T-FILE-IMPORT XML parser hardening (apply to: cache.ts, shared.ts)
 
 **Source:** `apps/edge/src/xml/parse.ts` lines 93-124
-
 - `processEntities: false` on every `XMLParser` instance
 - DOCTYPE regex pre-flight → throw on match
 - ENTITY regex pre-flight → throw on match
@@ -1238,7 +1151,6 @@ any XML ingest that doesn't match this hardening.
 **Source:** Phase 1 D-02 — all user-facing strings as i18next keys with
 `sv.json` + `en.json` populated from day one. New Phase 2.0 keys (per
 Claude's Discretion in 02-CONTEXT.md):
-
 - `walk.hyrbricka` / `walk.hyrbricka.contact.*` (Hyrbricka checkbox + fields)
 - `walk.bana` (replaces / aliases `walk.class`)
 - `readout.hyrbricka.title` (⚠️ Hyrbricka toast)
@@ -1253,9 +1165,9 @@ UI-SPEC can polish wording before plan execution.
 
 ## No Analog Found
 
-| File                                | Role          | Data Flow | Reason                                                                         |
-| ----------------------------------- | ------------- | --------- | ------------------------------------------------------------------------------ |
-| `docs/ops/parallel-meos-runbook.md` | Operator docs | n/a       | First operator-facing runbook in `docs/`. Use README.md tone + skeleton above. |
+| File | Role | Data Flow | Reason |
+|---|---|---|---|
+| `docs/ops/parallel-meos-runbook.md` | Operator docs | n/a | First operator-facing runbook in `docs/`. Use README.md tone + skeleton above. |
 
 (All other files have at least a role-match analog in the Phase 1 codebase.)
 
@@ -1264,7 +1176,6 @@ UI-SPEC can polish wording before plan execution.
 ## Metadata
 
 **Analog search scope:**
-
 - `apps/edge/src/` (server, routes, db, ingest, xml, privacy, backup, ws, si, projection, bin)
 - `apps/web/src/lib/` (screens, components)
 - `apps/edge/drizzle/` (migrations)
@@ -1277,7 +1188,6 @@ files, 9 ADRs.
 **Pattern extraction date:** 2026-05-16 22:10 GMT+2.
 
 **Cross-references for the planner:**
-
 - 02-CONTEXT.md `<canonical_refs>` Phase 1 code lists the same target files
   with shorter rationales — this PATTERNS.md adds the concrete code
   excerpts.

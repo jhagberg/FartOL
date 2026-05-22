@@ -30,7 +30,7 @@ Chosen option: **standards-first**, with these commitments:
 - **v2 (Phase 4):** ROC protocol receiver, SIRAP TCP server, MeOS TCP
   input output (side-car mode), Livelox export.
 
-Side-car mode (MeOS TCP input _output_) is the migration trick: a
+Side-car mode (MeOS TCP input *output*) is the migration trick: a
 club can run MeOS as the primary secretariat and this system as a
 parallel kids'-finish/live-board service, building trust before
 switching primary systems.

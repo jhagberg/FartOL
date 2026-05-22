@@ -27,7 +27,7 @@ into place. Offline-first works naturally; multi-secretary collaboration
 works naturally; scaling to O-ringen works naturally — because conflicts
 that other systems fight against simply cannot occur in this model.
 
-Configuration data that _can_ legitimately conflict (start lists, class
+Configuration data that *can* legitimately conflict (start lists, class
 definitions, course assignments) is a smaller surface and is handled
 separately via CRDT-style edits (Yjs) on the secretariat client.
 
@@ -162,18 +162,18 @@ tests, exercise the full event pipeline without hardware.
 
 ## Tech stack — chosen
 
-| Layer             | Choice                              | Reason                                             |
-| ----------------- | ----------------------------------- | -------------------------------------------------- |
-| Edge backend      | Node.js 22 LTS + Fastify            | Shared TS types with frontend; mature `serialport` |
-| Edge DB           | SQLite via `better-sqlite3`         | Synchronous, ~10k writes/sec on Pi 5               |
-| Central backend   | Node.js + Fastify                   | Symmetric with edge; no language switch            |
-| Central DB        | Postgres 16                         | Mature, partitionable, Electric-compatible         |
-| Read sync         | ElectricSQL Shapes                  | GA Mar 2025, Durable Streams Dec 2025              |
-| Collab edits      | Yjs                                 | Only for shared forms, not for punches             |
-| Frontend          | SvelteKit (PWA)                     | Smaller bundles than React, important in forest 4G |
-| Mobile (optional) | Capacitor wrapper of PWA            | Only if iOS-as-operator becomes critical           |
-| Printing          | `node-escpos` + `escpos-printer-db` | Open ESC/POS, avoids 72mm format hell              |
-| Edge hardware     | Raspberry Pi 5 (4 GB) + PiJuice UPS | ~1 200 SEK, Linux, USB hub for SI                  |
+| Layer | Choice | Reason |
+|---|---|---|
+| Edge backend | Node.js 22 LTS + Fastify | Shared TS types with frontend; mature `serialport` |
+| Edge DB | SQLite via `better-sqlite3` | Synchronous, ~10k writes/sec on Pi 5 |
+| Central backend | Node.js + Fastify | Symmetric with edge; no language switch |
+| Central DB | Postgres 16 | Mature, partitionable, Electric-compatible |
+| Read sync | ElectricSQL Shapes | GA Mar 2025, Durable Streams Dec 2025 |
+| Collab edits | Yjs | Only for shared forms, not for punches |
+| Frontend | SvelteKit (PWA) | Smaller bundles than React, important in forest 4G |
+| Mobile (optional) | Capacitor wrapper of PWA | Only if iOS-as-operator becomes critical |
+| Printing | `node-escpos` + `escpos-printer-db` | Open ESC/POS, avoids 72mm format hell |
+| Edge hardware | Raspberry Pi 5 (4 GB) + PiJuice UPS | ~1 200 SEK, Linux, USB hub for SI |
 
 ### Tech stack — not chosen, and why
 

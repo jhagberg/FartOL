@@ -18,15 +18,15 @@ created: 2026-05-14
 
 ## Design System
 
-| Property                         | Value                                                                                                                                                                                                                                                                                                    |
-| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Tool                             | none (manual tokens — SvelteKit is not in the shadcn React ecosystem)                                                                                                                                                                                                                                    |
-| Preset                           | not applicable                                                                                                                                                                                                                                                                                           |
-| Component library                | none — hand-rolled Svelte components against the token contract below. Skeleton / shadcn-svelte explicitly NOT adopted in Phase 1 (CONTEXT.md "Claude's Discretion" listed them as candidates; the Claude Design prototype proved native CSS is sufficient).                                             |
-| Icon library                     | inline SVG only. The brand mark is a hand-drawn orienteering control flag (white-and-orange rotated diamond, locked in chat1.md). Status glyphs (`✓ ✗ ▢ ⚠ ★ ▲ ⤢`) are unicode characters by design — they print cleanly on a thermal printer. NO icon library dependency.                                |
-| Font (default)                   | IBM Plex Sans (UI) + IBM Plex Mono (numbers / SI / splits). Both axes 400/500/600/700 weights. Loaded via Google Fonts subset with `display=swap`. Tabular figures + slashed zero are LOCKED requirements — chat1.md rationale: SI card numbers and split times must align in columns and `0 ≠ O`.       |
+| Property | Value |
+|----------|-------|
+| Tool | none (manual tokens — SvelteKit is not in the shadcn React ecosystem) |
+| Preset | not applicable |
+| Component library | none — hand-rolled Svelte components against the token contract below. Skeleton / shadcn-svelte explicitly NOT adopted in Phase 1 (CONTEXT.md "Claude's Discretion" listed them as candidates; the Claude Design prototype proved native CSS is sufficient). |
+| Icon library | inline SVG only. The brand mark is a hand-drawn orienteering control flag (white-and-orange rotated diamond, locked in chat1.md). Status glyphs (`✓ ✗ ▢ ⚠ ★ ▲ ⤢`) are unicode characters by design — they print cleanly on a thermal printer. NO icon library dependency. |
+| Font (default) | IBM Plex Sans (UI) + IBM Plex Mono (numbers / SI / splits). Both axes 400/500/600/700 weights. Loaded via Google Fonts subset with `display=swap`. Tabular figures + slashed zero are LOCKED requirements — chat1.md rationale: SI card numbers and split times must align in columns and `0 ≠ O`. |
 | Font (operator-runtime override) | A `font-pair` runtime toggle persists to localStorage. Four pairs: `plex` (default), `geist`, `source` (Source Sans 3 + JetBrains Mono), `atkinson` (Atkinson Hyperlegible + JetBrains Mono — the bright-sun accessibility pair, REQ-UI-007). All four pairs MUST be preloaded so the toggle is instant. |
-| Color space                      | `oklch()` for all design tokens. Locked in styles.css. NOT hex (except in `contrast-high` overrides where pure black/white is intentional). Fallback to `color-mix(in srgb, ...)` for soft halos.                                                                                                        |
+| Color space | `oklch()` for all design tokens. Locked in styles.css. NOT hex (except in `contrast-high` overrides where pure black/white is intentional). Fallback to `color-mix(in srgb, ...)` for soft halos. |
 
 **Library policy:** Do not introduce a UI component library in Phase 1. The
 prototype demonstrates the design works against ~400 lines of native CSS;
@@ -40,29 +40,29 @@ demand it.
 
 Declared values (multiples of 4, sourced from prototype CSS literals):
 
-| Token | Value | Usage                                                              |
-| ----- | ----- | ------------------------------------------------------------------ |
-| 2xs   | 4px   | Inline gap (status pill icon to label, brand mark to wordmark)     |
-| xs    | 8px   | Compact element spacing (nav-item gap, button icon→label gap)      |
-| sm    | 12px  | Card-head element gap, station-card row padding                    |
-| md    | 16px  | Default element spacing (modal field gap, primary input padding-x) |
-| lg    | 18px  | Card-body padding, readout column gap                              |
-| xl    | 24px  | Content padding (`.content`), large hero outer padding             |
-| 2xl   | 32px  | Section-level break (hero internal padding-y)                      |
-| 3xl   | 48px  | Wizard / modal generous breathing                                  |
-| 4xl   | 64px  | Page-level (reserved; not used in Phase 1)                         |
+| Token | Value | Usage |
+|-------|-------|-------|
+| 2xs | 4px | Inline gap (status pill icon to label, brand mark to wordmark) |
+| xs | 8px | Compact element spacing (nav-item gap, button icon→label gap) |
+| sm | 12px | Card-head element gap, station-card row padding |
+| md | 16px | Default element spacing (modal field gap, primary input padding-x) |
+| lg | 18px | Card-body padding, readout column gap |
+| xl | 24px | Content padding (`.content`), large hero outer padding |
+| 2xl | 32px | Section-level break (hero internal padding-y) |
+| 3xl | 48px | Wizard / modal generous breathing |
+| 4xl | 64px | Page-level (reserved; not used in Phase 1) |
 
 **Locked layout constants:**
 
-| Constant                    | Value                                  | Source                                                                                                                             |
-| --------------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `--hit` (min touch target)  | **44px**                               | REQ-UI-007 + chat2.md responsive notes. All buttons, nav-items, inputs, selects, and history rows must satisfy `min-height: 44px`. |
-| Sidebar width               | 240px                                  | `grid-template-columns: 240px 1fr` (locked)                                                                                        |
-| Top bar height              | 56px                                   | `.topbar` fixed                                                                                                                    |
-| Readout right rail          | 380px (1280px+) → 340px (below 1280px) | `.readout` grid                                                                                                                    |
-| Receipt paper width         | 300px on screen / 80mm physical        | ESC/POS thermal column                                                                                                             |
-| Border radius `--radius`    | 8px                                    | inputs, buttons, small cards                                                                                                       |
-| Border radius `--radius-lg` | 12px                                   | cards, modals (modal uses 14px override)                                                                                           |
+| Constant | Value | Source |
+|----------|-------|--------|
+| `--hit` (min touch target) | **44px** | REQ-UI-007 + chat2.md responsive notes. All buttons, nav-items, inputs, selects, and history rows must satisfy `min-height: 44px`. |
+| Sidebar width | 240px | `grid-template-columns: 240px 1fr` (locked) |
+| Top bar height | 56px | `.topbar` fixed |
+| Readout right rail | 380px (1280px+) → 340px (below 1280px) | `.readout` grid |
+| Receipt paper width | 300px on screen / 80mm physical | ESC/POS thermal column |
+| Border radius `--radius` | 8px | inputs, buttons, small cards |
+| Border radius `--radius-lg` | 12px | cards, modals (modal uses 14px override) |
 
 **Exceptions:** Receipt internals use sub-grid (1.5px dashed separators,
 1px row padding) and are exempt from the 4px scale — the receipt is
@@ -70,12 +70,12 @@ emulating an 80mm thermal column, not the UI canvas.
 
 **Responsive breakpoints (Phase 1 — DESKTOP FIRST, LOCKED):**
 
-| Breakpoint                 | Behavior                                 | Phase                    |
-| -------------------------- | ---------------------------------------- | ------------------------ |
-| ≥1280px                    | Full readout grid (1fr / 380px)          | Phase 1 (primary target) |
-| 1024–1279px                | Side rail shrinks to 340px               | Phase 1                  |
-| 768–1023px (iPad portrait) | Acceptable degraded but not optimized    | Phase 1 (must not break) |
-| <768px                     | Out of scope — Phase 1.5 responsive pass | DEFERRED                 |
+| Breakpoint | Behavior | Phase |
+|------------|----------|-------|
+| ≥1280px | Full readout grid (1fr / 380px) | Phase 1 (primary target) |
+| 1024–1279px | Side rail shrinks to 340px | Phase 1 |
+| 768–1023px (iPad portrait) | Acceptable degraded but not optimized | Phase 1 (must not break) |
+| <768px | Out of scope — Phase 1.5 responsive pass | DEFERRED |
 
 The chat2.md exchange asked whether phone/tablet work was in scope.
 Decision (locked here): **Phase 1 ships desktop-first**. REQ-UI-001 says
@@ -92,16 +92,15 @@ surface — it lives on a 13"+ laptop or all-in-one PC by the finish line.
 Exactly **4 sizes** and **2 weights** (plus `font-weight: 700` reserved
 for receipt headings — see "Receipt-specific typography" below):
 
-| Role    | Size    | Weight  | Line Height | Family  | Usage                                                                                                                                      |
-| ------- | ------- | ------- | ----------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Caption | 12px    | 500     | 1.4         | UI sans | `.brand-tag`, `.station-card` rows, `.faint` mono labels, nav section header, status pill text                                             |
-| Label   | 14px    | 500     | 1.45        | UI sans | Button text, field labels, nav-item, history row meta, breadcrumb, table body                                                              |
-| Body    | 16px    | 400     | 1.45        | UI sans | Default paragraph, input value, modal body, drop-zone CTA                                                                                  |
-| Heading | 22px    | 600     | 1.2         | UI sans | `.h1`, brand wordmark, runner name (28px override in readout — see below)                                                                  |
-| Display | 28–44px | 500–600 | 1.0         | Mix     | `.h0` page title (28px, 600), runner card number (44px mono, 500), runner result time (36px mono, 500). Density "low" uses 64px/34px/52px. |
+| Role | Size | Weight | Line Height | Family | Usage |
+|------|------|--------|-------------|--------|-------|
+| Caption | 12px | 500 | 1.4 | UI sans | `.brand-tag`, `.station-card` rows, `.faint` mono labels, nav section header, status pill text |
+| Label | 14px | 500 | 1.45 | UI sans | Button text, field labels, nav-item, history row meta, breadcrumb, table body |
+| Body | 16px | 400 | 1.45 | UI sans | Default paragraph, input value, modal body, drop-zone CTA |
+| Heading | 22px | 600 | 1.2 | UI sans | `.h1`, brand wordmark, runner name (28px override in readout — see below) |
+| Display | 28–44px | 500–600 | 1.0 | Mix | `.h0` page title (28px, 600), runner card number (44px mono, 500), runner result time (36px mono, 500). Density "low" uses 64px/34px/52px. |
 
 **Letter spacing:**
-
 - Display / heading: `-0.01em` to `-0.02em` (Plex/Geist tight)
 - Caption uppercase labels: `0.06em` to `0.08em`
 - Mono numbers: 0 (use built-in tracking)
@@ -113,13 +112,13 @@ Implemented as the `.mono` utility class. Locked.
 **Receipt-specific typography** (deviates from main UI scale — the receipt
 mimics an 80mm ESC/POS thermal column, not the screen):
 
-| Element              | Size                       | Weight |
-| -------------------- | -------------------------- | ------ |
-| `.rcpt-title`        | 13px                       | 700    |
-| receipt body         | 11.5px                     | 400    |
-| receipt total        | 14px                       | 700    |
-| receipt foot         | 10.5px                     | 400    |
-| receipt mono columns | 11.5px (kids splits 9.5px) | 400    |
+| Element | Size | Weight |
+|---------|------|--------|
+| `.rcpt-title` | 13px | 700 |
+| receipt body | 11.5px | 400 |
+| receipt total | 14px | 700 |
+| receipt foot | 10.5px | 400 |
+| receipt mono columns | 11.5px (kids splits 9.5px) | 400 |
 
 These are intentionally smaller than the UI minimum — the receipt is a
 **visual emulation of paper output**, not part of the operator UI hit
@@ -135,32 +134,32 @@ canonical.
 
 ### 60 / 30 / 10 surface split
 
-| Role            | Token         | Value (oklch)          | Approx hex               | Usage                                                   |
-| --------------- | ------------- | ---------------------- | ------------------------ | ------------------------------------------------------- |
-| Dominant (60%)  | `--bg`        | `oklch(0.98 0.005 90)` | `#fafaf7`                | App background, content canvas                          |
-| Secondary (30%) | `--bg-elev`   | `oklch(1 0 0)`         | `#ffffff`                | Cards, sidebar, modal, station-card, input fill         |
-| Secondary alt   | `--bg-sunken` | `oklch(0.96 0.006 90)` | `#f4f3ef`                | Drop-zone, modal foot, table headers, kbd, hover ground |
-| Accent (10%)    | `--accent`    | `oklch(0.50 0.08 145)` | `#2f7c4f` (forest green) | RESERVED LIST BELOW                                     |
-| Destructive     | `--dnf`       | `oklch(0.55 0.18 25)`  | `#c34b3a`                | DNF status, unknown-card warning, danger button         |
+| Role | Token | Value (oklch) | Approx hex | Usage |
+|------|-------|---------------|------------|-------|
+| Dominant (60%) | `--bg` | `oklch(0.98 0.005 90)` | `#fafaf7` | App background, content canvas |
+| Secondary (30%) | `--bg-elev` | `oklch(1 0 0)` | `#ffffff` | Cards, sidebar, modal, station-card, input fill |
+| Secondary alt | `--bg-sunken` | `oklch(0.96 0.006 90)` | `#f4f3ef` | Drop-zone, modal foot, table headers, kbd, hover ground |
+| Accent (10%) | `--accent` | `oklch(0.50 0.08 145)` | `#2f7c4f` (forest green) | RESERVED LIST BELOW |
+| Destructive | `--dnf` | `oklch(0.55 0.18 25)` | `#c34b3a` | DNF status, unknown-card warning, danger button |
 
 ### Foreground tokens
 
-| Token             | Value                  | Hex       | Usage                                                 |
-| ----------------- | ---------------------- | --------- | ----------------------------------------------------- |
-| `--fg`            | `oklch(0.22 0.01 240)` | `#26282f` | Default body text, headings                           |
-| `--fg-muted`      | `oklch(0.50 0.01 240)` | `#74767c` | Secondary labels, nav-item idle, faint mono, table th |
-| `--fg-faint`      | `oklch(0.68 0.01 240)` | `#a2a4a9` | Tertiary labels, kbd text, nav section header         |
-| `--border`        | `oklch(0.90 0.005 90)` | `#e3e1de` | Card border, table row, sidebar divider               |
-| `--border-strong` | `oklch(0.82 0.005 90)` | `#cdcbc6` | Input border, button border (default variant)         |
+| Token | Value | Hex | Usage |
+|-------|-------|-----|-------|
+| `--fg` | `oklch(0.22 0.01 240)` | `#26282f` | Default body text, headings |
+| `--fg-muted` | `oklch(0.50 0.01 240)` | `#74767c` | Secondary labels, nav-item idle, faint mono, table th |
+| `--fg-faint` | `oklch(0.68 0.01 240)` | `#a2a4a9` | Tertiary labels, kbd text, nav section header |
+| `--border` | `oklch(0.90 0.005 90)` | `#e3e1de` | Card border, table row, sidebar divider |
+| `--border-strong` | `oklch(0.82 0.005 90)` | `#cdcbc6` | Input border, button border (default variant) |
 
 ### Status colors (LOCKED by brief — chat1.md, design-brief.md)
 
-| Status      | Foreground                       | Soft fill     | Hex                   | Usage                                                                      |
-| ----------- | -------------------------------- | ------------- | --------------------- | -------------------------------------------------------------------------- |
-| OK (green)  | `--ok` `oklch(0.55 0.13 145)`    | `--ok-soft`   | `#3a8a4f` / `#d8efdf` | Status pill OK, finish punch ✓, station online dot, "i mål" badge          |
-| MP (amber)  | `--mp` `oklch(0.70 0.15 75)`     | `--mp-soft`   | `#c98a2b` / `#f3e6c8` | Status pill MP (mispunch), missing-control highlight                       |
-| DNF (red)   | `--dnf` `oklch(0.55 0.18 25)`    | `--dnf-soft`  | `#c34b3a` / `#f0d4cf` | Status pill DNF, walk-up "unknown card" warning, destructive button border |
-| PEND (gray) | `--pend` `oklch(0.70 0.005 240)` | `--pend-soft` | `#a8aab0` / `#e8e9eb` | Status pill PEND, waiting-for-finish rows                                  |
+| Status | Foreground | Soft fill | Hex | Usage |
+|--------|------------|-----------|-----|-------|
+| OK (green) | `--ok` `oklch(0.55 0.13 145)` | `--ok-soft` | `#3a8a4f` / `#d8efdf` | Status pill OK, finish punch ✓, station online dot, "i mål" badge |
+| MP (amber) | `--mp` `oklch(0.70 0.15 75)` | `--mp-soft` | `#c98a2b` / `#f3e6c8` | Status pill MP (mispunch), missing-control highlight |
+| DNF (red) | `--dnf` `oklch(0.55 0.18 25)` | `--dnf-soft` | `#c34b3a` / `#f0d4cf` | Status pill DNF, walk-up "unknown card" warning, destructive button border |
+| PEND (gray) | `--pend` `oklch(0.70 0.005 240)` | `--pend-soft` | `#a8aab0` / `#e8e9eb` | Status pill PEND, waiting-for-finish rows |
 
 These four are NOT tweakable. The accent palette IS tweakable (next
 section); status colors stay fixed because they signal life-or-death
@@ -192,17 +191,16 @@ OWN palette).
 **Accent runtime overrides** (operator-changeable via Tweaks panel,
 localStorage-persisted):
 
-| Variant            | Token override         | Use case                         |
-| ------------------ | ---------------------- | -------------------------------- |
-| `forest` (default) | `oklch(0.50 0.08 145)` | Default. Orienteering map vibe.  |
-| `blue`             | `oklch(0.50 0.10 245)` | Club preference / brand override |
-| `magenta`          | `oklch(0.50 0.13 330)` | Club preference / brand override |
-| `charcoal`         | `oklch(0.30 0.01 240)` | Mono printable / understated     |
+| Variant | Token override | Use case |
+|---------|---------------|----------|
+| `forest` (default) | `oklch(0.50 0.08 145)` | Default. Orienteering map vibe. |
+| `blue` | `oklch(0.50 0.10 245)` | Club preference / brand override |
+| `magenta` | `oklch(0.50 0.13 330)` | Club preference / brand override |
+| `charcoal` | `oklch(0.30 0.01 240)` | Mono printable / understated |
 
 ### High-contrast bright-sun mode (REQ-UI-007)
 
 Operator toggle. When `.contrast-high` is applied to the root:
-
 - All backgrounds → pure `#ffffff` or `#f1f1f1`
 - All foregrounds → pure `#000000`
 - All borders → pure `#000000` (1px)
@@ -226,45 +224,45 @@ an i18next key — NO hardcoded UI strings. The canonical catalog lives in
 
 Key copywriting decisions locked here so the executor doesn't drift:
 
-| Element             | Swedish (canonical)               | English (secondary)                  | Source             |
-| ------------------- | --------------------------------- | ------------------------------------ | ------------------ |
-| Primary CTA (home)  | `+ Ny tävling`                    | `+ New competition`                  | i18n.js `home.new` |
-| Wizard click 1 CTA  | `Nästa →` (when valid)            | `Next →`                             | `wiz.next`         |
-| Wizard click 2 CTA  | `Nästa →` (after import)          | `Next →`                             | `wiz.next`         |
-| Wizard click 3 CTA  | `▶ Starta avläsning`              | `▶ Start readout`                    | `wiz.start`        |
-| Readout primary CTA | `🖨 Skriv ut kvitto`              | `🖨 Print receipt`                   | `ro.print`         |
-| Walk-up primary CTA | `Spara och bind`                  | `Save and bind`                      | `walk.save`        |
-| Live results CTA    | `⤢ Helskärm` / `⤓ Stäng helskärm` | `⤢ Fullscreen` / `⤓ Exit fullscreen` | `res.fullscreen`   |
+| Element | Swedish (canonical) | English (secondary) | Source |
+|---------|---------------------|---------------------|--------|
+| Primary CTA (home) | `+ Ny tävling` | `+ New competition` | i18n.js `home.new` |
+| Wizard click 1 CTA | `Nästa →` (when valid) | `Next →` | `wiz.next` |
+| Wizard click 2 CTA | `Nästa →` (after import) | `Next →` | `wiz.next` |
+| Wizard click 3 CTA | `▶ Starta avläsning` | `▶ Start readout` | `wiz.start` |
+| Readout primary CTA | `🖨 Skriv ut kvitto` | `🖨 Print receipt` | `ro.print` |
+| Walk-up primary CTA | `Spara och bind` | `Save and bind` | `walk.save` |
+| Live results CTA | `⤢ Helskärm` / `⤓ Stäng helskärm` | `⤢ Fullscreen` / `⤓ Exit fullscreen` | `res.fullscreen` |
 
 **Empty states:**
 
-| Surface                    | Heading (sv)                                | Body (sv)                                     | Action                          |
-| -------------------------- | ------------------------------------------- | --------------------------------------------- | ------------------------------- |
-| Home — no competitions     | `Inga aktiva tävlingar`                     | `Skapa en ny tävling för att börja.`          | `+ Ny tävling` button           |
-| Readout — no card yet      | `Väntar på kort…`                           | `Stoppa ett SI-kort i läsaren för att börja.` | passive — operator inserts card |
-| Live results — empty class | `Inga deltagare ännu.`                      | (none)                                        | passive                         |
-| Readout history — empty    | (collapse the panel; no empty illustration) | —                                             | —                               |
+| Surface | Heading (sv) | Body (sv) | Action |
+|---------|--------------|-----------|--------|
+| Home — no competitions | `Inga aktiva tävlingar` | `Skapa en ny tävling för att börja.` | `+ Ny tävling` button |
+| Readout — no card yet | `Väntar på kort…` | `Stoppa ett SI-kort i läsaren för att börja.` | passive — operator inserts card |
+| Live results — empty class | `Inga deltagare ännu.` | (none) | passive |
+| Readout history — empty | (collapse the panel; no empty illustration) | — | — |
 
 **Error states:**
 
-| Failure                              | Heading (sv)                                           | Body (sv)                                                                      | Recovery path                                                                  |
-| ------------------------------------ | ------------------------------------------------------ | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
-| Unknown SI card                      | `⚠ Okänd bricka`                                       | (card number shown in mono)                                                    | Click `Registrera deltagare` → walk-up modal                                   |
-| Course import — bad XML              | `Filen kunde inte läsas`                               | `Förväntar Purple Pen .xml eller IOF XML 3.0 CourseData.`                      | Re-pick file in same step                                                      |
-| Reader handshake fail                | `Läsare hittades inte`                                 | `Kontrollera USB-anslutning. Förväntar BSM7/8 på /dev/ttyUSB*.`                | Retry button + skip-to-readout-anyway escape                                   |
-| WebSocket disconnect                 | `Frånkopplad` (red dot in topbar + `ro.offline` label) | `Återansluter…`                                                                | Auto-reconnect via small client wrapper (D-13)                                 |
-| Card read but no course match        | (handled as walk-up — not an error)                    | —                                                                              | —                                                                              |
-| IOF XML export — XSD validation fail | `Export misslyckades — ogiltig XML`                    | `Felmeddelande: {line/column from XSD validator}.` Logs to disk for debugging. | Operator-visible button to retry; failure is non-destructive (no file written) |
-| Thermal print fail                   | `Utskrift misslyckades` (toast, red)                   | `Kontrollera papper i Star TSP143.`                                            | Toast auto-dismisses 5s; reads continue                                        |
+| Failure | Heading (sv) | Body (sv) | Recovery path |
+|---------|--------------|-----------|---------------|
+| Unknown SI card | `⚠ Okänd bricka` | (card number shown in mono) | Click `Registrera deltagare` → walk-up modal |
+| Course import — bad XML | `Filen kunde inte läsas` | `Förväntar Purple Pen .xml eller IOF XML 3.0 CourseData.` | Re-pick file in same step |
+| Reader handshake fail | `Läsare hittades inte` | `Kontrollera USB-anslutning. Förväntar BSM7/8 på /dev/ttyUSB*.` | Retry button + skip-to-readout-anyway escape |
+| WebSocket disconnect | `Frånkopplad` (red dot in topbar + `ro.offline` label) | `Återansluter…` | Auto-reconnect via small client wrapper (D-13) |
+| Card read but no course match | (handled as walk-up — not an error) | — | — |
+| IOF XML export — XSD validation fail | `Export misslyckades — ogiltig XML` | `Felmeddelande: {line/column from XSD validator}.` Logs to disk for debugging. | Operator-visible button to retry; failure is non-destructive (no file written) |
+| Thermal print fail | `Utskrift misslyckades` (toast, red) | `Kontrollera papper i Star TSP143.` | Toast auto-dismisses 5s; reads continue |
 
 **Destructive actions** in Phase 1:
 
-| Action                                 | Confirmation copy                              | Confirmation approach                                                                                                       |
-| -------------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Cancel walk-up registration (`Avbryt`) | (immediate, no confirm)                        | Clicking scrim or `Avbryt` discards the form; the read sits in history as `unmatched` and can be re-clicked. Cheap to undo. |
-| Cancel wizard (`Avbryt`)               | (immediate, no confirm)                        | No competition state persisted until step 3 completes.                                                                      |
-| Delete competition                     | NOT in Phase 1                                 | Out of scope. Competitions persist until explicitly purged (Phase 2 admin) or 30-day GDPR cleanup (REQ-PRIV-002).           |
-| Manual DNF override                    | `Markera som bröt?` (sv) / `Mark as DNF?` (en) | Inline confirm popover from the readout view; emits `manual_dnf` event (D-12). Reversible by emitting an `un_dnf` event.    |
+| Action | Confirmation copy | Confirmation approach |
+|--------|-------------------|----------------------|
+| Cancel walk-up registration (`Avbryt`) | (immediate, no confirm) | Clicking scrim or `Avbryt` discards the form; the read sits in history as `unmatched` and can be re-clicked. Cheap to undo. |
+| Cancel wizard (`Avbryt`) | (immediate, no confirm) | No competition state persisted until step 3 completes. |
+| Delete competition | NOT in Phase 1 | Out of scope. Competitions persist until explicitly purged (Phase 2 admin) or 30-day GDPR cleanup (REQ-PRIV-002). |
+| Manual DNF override | `Markera som bröt?` (sv) / `Mark as DNF?` (en) | Inline confirm popover from the readout view; emits `manual_dnf` event (D-12). Reversible by emitting an `un_dnf` event. |
 
 There are **no irreversible destructive actions** in Phase 1. The event
 log is append-only (REQ-EVT-002 / D-09); every "change" is a new event,
@@ -290,47 +288,47 @@ match the prototype's visual output 1:1 against the tokens above.
 
 ### Layout shell
 
-| Component       | File                                         | Source ref                                                                 |
-| --------------- | -------------------------------------------- | -------------------------------------------------------------------------- |
-| `<AppShell>`    | `apps/web/src/lib/layout/AppShell.svelte`    | `app.jsx` `<div className="app">` grid                                     |
-| `<Sidebar>`     | `apps/web/src/lib/layout/Sidebar.svelte`     | `app.jsx` `<aside className="sidebar">`                                    |
-| `<NavItem>`     | `apps/web/src/lib/layout/NavItem.svelte`     | `app.jsx` `.nav-item` + active state                                       |
-| `<StationCard>` | `apps/web/src/lib/layout/StationCard.svelte` | `app.jsx` `.station-card` (BSM7-USB live status)                           |
-| `<TopBar>`      | `apps/web/src/lib/layout/TopBar.svelte`      | `app.jsx` `.topbar`                                                        |
-| `<Clock>`       | `apps/web/src/lib/layout/Clock.svelte`       | `app.jsx` `.clock` with `TID` prefix — wall-clock at readout table         |
-| `<BrandMark>`   | `apps/web/src/lib/layout/BrandMark.svelte`   | `app.jsx` orienteering control flag SVG (white-and-orange diamond, LOCKED) |
+| Component | File | Source ref |
+|-----------|------|------------|
+| `<AppShell>` | `apps/web/src/lib/layout/AppShell.svelte` | `app.jsx` `<div className="app">` grid |
+| `<Sidebar>` | `apps/web/src/lib/layout/Sidebar.svelte` | `app.jsx` `<aside className="sidebar">` |
+| `<NavItem>` | `apps/web/src/lib/layout/NavItem.svelte` | `app.jsx` `.nav-item` + active state |
+| `<StationCard>` | `apps/web/src/lib/layout/StationCard.svelte` | `app.jsx` `.station-card` (BSM7-USB live status) |
+| `<TopBar>` | `apps/web/src/lib/layout/TopBar.svelte` | `app.jsx` `.topbar` |
+| `<Clock>` | `apps/web/src/lib/layout/Clock.svelte` | `app.jsx` `.clock` with `TID` prefix — wall-clock at readout table |
+| `<BrandMark>` | `apps/web/src/lib/layout/BrandMark.svelte` | `app.jsx` orienteering control flag SVG (white-and-orange diamond, LOCKED) |
 
 ### Primitives
 
-| Component                                        | File                                    | Source ref                                       |
-| ------------------------------------------------ | --------------------------------------- | ------------------------------------------------ |
-| `<Button variant>`                               | `apps/web/src/lib/ui/Button.svelte`     | `.btn` `.primary` `.ghost` `.danger` `.lg` `.sm` |
-| `<Input>`                                        | `apps/web/src/lib/ui/Input.svelte`      | `.input` (44px hit target)                       |
-| `<Select>`                                       | `apps/web/src/lib/ui/Select.svelte`     | `.select` (44px hit target)                      |
-| `<Field label>`                                  | `apps/web/src/lib/ui/Field.svelte`      | `.field` (label + control gap 6px)               |
-| `<Card>` + `<CardHead>` + `<CardBody>`           | `apps/web/src/lib/ui/Card.svelte`       | `.card` `.card-head` `.card-body`                |
-| `<Modal>` (head/body/foot slots)                 | `apps/web/src/lib/ui/Modal.svelte`      | `.modal-scrim` `.modal`                          |
-| `<StatusPill status="OK\|MP\|DNF\|PEND" small?>` | `apps/web/src/lib/ui/StatusPill.svelte` | `readout.jsx` `StatusPill`                       |
-| `<PulseDot>`                                     | `apps/web/src/lib/ui/PulseDot.svelte`   | `.pulse-dot` (1.6s keyframe)                     |
-| `<Toast>` (auto-dismiss 2s)                      | `apps/web/src/lib/ui/Toast.svelte`      | `app.jsx` `printedToast` positioning             |
-| `<Kbd>`                                          | `apps/web/src/lib/ui/Kbd.svelte`        | `.kbd` keyboard shortcut hint                    |
+| Component | File | Source ref |
+|-----------|------|------------|
+| `<Button variant>` | `apps/web/src/lib/ui/Button.svelte` | `.btn` `.primary` `.ghost` `.danger` `.lg` `.sm` |
+| `<Input>` | `apps/web/src/lib/ui/Input.svelte` | `.input` (44px hit target) |
+| `<Select>` | `apps/web/src/lib/ui/Select.svelte` | `.select` (44px hit target) |
+| `<Field label>` | `apps/web/src/lib/ui/Field.svelte` | `.field` (label + control gap 6px) |
+| `<Card>` + `<CardHead>` + `<CardBody>` | `apps/web/src/lib/ui/Card.svelte` | `.card` `.card-head` `.card-body` |
+| `<Modal>` (head/body/foot slots) | `apps/web/src/lib/ui/Modal.svelte` | `.modal-scrim` `.modal` |
+| `<StatusPill status="OK\|MP\|DNF\|PEND" small?>` | `apps/web/src/lib/ui/StatusPill.svelte` | `readout.jsx` `StatusPill` |
+| `<PulseDot>` | `apps/web/src/lib/ui/PulseDot.svelte` | `.pulse-dot` (1.6s keyframe) |
+| `<Toast>` (auto-dismiss 2s) | `apps/web/src/lib/ui/Toast.svelte` | `app.jsx` `printedToast` positioning |
+| `<Kbd>` | `apps/web/src/lib/ui/Kbd.svelte` | `.kbd` keyboard shortcut hint |
 
 ### Screens
 
-| Component                        | Route                               | Source                                                                                          |
-| -------------------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `<HomeView>`                     | `/`                                 | `screens-home.jsx` `HomeView` — hero + competition cards grid (auto-fill, minmax 280px)         |
-| `<NewCompetitionWizard>` (modal) | overlay                             | `screens-home.jsx` `NewCompetitionWizard` — 3 steps, full step indicators top, scrim background |
-| `<ReadoutView>`                  | `/competition/[id]/readout`         | `screens-readout.jsx` `ReadoutView` — 1fr / 380px grid                                          |
-| `<LatestReadCard>`               | inside readout                      | runner row + punch grid OR splits table (density dependent)                                     |
-| `<PunchGrid>`                    | inside latest-read                  | `.punch-grid` with `.ok` `.miss` `.finish` cells                                                |
-| `<SplitsTable>`                  | inside latest-read (density="high") | `.splits-table`                                                                                 |
-| `<HistoryList>`                  | inside readout right rail           | clickable history rows, 56px min-height each                                                    |
-| `<ReceiptMirror>`                | inside readout                      | template chooser + paper-emulation receipt                                                      |
-| `<ReceiptPaper template>`        | inside receipt mirror               | 6 template renderers (see below)                                                                |
-| `<WalkupModal>`                  | overlay from readout                | name / club (autocomplete) / class (select) / card SI (pre-filled, editable)                    |
-| `<ResultsView>`                  | `/competition/[id]/results`         | `screens-results.jsx` — tabs by class, table, fullscreen mode                                   |
-| `<TweaksPanel>`                  | floating overlay                    | `tweaks-panel.jsx` — operator runtime knobs                                                     |
+| Component | Route | Source |
+|-----------|-------|--------|
+| `<HomeView>` | `/` | `screens-home.jsx` `HomeView` — hero + competition cards grid (auto-fill, minmax 280px) |
+| `<NewCompetitionWizard>` (modal) | overlay | `screens-home.jsx` `NewCompetitionWizard` — 3 steps, full step indicators top, scrim background |
+| `<ReadoutView>` | `/competition/[id]/readout` | `screens-readout.jsx` `ReadoutView` — 1fr / 380px grid |
+| `<LatestReadCard>` | inside readout | runner row + punch grid OR splits table (density dependent) |
+| `<PunchGrid>` | inside latest-read | `.punch-grid` with `.ok` `.miss` `.finish` cells |
+| `<SplitsTable>` | inside latest-read (density="high") | `.splits-table` |
+| `<HistoryList>` | inside readout right rail | clickable history rows, 56px min-height each |
+| `<ReceiptMirror>` | inside readout | template chooser + paper-emulation receipt |
+| `<ReceiptPaper template>` | inside receipt mirror | 6 template renderers (see below) |
+| `<WalkupModal>` | overlay from readout | name / club (autocomplete) / class (select) / card SI (pre-filled, editable) |
+| `<ResultsView>` | `/competition/[id]/results` | `screens-results.jsx` — tabs by class, table, fullscreen mode |
+| `<TweaksPanel>` | floating overlay | `tweaks-panel.jsx` — operator runtime knobs |
 
 ### Receipt templates (LOCKED — six total, all in Phase 1)
 
@@ -341,14 +339,14 @@ Phase 1's joy (it's the unprompted "this is way better" moment per
 ROADMAP Phase 3 SC#5 — but the procedural Skogis itself is cheap to
 build now, and shipping it early lets StorTuna kids use it on Tuesdays).
 
-| Template                | Key     | Operator default                                                                      | Use case |
-| ----------------------- | ------- | ------------------------------------------------------------------------------------- | -------- |
-| Klassisk (`classic`)    | DEFAULT | full splits w/ code + leg + cumulative + total + place line                           |
-| Klassläge (`standing`)  |         | emphasizes class context: total + "PLATS X av Y i mål" + "+0:45 efter ledaren"        |
-| Detaljerad (`detailed`) |         | MeOS-OZ: per-leg rank + time-lost column                                              |
-| Topp 4 (`top4`)         |         | leaderboard slice w/ runner highlighted; `Din placering` row below top-4 if not in it |
-| Minimal (`minimal`)     |         | fast-throughput: name/class/SI + big total + place + behind-leader                    |
-| Barn (`kids`)           |         | procedural Skogis figure + 4 stats (FART/STIG/KART/TUR) + level                       |
+| Template | Key | Operator default | Use case |
+|----------|-----|------------------|----------|
+| Klassisk (`classic`) | DEFAULT | full splits w/ code + leg + cumulative + total + place line |
+| Klassläge (`standing`) | | emphasizes class context: total + "PLATS X av Y i mål" + "+0:45 efter ledaren" |
+| Detaljerad (`detailed`) | | MeOS-OZ: per-leg rank + time-lost column |
+| Topp 4 (`top4`) | | leaderboard slice w/ runner highlighted; `Din placering` row below top-4 if not in it |
+| Minimal (`minimal`) | | fast-throughput: name/class/SI + big total + place + behind-leader |
+| Barn (`kids`) | | procedural Skogis figure + 4 stats (FART/STIG/KART/TUR) + level |
 
 **Mono-printable requirement (LOCKED, chat2.md):** ALL six templates
 must render correctly on an 80mm monochrome thermal printer (Star TSP143
@@ -365,7 +363,6 @@ selected template applies on the auto-print path.
 
 A per-competition setting `auto_print: bool`, default **OFF** for new
 competitions. When ON:
-
 - The manual "Skriv ut kvitto" button goes disabled (greyed)
 - The receipt card head shows an `AUTO` badge
 - ~400ms after each new card read, the print toast fires automatically
@@ -381,14 +378,14 @@ NOT a dev-only debug toggle. Renders as a floating panel (top toolbar
 toggle in the prototype; planner may relocate to a side drawer if it
 fits better). Scope:
 
-| Setting       | Type                         | Persistence        |
-| ------------- | ---------------------------- | ------------------ |
-| Locale        | radio `sv` / `en`            | localStorage       |
-| Density       | radio `low` / `med` / `high` | localStorage       |
-| Accent color  | swatch picker (4 options)    | localStorage       |
-| High contrast | toggle                       | localStorage       |
-| Font pair     | select (4 options)           | localStorage       |
-| Simulate read | button                       | runtime-only (dev) |
+| Setting | Type | Persistence |
+|---------|------|-------------|
+| Locale | radio `sv` / `en` | localStorage |
+| Density | radio `low` / `med` / `high` | localStorage |
+| Accent color | swatch picker (4 options) | localStorage |
+| High contrast | toggle | localStorage |
+| Font pair | select (4 options) | localStorage |
+| Simulate read | button | runtime-only (dev) |
 
 The "Simulate read" button is dev-only and MUST be hidden in production
 builds (or behind a `?dev=1` query param). Locale / accent / contrast /
@@ -426,7 +423,6 @@ the drop-zone replaces the file (no confirmation needed — re-import is
 cheap).
 
 **File import flow** (locked from prototype + chat resolution):
-
 - Accepted extensions: `.xml` only (Purple Pen produces `.xml`; IOF XML
   3.0 CourseData is also `.xml`). The format is auto-detected from XML
   root element.
@@ -447,7 +443,6 @@ opens `ws://localhost:3000/ws` and subscribes to channel
 `{type: 'card_read', payload: {...}, seq: N}` envelopes.
 
 **On `card_read` message:**
-
 1. Append payload to `history` (top of list, cap at 12 visible).
 2. Set `currentRead` to the new payload.
 3. Trigger `flashIn` keyframe animation on the latest-read card
@@ -459,7 +454,6 @@ opens `ws://localhost:3000/ws` and subscribes to channel
    `/dev/usb/lp0`).
 
 **On `connection_changed` message:**
-
 - `connected: true` → pulse-dot green, label "Ansluten · puls Xms"
 - `connected: false` → pulse-dot red, label "Frånkopplad", auto-reconnect
   in background
@@ -503,7 +497,6 @@ current; the previous unknown card stays in history as `unmatched` and
 can be clicked later to re-open the walk-up form).
 
 Fields:
-
 - **Namn** (required) — placeholder "För- och efternamn", minLength 2,
   trimmed. No regex (Swedish names span å/ä/ö/-/' freely).
 - **Klubb** (optional) — placeholder "Frivilligt — t.ex. StorTuna OK".
@@ -515,7 +508,6 @@ Fields:
   misread by hand-typing the SI number. Integer only, minimum 1.
 
 On `Spara och bind`:
-
 1. POST `/api/competitors` with `{name, club, classId, cardNumber, competitionId}`.
 2. Server inserts competitor row + emits `card_bound` event over the
    readout channel.
@@ -551,11 +543,11 @@ re-trigger after fixing data.
 
 ### Keyboard shortcuts (Phase 1 — minimal)
 
-| Key   | Action                     | Surface                                       |
-| ----- | -------------------------- | --------------------------------------------- |
-| `P`   | Print receipt (manual)     | Readout view, when a `currentRead` is present |
-| `Esc` | Close modal / close wizard | Walk-up modal, wizard, tweaks panel           |
-| `F`   | Toggle fullscreen          | Live results view                             |
+| Key | Action | Surface |
+|-----|--------|---------|
+| `P` | Print receipt (manual) | Readout view, when a `currentRead` is present |
+| `Esc` | Close modal / close wizard | Walk-up modal, wizard, tweaks panel |
+| `F` | Toggle fullscreen | Live results view |
 
 Locked via a tiny `keydown` listener at the route level. No global
 shortcut system in Phase 1.
@@ -566,16 +558,16 @@ shortcut system in Phase 1.
 
 These were resolved during the design conversation and are LOCKED:
 
-| Anchor                         | Decision                                                                                                                                                                                             | Source                                                                  |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| Brand mark                     | Orienteering **control flag** — rotated diamond, half white, half orange (`#F36F21`), 1.4px stroke `#1a1a1a`. NOT a triangle, NOT a custom logomark.                                                 | chat1.md "Logo looks off"                                               |
-| Wall clock                     | `TID HH:MM:SS` in monospace, top-right of topbar, synced to bridge clock. Bug-fixed init math (started at 02:12, now starts at 14:32:11).                                                            | chat1.md "Now I can't get the Kvitto" exchange                          |
-| ISO dates                      | `YYYY-MM-DD` everywhere. NO locale-dependent native date inputs (caused `5/13/2026` on en-US Chrome). Wizard date is a text input with `pattern="\d{4}-\d{2}-\d{2}"` and `placeholder="YYYY-MM-DD"`. | chat2.md "all input dates also"                                         |
-| SI card number format          | NO thousand separators. SI numbers are identifiers, not quantities. Display as `2078451`, not `2 078 451` (sv) or `2,078,451` (en).                                                                  | chat2.md "card number being formatted with Swedish thousand separators" |
-| History rows clickable         | Every row in `Avläsningshistorik` is a button → re-renders current read + receipt mirror. Active row gets accent left bar + soft background.                                                         | chat1.md "Now I can't get the Kvitto view"                              |
-| Hybrid density                 | Default `med`. Operator-tweakable via Tweaks panel. `low` enlarges runner number (44→64px), name (26→34px), result time (36→52px). `high` swaps the punch grid for the dense splits table.           | chat1.md "hybrid modern-shell + MeOS-density readout"                   |
-| "Leder" not "ledning"          | Verb form. Receipt leader marker: `★ Leder · —`. Non-leader: `efter ledaren · +0:45`.                                                                                                                | chat1.md "ledning is not good swedish"                                  |
-| Receipt template chooser wraps | The template-tab strip drops to its own row when the column is narrow, and the tabs themselves wrap as a second fallback. NO horizontal scroll overflow.                                             | chat2.md "kvitto chooser is overflowing"                                |
+| Anchor | Decision | Source |
+|--------|----------|--------|
+| Brand mark | Orienteering **control flag** — rotated diamond, half white, half orange (`#F36F21`), 1.4px stroke `#1a1a1a`. NOT a triangle, NOT a custom logomark. | chat1.md "Logo looks off" |
+| Wall clock | `TID HH:MM:SS` in monospace, top-right of topbar, synced to bridge clock. Bug-fixed init math (started at 02:12, now starts at 14:32:11). | chat1.md "Now I can't get the Kvitto" exchange |
+| ISO dates | `YYYY-MM-DD` everywhere. NO locale-dependent native date inputs (caused `5/13/2026` on en-US Chrome). Wizard date is a text input with `pattern="\d{4}-\d{2}-\d{2}"` and `placeholder="YYYY-MM-DD"`. | chat2.md "all input dates also" |
+| SI card number format | NO thousand separators. SI numbers are identifiers, not quantities. Display as `2078451`, not `2 078 451` (sv) or `2,078,451` (en). | chat2.md "card number being formatted with Swedish thousand separators" |
+| History rows clickable | Every row in `Avläsningshistorik` is a button → re-renders current read + receipt mirror. Active row gets accent left bar + soft background. | chat1.md "Now I can't get the Kvitto view" |
+| Hybrid density | Default `med`. Operator-tweakable via Tweaks panel. `low` enlarges runner number (44→64px), name (26→34px), result time (36→52px). `high` swaps the punch grid for the dense splits table. | chat1.md "hybrid modern-shell + MeOS-density readout" |
+| "Leder" not "ledning" | Verb form. Receipt leader marker: `★ Leder · —`. Non-leader: `efter ledaren · +0:45`. | chat1.md "ledning is not good swedish" |
+| Receipt template chooser wraps | The template-tab strip drops to its own row when the column is narrow, and the tabs themselves wrap as a second fallback. NO horizontal scroll overflow. | chat2.md "kvitto chooser is overflowing" |
 
 ---
 
@@ -585,9 +577,9 @@ Not applicable. No shadcn (project is SvelteKit, not React). No
 third-party UI registries declared. All components built in-house against
 this contract.
 
-| Registry | Blocks Used | Safety Gate    |
-| -------- | ----------- | -------------- |
-| (none)   | —           | not applicable |
+| Registry | Blocks Used | Safety Gate |
+|----------|-------------|-------------|
+| (none) | — | not applicable |
 
 ---
 

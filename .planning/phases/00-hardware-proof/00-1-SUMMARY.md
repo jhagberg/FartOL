@@ -35,7 +35,7 @@ The most user-visible finding was CR-003: the BSM-mini reader didn't beep on car
 | CR-003 | critical | Missing bare ACK after card read → mini-reader didn't beep                               | `SiStation/SiMainStation.ts`, `SiStation/SiTargetMultiplexer.ts` | `b247dc7` |
 | WR-001 | warning  | Timed-out send leaves stale task at queue head → cascading timeouts                      | `SiStation/SiTargetMultiplexer.ts`                               | `598d583` |
 | WR-002 | warning  | Repair script verification parsed at wrong offset (off-by-one)                           | `scripts/repair-station-sn.mjs`                                  | `f5df121` |
-| WR-003 | warning  | Card-read errors emitted unhandled EventEmitter `error`                                  | `bin/fartola-readout.ts`                                         | `f205cb6` |
+| WR-003 | warning  | Card-read errors emitted unhandled EventEmitter `error`                                  | `bin/fartola-readout.ts`                                          | `f205cb6` |
 
 ## Deferred
 

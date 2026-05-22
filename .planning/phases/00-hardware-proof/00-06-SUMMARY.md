@@ -106,7 +106,7 @@ completed: 2026-05-13
 | --- | ----------------------------------------------------------------- | --------- | ---------------- |
 | 1   | --record/--replay modes with directional transcript               | `5bd7d9f` | `feat(00-06):`   |
 | 2   | hardware-smoke.sh + README runbook (per-card --record --once)     | `cb58703` | `feat(00-06):`   |
-| 2a  | smoke fixup — invoke fartola-readout via `node "$DIST_BIN"`       | `c800067` | `fix(00-06):`    |
+| 2a  | smoke fixup — invoke fartola-readout via `node "$DIST_BIN"`        | `c800067` | `fix(00-06):`    |
 | 3   | Bench captures (SI5/SI9/SI10/SIAC) + .gitignore + prettier ignore | `c33318a` | `test(00-06):`   |
 | 3b  | bench-replay regression test + PlaybackTransport multi-chunk fix  | `f8e3f37` | `test(00-06):`   |
 | 4   | Plan SUMMARY + STATE/ROADMAP updates                              | _this_    | `docs(00-06):`   |
