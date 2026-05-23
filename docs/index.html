@@ -518,7 +518,7 @@
             </g>
           </svg>
         </span>
-        fartOLa
+        <i>fartOLa</i>
       </a>
       <nav id="topnav">
         <a href="#hur">Hur</a>
@@ -545,7 +545,7 @@
         <h1>Tidtagning för orientering, byggd för <span class="accent">klubben och skogen</span>.</h1>
         <p class="hero-tagline">Full fart från start till mål — eller slipp skit i resultatlistan.</p>
         <p class="lede">
-          fartOLa är ett tävlingssystem som funkar i webbläsaren på Linux, Mac, Windows och Android. Varje SI-stämpling sparas som en händelse i en lokal logg<sup>*</sup>, så resultaten kan räknas fram (och räknas om) när som helst. <b>Phase 2 lägger till MeOS-bryggan</b> (MIP/MOP) så klubbar kan köra fartOLa parallellt med en befintlig MeOS-installation, plus Eventor-cache för 252 000+ löpare med FTS5-sökning, statusmodell i linje med IOF/Eventor (OK · MP · DNF · DNS · DQ · MAX) och tävlingsfas-grind (Förtävling → Tävling pågår) så ingen registrerar löpare när målet redan är öppet.
+          <i>fartOLa</i> är ett tävlingssystem som funkar i webbläsaren på Linux, Mac, Windows och Android. Varje SI-stämpling sparas som en händelse i en lokal logg<sup>*</sup>, så resultaten kan räknas fram (och räknas om) när som helst. <b>Phase 2 lägger till MeOS-bryggan</b> (MIP/MOP) så klubbar kan köra <i>fartOLa</i> parallellt med en befintlig MeOS-installation, plus Eventor-cache för 252 000+ löpare med FTS5-sökning, statusmodell i linje med IOF/Eventor (OK · MP · DNF · DNS · DQ · MAX) och tävlingsfas-grind (Förtävling → Tävling pågår) så ingen registrerar löpare när målet redan är öppet.
         </p>
         <p class="hero-foot">
           <b>*Tekniskt:</b> append-only event log med idempotenta händelser — samma stämpling kan skickas in tio gånger utan att räknas dubbelt.
@@ -606,7 +606,7 @@
     <div class="wrap-narrow">
       <div class="sec-head">
         <div class="sec-eyebrow">Så funkar det</div>
-        <h2>Så kör du en tävling med fartOLa.</h2>
+        <h2>Så kör du en tävling med <i>fartOLa</i>.</h2>
         <p>Sju steg från banfil till liveresultat. Samma flöde finns klickbart i demon.</p>
       </div>
 
@@ -664,7 +664,7 @@
         <div class="sec-eyebrow">Varför</div>
         <h2>Tidtagning som inte ramlar ihop när 4G:n gör det.</h2>
         <p style="margin: 0 auto;">
-          fartOLa bygger på en lokal append-only-logg där varje SI-stämpling är en händelse. Resultaten räknas fram från loggen i stället för att skrivas in i en delad databas. Det gör att flera sekretariat kan jobba samtidigt, att klienter funkar offline, och att en nätdipp inte slutar i att någon måste återskapa läget under press.
+          <i>fartOLa</i> bygger på en lokal append-only-logg där varje SI-stämpling är en händelse. Resultaten räknas fram från loggen i stället för att skrivas in i en delad databas. Det gör att flera sekretariat kan jobba samtidigt, att klienter funkar offline, och att en nätdipp inte slutar i att någon måste återskapa läget under press.
         </p>
       </div>
 
@@ -682,7 +682,7 @@
     <div class="wrap">
       <div class="sec-head">
         <div class="sec-eyebrow">Sex tekniska val</div>
-        <h2>Hur fartOLa är designat.</h2>
+        <h2>Hur <i>fartOLa</i> är designat.</h2>
         <p>Varje punkt är ett konkret val, inte en säljpitch.</p>
       </div>
 
@@ -700,7 +700,7 @@
         <div class="diff-card">
           <span class="diff-num">03 · SAMARBETE</span>
           <h3>Parallellt med befintliga system</h3>
-          <p>Phase 2 talar MeOS Input Protocol (MIP) och MeOS Online Protocol (MOP) över LAN. En klubb kan låta MeOS-sekretariatet vara kvar och köra fartOLa på sidan — bricka i fartOLa, mål i MeOS, och bryggan håller dem synkroniserade.</p>
+          <p>Phase 2 talar MeOS Input Protocol (MIP) och MeOS Online Protocol (MOP) över LAN. En klubb kan låta MeOS-sekretariatet vara kvar och köra <i>fartOLa</i> på sidan — bricka i <i>fartOLa</i>, mål i MeOS, och bryggan håller dem synkroniserade.</p>
         </div>
         <div class="diff-card">
           <span class="diff-num">04 · DATA</span>
@@ -715,7 +715,7 @@
         <div class="diff-card">
           <span class="diff-num">06 · STANDARDER</span>
           <h3>Pratar med det som redan finns</h3>
-          <p>IOF XML 3.0, Eventor REST (<code>cachedcompetitors</code>), MeOS MIP v3.0 + MOP v2.0 över LAN, ROC och SIRAP planerade. En klubb kan köra ett befintligt system primärt och fartOLa parallellt under en eventuell övergång.</p>
+          <p>IOF XML 3.0, Eventor REST (<code>cachedcompetitors</code>), MeOS MIP v3.0 + MOP v2.0 över LAN, ROC och SIRAP planerade. En klubb kan köra ett befintligt system primärt och <i>fartOLa</i> parallellt under en eventuell övergång.</p>
         </div>
       </div>
     </div>
@@ -813,7 +813,7 @@
           <span class="ord">Phase 2.0</span>
           <div>
             <h4>4-klubbs MVP — parallell med MeOS</h4>
-            <p>Klubben kör befintlig MeOS-installation och fartOLa parallellt över LAN. MIP (fartOLa → MeOS) skickar walk-ups + bricka-bindningar; MOP (MeOS → fartOLa) tar emot mål-event och resultat. Eventor-cachen ger 252 000+ deltagare offline med FTS5-smartsök (diakritik-tolerant, klubb-scope). Eventor startlista-import (REST) lägger upp anmälda i förväg. Hyrbricka-flödet håller koll på 200+ uthyrda SI-kort med kontaktinfo + retur + 30 d PII-scrub. Registreringsdisken pipar in barn i en kö och advancerar automatiskt. Race-phase-grind (Förtävling → Tävling pågår) hindrar registrering efter start. Statusmodellen är utökad till OK · MP · DNF · DNS · DQ · CANCEL · MAX i linje med IOF/Eventor.</p>
+            <p>Klubben kör befintlig MeOS-installation och <i>fartOLa</i> parallellt över LAN. MIP (<i>fartOLa</i> → MeOS) skickar walk-ups + bricka-bindningar; MOP (MeOS → <i>fartOLa</i>) tar emot mål-event och resultat. Eventor-cachen ger 252 000+ deltagare offline med FTS5-smartsök (diakritik-tolerant, klubb-scope). Eventor startlista-import (REST) lägger upp anmälda i förväg. Hyrbricka-flödet håller koll på 200+ uthyrda SI-kort med kontaktinfo + retur + 30 d PII-scrub. Registreringsdisken pipar in barn i en kö och advancerar automatiskt. Race-phase-grind (Förtävling → Tävling pågår) hindrar registrering efter start. Statusmodellen är utökad till OK · MP · DNF · DNS · DQ · CANCEL · MAX i linje med IOF/Eventor.</p>
             <div class="crit">
               <span>MeOS MIP v3.0 + MOP v2.0</span>
               <span>Eventor cachedcompetitors + startlista-import</span>
@@ -1009,7 +1009,7 @@
             Det som driver mig är tekniskt: göra något modernt och busenkelt att sätta igång, som funkar på Linux, Mac och Android — inte bara Windows, och som kan rulla en hel tävlingsdag på batteri med billig och stabil hårdvara.
           </p>
           <p>
-            fartOLa byggs på lediga kvällar och helger, tillsammans med Claude, Codex och Gemini. Och SI-protokollet visade sig vara mer spännande att gräva i än jag trodde.
+            <i>fartOLa</i> byggs på lediga kvällar och helger, tillsammans med Claude, Codex och Gemini. Och SI-protokollet visade sig vara mer spännande att gräva i än jag trodde.
           </p>
           <p class="muted">
             Projektet är pengafritt, AGPL-3.0-licensierat och utan exit-mål. Säg hej via <a href="https://github.com/jhagberg" target="_blank" rel="noopener">GitHub</a>, öppna en <a href="https://github.com/jhagberg/fartOLa/issues/new?labels=demo-feedback&template=demo-feedback.yml&title=%5Bdemo%5D" target="_blank" rel="noopener">issue</a> eller maila <a href="mailto:fartola@lindan.se">fartola@lindan.se</a>. Feedback från riktiga sekretariat och löpare är det enda som styr roadmapen.
@@ -1025,7 +1025,7 @@
       <div class="sec-eyebrow">Hjälp oss</div>
       <h2 style="font-size: 32px; margin: 10px 0 14px; letter-spacing: -0.015em; font-weight: 600;">Vad funkar? Vad saknas? Vad är fel?</h2>
       <p style="color: var(--fg-muted); margin: 0 0 28px; font-size: 17px;">
-        fartOLa byggs av och för svenska orienteringsklubbar. Är du operatör, deltagare eller bara nyfiken — prova demon och säg vad du tänker. Det är enklare nu än när Phase 2 är byggd.
+        <i>fartOLa</i> byggs av och för svenska orienteringsklubbar. Är du operatör, deltagare eller bara nyfiken — prova demon och säg vad du tänker. Det är enklare nu än när Phase 2 är byggd.
       </p>
       <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
         <a href="demo/index.html" class="btn primary">Öppna demo</a>
@@ -1041,7 +1041,7 @@
   <footer>
     <div class="wrap footer-inner">
       <div>
-        <b>fartOLa</b> · arbetsnamn · AGPL-3.0 · <code style="font-size: 12px;">packages/sportident</code> är MIT
+        <b><i>fartOLa</i></b> · arbetsnamn · AGPL-3.0 · <code style="font-size: 12px;">packages/sportident</code> är MIT
       </div>
       <div class="links">
         <a href="https://github.com/jhagberg/fartOLa" target="_blank" rel="noopener">GitHub</a>
