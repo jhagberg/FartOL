@@ -22,7 +22,7 @@ provides:
   - apps/edge/src/privacy/retention.ts extended to scrub hired_cards.contact_name / contact_phone / contact_email / note → NULL for ended competitions older than retentionDays (D-HB-1 closure)
   - apps/edge/src/privacy/retention.test.ts gains 6 new node:test cases covering happy path, retention-window skip, idempotency, combined count, NULL-preservation, and testClock injection
   - docs/ops/parallel-meos-runbook.md — 437-line operator-facing Markdown playbook covering Before / During / When-something-breaks / After / Known-limitations / Appendix
-  - apps/edge/scripts/bench-smoke-phase2.sh — executable bash script with 6 round-trip smoke assertions, env-var parameterized (FARTOL_PORT / FARTOL_HOST / FARTOL_DB / FARTOL_SKIP_BOOT) for both local-test and prod-bridge modes
+  - apps/edge/scripts/bench-smoke-phase2.sh — executable bash script with 6 round-trip smoke assertions, env-var parameterized (FARTOLA_PORT / FARTOLA_HOST / FARTOLA_DB / FARTOLA_SKIP_BOOT) for both local-test and prod-bridge modes
   - apps/edge/scripts/bench-smoke-phase2.test.ts — node:test wrapper verifying the script is executable and fails clearly when no bridge is reachable
   - apps/edge/package.json `test` glob extended to also pick up scripts/**/*.test.ts
   - apps/edge/tsconfig.json `include` extended with scripts/**/*.ts
@@ -34,8 +34,8 @@ tech-stack:
   patterns:
     - 'Dual-UPDATE inside runOnce — competitors + hired_cards each receive their own UPDATE with the same cutoffDate; scrubbed_count is the SUM of both result.changes counters'
     - 'No second scrubbed_at_ms column for hired_cards — idempotency achieved via "contact_* IS NOT NULL" WHERE-clause guard, preserving marked_at_ms / returned_at_ms as the audit-trail timestamps'
-    - 'Env-var-parameterized bash smoke with FARTOL_SKIP_BOOT short-circuit — same script handles "boot throwaway bridge in CI" and "point at running prod bridge" without code branching'
-    - 'Conditional cleanup trap — temp DB removed only when this script booted the bridge itself (FARTOL_SKIP_BOOT=0); SKIP_BOOT path preserves the prod DB on exit'
+    - 'Env-var-parameterized bash smoke with FARTOLA_SKIP_BOOT short-circuit — same script handles "boot throwaway bridge in CI" and "point at running prod bridge" without code branching'
+    - 'Conditional cleanup trap — temp DB removed only when this script booted the bridge itself (FARTOLA_SKIP_BOOT=0); SKIP_BOOT path preserves the prod DB on exit'
     - 'Skipped node:test happy-path with explicit pointer to the manual Wednesday checkpoint — keeps CI fast while keeping the gate visible'
 
 key-files:
@@ -54,8 +54,8 @@ key-decisions:
   - 'No new scrubbed_at_ms column on hired_cards. The audit-trail timestamps we preserve are marked_at_ms + returned_at_ms; adding a third would duplicate the "rental closed at" signal without buying anything. The WHERE clause "(contact_name IS NOT NULL OR contact_phone IS NOT NULL OR contact_email IS NOT NULL OR note IS NOT NULL)" achieves the same idempotency as the competitors scrubbed_at_ms guard.'
   - 'Existing test 6 (WR-001 transient-failure retry) assertion bumped from updateCalls=2 to updateCalls=3 because the extended runOnce makes TWO update calls per successful run (competitors + hired_cards). The failing first attempt counts as 1; the successful retry adds 2; cumulative = 3. Auto-fix tagged in commit message.'
   - 'docs/ops/parallel-meos-runbook.md heading "When something breaks" is the deliberate gateway for stressed-operator recovery — the page-top quick-recovery callout pointer routes directly to it via Markdown anchors so the operator does not have to scroll through pre-event prep mid-crisis.'
-  - 'bench-smoke-phase2.sh discovers the fartol binary via PATH first, then falls back to "node --import tsx <workspace>/src/bin/fartol.ts" using the script-relative path. Works in both the packaged tarball (fartol on PATH) and the dev workspace (no install). The script-relative path is canonicalized with realpath via "cd && pwd" idiom so it survives being invoked from any cwd.'
-  - 'Task 3 wrapper test 3 (happy path booting bridge + 6/6 pass) is SKIPPED in node:test because the CI environment lacks the production `fartol` binary AND lacks xmllint/sqlite3 (verified during execution). The script correctly bails at preflight in that environment — verified by test 2. The Wednesday checkpoint (Task 4) is the authoritative happy-path gate.'
+  - 'bench-smoke-phase2.sh discovers the fartola binary via PATH first, then falls back to "node --import tsx <workspace>/src/bin/fartola.ts" using the script-relative path. Works in both the packaged tarball (fartola on PATH) and the dev workspace (no install). The script-relative path is canonicalized with realpath via "cd && pwd" idiom so it survives being invoked from any cwd.'
+  - 'Task 3 wrapper test 3 (happy path booting bridge + 6/6 pass) is SKIPPED in node:test because the CI environment lacks the production `fartola` binary AND lacks xmllint/sqlite3 (verified during execution). The script correctly bails at preflight in that environment — verified by test 2. The Wednesday checkpoint (Task 4) is the authoritative happy-path gate.'
   - 'apps/edge/package.json test glob extended to include scripts/**/*.test.ts so node:test discovers wrapper tests for shell-script tooling. tsconfig.json include extended for the same reason — keeps the wrapper test honest under tsc --noEmit.'
 
 patterns-established:
@@ -101,12 +101,12 @@ completed: 2026-05-17
   9-step pre-event setup including LAN reachability + MeOS MIP/MOP
   config + class-name parity check + Eventor cache verification +
   bench-smoke gate; per-role steps during; failure-fallback matrix for
-  FartOL crash / MeOS crash / Eventor offline / LAN drop / reader fail /
+  fartOLa crash / MeOS crash / Eventor offline / LAN drop / reader fail /
   bench smoke fail; post-event Hyrbricka reconciliation + IOF XML
   export + Eventor results upload; known limitations (D-LIM-1 +
   multi-course-per-card + Pitfall 3); appendix with URL cheat-sheet +
   useful CLI snippets + MeOS Tools→Online menu paths for English +
-  Swedish UIs. Includes the FARTOL_SKIP_BOOT=1 bench-smoke invocation
+  Swedish UIs. Includes the FARTOLA_SKIP_BOOT=1 bench-smoke invocation
   that wires it to the running prod bridge.
 - **Task 3 (TDD)** — `apps/edge/scripts/bench-smoke-phase2.sh` is the
   executable bash gate. Six smoke assertions: /mip empty poll,
@@ -115,8 +115,8 @@ completed: 2026-05-17
   hired_card; list open; PATCH return; list returned), schema sanity
   (hired_cards + meos_competitors columns), D-MIP-3 re-emit (hired
   card surfaces on /mip with hired="true"). Env-var parameterized so
-  the Task 4 prod-bridge invocation just sets `FARTOL_SKIP_BOOT=1` +
-  `FARTOL_DB=/var/lib/fartol/4-klubbs.db` + `FARTOL_PORT=3000`.
+  the Task 4 prod-bridge invocation just sets `FARTOLA_SKIP_BOOT=1` +
+  `FARTOLA_DB=/var/lib/fartola/4-klubbs.db` + `FARTOLA_PORT=3000`.
   Cleanup trap preserves the prod DB when SKIP_BOOT=1 and removes the
   throwaway DB otherwise. node:test wrapper verifies executability +
   clear-error-on-no-bridge.
@@ -145,7 +145,7 @@ Plan metadata commit follows this summary.
 ### Created
 
 - `docs/ops/parallel-meos-runbook.md` — 437-line operator playbook for
-  parallel FartOL + MeOS at 4-klubbs 2026-05-20.
+  parallel fartOLa + MeOS at 4-klubbs 2026-05-20.
 - `apps/edge/scripts/bench-smoke-phase2.sh` — executable bash smoke
   script (chmod 755). 6 round-trip assertions; env-var parameterized.
 - `apps/edge/scripts/bench-smoke-phase2.test.ts` — node:test wrapper
@@ -192,13 +192,13 @@ SI cards + the MeOS laptop + the .eventor-env API key.
 
 Run these steps approximately 1 hour before the 4-klubbs event:
 
-1. Bring the FartOL laptop + MeOS laptop + BSM-mini reader + 4 known
+1. Bring the fartOLa laptop + MeOS laptop + BSM-mini reader + 4 known
    SI cards (one of each: SI5/SI9/SI10/SIAC).
 2. Plug BSM-mini into /dev/ttyUSB0; confirm Phase 1 hardware-smoke.sh
    from packages/sportident still passes against the 4 cards (~2 min).
 3. Set `EVENTOR_API_KEY` from `.eventor-env`; boot the production
-   bridge: `fartol --port 3000 --bind-host 0.0.0.0 --allow-lan
---competition-id <4-klubbs-id> --db-path /var/lib/fartol/4-klubbs.db`
+   bridge: `fartola --port 3000 --bind-host 0.0.0.0 --allow-lan
+--competition-id <4-klubbs-id> --db-path /var/lib/fartola/4-klubbs.db`
    (or the systemd unit path).
 4. Wait for "listening on 3000" log line; confirm TweaksPanel green
    "Eventor: cache OK".
@@ -209,20 +209,20 @@ Run these steps approximately 1 hour before the 4-klubbs event:
 6. Configure MeOS on the parallel laptop per
    docs/ops/parallel-meos-runbook.md (Tools → Online → MIP+MOP URLs).
    Confirm the five identical class names in MeOS.
-7. Run `FARTOL_PORT=3000 FARTOL_DB=/var/lib/fartol/4-klubbs.db
-FARTOL_SKIP_BOOT=1 bash apps/edge/scripts/bench-smoke-phase2.sh`
+7. Run `FARTOLA_PORT=3000 FARTOLA_DB=/var/lib/fartola/4-klubbs.db
+FARTOLA_SKIP_BOOT=1 bash apps/edge/scripts/bench-smoke-phase2.sh`
    against the PROD bridge. Assert 6/6 passed (green output).
-8. Manual test: register a walk-up in FartOL with one of your test
+8. Manual test: register a walk-up in fartOLa with one of your test
    cards + Hyrbricka + your own phone. Confirm within 10 seconds MeOS
    shows the runner; read the card on BSM-mini → Hyrbricka toast →
    click Returnerad → toast disappears; MeOS also shows the runner as
    a hired-card carrier.
 9. Manual test: in MeOS, manually register a different competitor (no
-   FartOL involvement). Wait 15s. Confirm FartOL shows "N löpare
+   fartOLa involvement). Wait 15s. Confirm fartOLa shows "N löpare
    hämtade från MeOS" toast (MOP auto-merge).
-10. Manual test: KILL the FartOL bridge; register a third competitor
-    in MeOS during the outage; restart FartOL; confirm the third
-    competitor appears in FartOL via the next MOP `<MOPComplete>`
+10. Manual test: KILL the fartOLa bridge; register a third competitor
+    in MeOS during the outage; restart fartOLa; confirm the third
+    competitor appears in fartOLa via the next MOP `<MOPComplete>`
     cycle.
 
 **Resume signal:** Jonas types "smoke green" if all 10 steps pass
@@ -253,14 +253,14 @@ the same`now`reference;`scrubbed_count`sums their`result.changes`.
   runOnce makes TWO update calls (competitors + hiredCards), so the
   cumulative count on retry is 1 (failed first) + 2 (successful retry)
   = 3, not 2. Documented inline + in the commit message.
-- **Bench-smoke `FARTOL_SKIP_BOOT` short-circuit**. Lets the Task 4
+- **Bench-smoke `FARTOLA_SKIP_BOOT` short-circuit**. Lets the Task 4
   prod-bridge invocation reuse the actually-running bridge instead of
   spawning a throwaway one — preserves the live DB, lets the bench
   test the same bytes that production handles. Cleanup trap is
-  conditional on `FARTOL_SKIP_BOOT=0` so the prod DB never gets
+  conditional on `FARTOLA_SKIP_BOOT=0` so the prod DB never gets
   removed accidentally.
 - **node:test wrapper Test 3 (happy path) skipped**. The CI
-  environment doesn't have the production `fartol` binary on PATH
+  environment doesn't have the production `fartola` binary on PATH
   AND lacks `xmllint` + `sqlite3` (verified during execution — only
   `jq` + `curl` are present). The script correctly bails at preflight
   in that environment (Test 2 verifies). The Wednesday checkpoint is
@@ -390,7 +390,7 @@ adds new PII surfaces.
 - [x] `apps/edge/package.json` — UPDATED, test glob includes scripts/\*_/_.test.ts
 - [x] `apps/edge/tsconfig.json` — UPDATED, include array covers scripts/\*\*
 - [x] Commits: `15a3ce3`, `ca4f72e`, `e2a4e53`, `1f3a8ac`, `9fc3a0b` — all FOUND in `git log`
-- [x] `pnpm --filter @fartol/edge test` — 376/377 pass + 1 skipped (skipped is the Task 4-covered happy path)
+- [x] `pnpm --filter @fartola/edge test` — 376/377 pass + 1 skipped (skipped is the Task 4-covered happy path)
 - [x] `pnpm -r typecheck` — exits 0 across all 4 workspace projects
 - [x] No --no-verify used
 - [x] Task 4 deferred and documented (PENDING — Wednesday 2026-05-20 ~16:30 CEST, owner: Jonas)

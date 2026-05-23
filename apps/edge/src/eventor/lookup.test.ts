@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for the Eventor read-only lookup module
 // (Plan 02-02 task 1). Validates four behaviors:

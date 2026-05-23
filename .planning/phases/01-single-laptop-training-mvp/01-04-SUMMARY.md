@@ -54,7 +54,7 @@ key-files:
     - 'packages/shared-types/src/index.ts (re-export Zod schemas + inferred types; trimmed the now-orphan plain interfaces in db.ts down to EventDTO + ControlDTO)'
     - 'packages/shared-types/src/db.ts (now holds only EventDTO + ControlDTO; the 4 plan-04 wire DTOs moved to Zod schemas in dtos.ts)'
     - 'apps/edge/package.json (+ zod@^4.4.3 dep)'
-    - 'apps/edge/src/server.ts (+ BroadcastSink + NextLocalSeqFn types, register 5 new route plugins, wrap wsBroadcast when broadcastSink is set, decorate app.fartolNextLocalSeq)'
+    - 'apps/edge/src/server.ts (+ BroadcastSink + NextLocalSeqFn types, register 5 new route plugins, wrap wsBroadcast when broadcastSink is set, decorate app.fartolaNextLocalSeq)'
     - 'pnpm-lock.yaml (regenerated for zod)'
 
 key-decisions:
@@ -62,7 +62,7 @@ key-decisions:
   - 'Empty-body PATCH → 200 (idempotent no-op), NOT 304. Zod accepts `{}` because every field on `CompetitionPatchInput` is `.optional()`. The route short-circuits the SQL UPDATE when `Object.keys(patch).length === 0` so we never emit a SET-less statement; the response is the unmodified row. 304 was considered but 304 in Fastify requires ETag negotiation that the wizard does not use (plan 12 will not depend on conditional GETs).'
   - 'Drizzle ON CONFLICT(name) DO UPDATE on clubs works cleanly via `.onConflictDoUpdate({ target: clubs.name, set: { lastSeenAtMs: now } })`. No quirks; the upsert is one statement and runs inside the same `sqlite.transaction()` as the competitor + events INSERT. The `target` syntax is the only place Drizzle insists on the schema column object (not the SQL column name) — same pattern repo-wide.'
   - 'PATTERNS S-2 broadcastSink wrapping. After wsPlugin decorates `app.wsBroadcast`, the factory wraps the function in-place when `opts.broadcastSink` is set. Fastify forbids `app.decorate()` overwriting an existing slot, so we mutate the property via an `as unknown as ...` cast. The wrapper calls the real fan-out first, then `sink.record(channel, envelope)` — tests get a chronologically-correct log and the WS plugin still drives any real clients.'
-  - 'PATTERNS S-2 nextLocalSeqFn injection. The competitor route reads `app.fartolNextLocalSeq` (decorator, defaults to `db/seq.ts:nextLocalSeq`) inside the transaction. Test 9 swaps in a fn that throws — the throw inside `sqlite.transaction(() => {...})` triggers an automatic rollback (better-sqlite3 contract). The test then SELECTs the competitor + clubs + events tables and asserts the row counts are zero, proving the three writes commit/rollback as one unit.'
+  - 'PATTERNS S-2 nextLocalSeqFn injection. The competitor route reads `app.fartolaNextLocalSeq` (decorator, defaults to `db/seq.ts:nextLocalSeq`) inside the transaction. Test 9 swaps in a fn that throws — the throw inside `sqlite.transaction(() => {...})` triggers an automatic rollback (better-sqlite3 contract). The test then SELECTs the competitor + clubs + events tables and asserts the row counts are zero, proving the three writes commit/rollback as one unit.'
   - 'Controls auto-create at course POST. CourseCreateInput.controls = `[{ control_code, order_idx }]`; the route maps codes → control rows in two steps inside the tx: bulk-SELECT existing controls for the (competition_id, codes IN (...)) tuple, then bulk-INSERT any missing codes. This same shape will be reused verbatim by plan 05 XML import dispatcher (CourseData usually doesn''t name controls explicitly).'
   - 'Receipt template enum lives in Zod only, not in the Drizzle column. plan 02 left `receipt_template TEXT` deliberately — adding a SQLite CHECK constraint or Drizzle enum would require a 0002 migration whenever the UI lifted a new template, and the Zod schema at the wire boundary is the canonical narrowing. `normaliseReceiptTemplate` runtime-guards the DB → DTO mapping with a `'classic'` fallback so a hand-edited row can never break the response Zod-conformance.'
   - 'Test 9 (atomicity) uses a throwing nextLocalSeqFn rather than mock library or vi.mock. PATTERNS S-2 — pure DI, no monkey-patching, no jest-style auto-mock. The throw triggers better-sqlite3''s tx auto-rollback; we then assert via three SELECTs that none of competitor / clubs / events rows landed.'
@@ -163,7 +163,7 @@ _No plan metadata commit lands from this agent — the orchestrator owns STATE.m
 - `packages/shared-types/src/index.ts` — re-export the 12 Zod schemas; trim `db.ts` re-exports to `EventDTO` + `ControlDTO`.
 - `packages/shared-types/src/db.ts` — strip down to `EventDTO` + `ControlDTO` (the four plan-04 wire DTOs moved to Zod schemas in dtos.ts).
 - `apps/edge/package.json` — `+ zod@^4.4.3` dep.
-- `apps/edge/src/server.ts` — add `BroadcastSink` + `NextLocalSeqFn` types; register 5 new route plugins; decorate `fartolNextLocalSeq`; wrap `wsBroadcast` when `broadcastSink` is set.
+- `apps/edge/src/server.ts` — add `BroadcastSink` + `NextLocalSeqFn` types; register 5 new route plugins; decorate `fartolaNextLocalSeq`; wrap `wsBroadcast` when `broadcastSink` is set.
 - `pnpm-lock.yaml` — regenerated for zod.
 
 ## Decisions Made
@@ -178,7 +178,7 @@ _No plan metadata commit lands from this agent — the orchestrator owns STATE.m
 
 5. **PATTERNS S-2 broadcast sink via post-decorate wrapping.** Fastify forbids overwriting an existing decorator slot with `app.decorate()`. The factory mutates the slot directly with `(app as unknown as { wsBroadcast: ... }).wsBroadcast = wrapped` AFTER `wsPlugin` registers. Tests get a clean recorder; production never sees the wrapper.
 
-6. **PATTERNS S-2 `nextLocalSeqFn` via decorator + opt.** `app.fartolNextLocalSeq` defaults to `db/seq.ts:nextLocalSeq`. Test 9 swaps in a throwing fn — the throw inside `sqlite.transaction(() => {...})` triggers better-sqlite3's automatic rollback, and the three SELECTs (competitor / clubs / events) all return zero rows. Atomicity verified end-to-end.
+6. **PATTERNS S-2 `nextLocalSeqFn` via decorator + opt.** `app.fartolaNextLocalSeq` defaults to `db/seq.ts:nextLocalSeq`. Test 9 swaps in a throwing fn — the throw inside `sqlite.transaction(() => {...})` triggers better-sqlite3's automatic rollback, and the three SELECTs (competitor / clubs / events) all return zero rows. Atomicity verified end-to-end.
 
 7. **Auto-create controls inside the course-POST tx.** Course POST accepts `controls: [{ control_code, order_idx }]`. The route runs `Set` dedupe → bulk SELECT existing `(competition_id, code IN (...))` → bulk INSERT any missing codes → bulk INSERT the `course_controls` join. One round-trip per stage, no per-control SELECT/INSERT. Plan 05 XML import dispatcher will share this shape verbatim.
 
@@ -232,18 +232,18 @@ _No plan metadata commit lands from this agent — the orchestrator owns STATE.m
 
 - **Drizzle query-builder branching pattern.** `clubs?prefix=` autocomplete cannot share a single chain because Drizzle's builder methods are final at each stage (`.where()` returns a non-chainable result). The route declares two parallel chains for the prefix vs no-prefix case (~10 extra lines). No runtime cost; documented inline.
 
-- **`pnpm dev` argv forwarding.** During the manual smoke I tried `pnpm --filter @fartol/edge dev -- --port 37183 --bind-host 127.0.0.1` and the `--` boundary was eaten by pnpm; the bin saw the args but `--bind-host` was missing one slot. Solved by `cd apps/edge && node --import tsx src/bin/fartol.ts --port 37183 --bind-host 127.0.0.1` directly (the same pattern Playwright's webServer uses). Documented for future plan executors.
+- **`pnpm dev` argv forwarding.** During the manual smoke I tried `pnpm --filter @fartola/edge dev -- --port 37183 --bind-host 127.0.0.1` and the `--` boundary was eaten by pnpm; the bin saw the args but `--bind-host` was missing one slot. Solved by `cd apps/edge && node --import tsx src/bin/fartola.ts --port 37183 --bind-host 127.0.0.1` directly (the same pattern Playwright's webServer uses). Documented for future plan executors.
 
 ## User Setup Required
 
-None — plan 04 is pure REST + Zod + Drizzle. `pnpm install` picks up zod@4.4.3; `pnpm --filter @fartol/edge test` runs the suite cold.
+None — plan 04 is pure REST + Zod + Drizzle. `pnpm install` picks up zod@4.4.3; `pnpm --filter @fartola/edge test` runs the suite cold.
 
 ## Next Phase Readiness
 
 - **Plan 05 (XML import dispatcher)** ready: POST `/api/competitions/:id/courses` is the surface the IOF CourseData / Purple Pen importer writes through. Controls auto-create + course_controls atomic insert already proven; plan 05 just needs to map XML → `CourseCreateInput`. Also `consent_status: 'pending_first_read'` lives at the schema layer (plan 02 + plan 04 left it untouched) so the import path is unblocked.
 - **Plan 07 (card-to-competitor matching reducer)** ready: `competitors.card_number` is the column the reducer reads; the plan-04 walk-up emits `card_bound` events on the readout: channel so the reducer's input stream is in place.
 - **Plan 08 (results projection + results_full)** ready: nothing in plan 04 touches the results: channel; the C-M1 contract still holds (test 5 in ws/index.test.ts: `results:` hello emits zero `replay` envelopes).
-- **Plan 11 (full UI + AppShell)** ready: every wire DTO has a Zod schema exported from `@fartol/shared-types`. SvelteKit forms can `import { CompetitionCreateInput }` and run client-side validation against the same shape the bridge accepts.
+- **Plan 11 (full UI + AppShell)** ready: every wire DTO has a Zod schema exported from `@fartola/shared-types`. SvelteKit forms can `import { CompetitionCreateInput }` and run client-side validation against the same shape the bridge accepts.
 - **Plan 12 (three-click wizard)** ready: POST `/api/competitions` returns the row used to route to `/competition/[id]/readout`. PATCH `/api/competitions/:id` updates `auto_print` per UI-SPEC §"Auto-print toggle".
 - **Plan 14 (walk-up modal)** ready: POST `/api/competitors` is the contract. 409 `card_taken` includes `existing_competitor_id` so the modal can surface the colliding row; 422 distinguishes class-mismatch from comp-missing.
 - **Plan 17 (PII scrub cron)** ready: `competitors.scrubbed_at_ms` is set to `null` on walk-up POST; non-null after the daily scrub.
@@ -287,12 +287,12 @@ None — every new surface (`POST /api/competitors` consent path, `POST /api/com
 
 **Behavior verified live:**
 
-- `pnpm --filter @fartol/shared-types typecheck`: clean.
-- `pnpm --filter @fartol/edge typecheck`: clean.
-- `pnpm --filter @fartol/edge lint`: clean.
-- `pnpm --filter @fartol/edge test`: 75 / 75 pass (+27 over plan-03 baseline).
-- `pnpm --filter @fartol/web typecheck`: clean (no churn — the wire shapes added are compatible with the placeholder web routes).
-- Manual smoke against `node --import tsx src/bin/fartol.ts --port <N>`: POST competition → 201 with full DTO, PATCH auto_print → 200 reflects flip, GET nested → competition + empty classes + empty courses, POST competitor without consent → 400 with `path: "consent"`, GET clubs → empty array.
+- `pnpm --filter @fartola/shared-types typecheck`: clean.
+- `pnpm --filter @fartola/edge typecheck`: clean.
+- `pnpm --filter @fartola/edge lint`: clean.
+- `pnpm --filter @fartola/edge test`: 75 / 75 pass (+27 over plan-03 baseline).
+- `pnpm --filter @fartola/web typecheck`: clean (no churn — the wire shapes added are compatible with the placeholder web routes).
+- Manual smoke against `node --import tsx src/bin/fartola.ts --port <N>`: POST competition → 201 with full DTO, PATCH auto_print → 200 reflects flip, GET nested → competition + empty classes + empty courses, POST competitor without consent → 400 with `path: "consent"`, GET clubs → empty array.
 
 ---
 

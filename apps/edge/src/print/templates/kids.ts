@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Kids receipt template — Skogis procedural critter rasterised to a
 // monochrome PNG via sharp (apps/edge/src/print/kids-svg-to-bitmap.ts).

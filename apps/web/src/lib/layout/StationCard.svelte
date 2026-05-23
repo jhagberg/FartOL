@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Sidebar SI-bridge status card. UI-SPEC §"Visual Anchors" sketch shows
   this lives at the bottom of the sidebar showing reader state. Three

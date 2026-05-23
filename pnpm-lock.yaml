@@ -102,10 +102,10 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@fartol/shared-types':
+      '@fartola/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
-      '@fartol/sportident':
+      '@fartola/sportident':
         specifier: workspace:*
         version: link:../../packages/sportident
       '@types/better-sqlite3':
@@ -138,7 +138,7 @@ importers:
 
   apps/web:
     dependencies:
-      '@fartol/shared-types':
+      '@fartola/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
       i18next:
@@ -196,7 +196,7 @@ importers:
 
   packages/shared-types:
     dependencies:
-      '@fartol/sportident':
+      '@fartola/sportident':
         specifier: workspace:*
         version: link:../sportident
       zod:

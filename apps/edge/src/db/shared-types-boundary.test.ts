@@ -1,8 +1,8 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test grep gate enforcing the C-H5 boundary: packages/shared-types/
 // must contain ZERO upward `apps/` imports and ZERO `drizzle-orm` imports.
-// Runs as part of `pnpm --filter @fartol/edge test`, gives a clear failure
+// Runs as part of `pnpm --filter @fartola/edge test`, gives a clear failure
 // message naming the violating file when something drifts.
 //
 // Locked by:

@@ -1,4 +1,4 @@
-// Authored for fartol — regression tests for the real-wire response format.
+// Authored for fartola — regression tests for the real-wire response format.
 //
 // REGRESSION: bench bug 2026-05-13 — SiStorage.splice fired with
 //   "removed 128, inserted 130"

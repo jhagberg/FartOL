@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Template dispatcher + the structural type for the subset of
 // node-thermal-printer's API that the templates use (ThermalPrinterLike).
@@ -13,7 +13,7 @@
 // - .planning/phases/01-single-laptop-training-mvp/01-UI-SPEC.md
 //   §"Receipt templates" + §"Receipt-specific typography"
 
-import type { HalfDayClock, NdjsonPunch } from '@fartol/sportident';
+import type { HalfDayClock, NdjsonPunch } from '@fartola/sportident';
 
 import type { ReceiptData, ReceiptTemplate } from './sink.ts';
 

@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   SplitsTable — dense-density alt view to the PunchGrid. 4 columns: #,
   code, split (since previous control), cumulative time. Finish row gets

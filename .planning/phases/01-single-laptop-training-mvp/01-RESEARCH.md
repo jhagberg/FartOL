@@ -11,8 +11,8 @@ Phase 1 turns the Phase 0 NDJSON-emitting SI bridge into a runnable single-lapto
 1. **Purple Pen `.xml` IS IOF XML 3.0 CourseData.** Purple Pen's "Create Data Interchange File (IOF XML)" exports the same schema we already import for REQ-EVT-CMP-003. One importer, two requirements.
 2. **`@fastify/static` + `setNotFoundHandler` is the canonical SPA-fallback pattern.** `adapter-static` with `fallback: '200.html'` produces a single HTML entry; Fastify serves it for any unmatched non-`/api/*` non-`/ws` request.
 3. **ESC/POS landscape is messy but workable.** `node-thermal-printer@4.4.3` (Klemen1337, actively maintained — last modified 2026-01-27) is the best-supported pick for Star TSP143 + Epson TM-T20 + Brother PJ-7 via `/dev/usb/lp0`. `@node-escpos/core` is also alive but slower-moving (last modified 2024-03-13). Both pure-pkg JS solutions exist; no native binding needed.
-4. **Drizzle's embedded migrator is one synchronous call.** `migrate(db, { migrationsFolder })` from `drizzle-orm/better-sqlite3/migrator` — runs at bridge startup, creates schema on cold start. The migration files need to ship inside the published `fartol` tarball.
-5. **Single-binary packaging is a tarball, not a `pkg`-style executable.** Node SEA can't bundle `better-sqlite3` cleanly. `npm install -g fartol` with a `bin` field + bundled `migrations/`, `dist/web/` (built SvelteKit assets) and `IOF.xsd` is the path that Just Works.
+4. **Drizzle's embedded migrator is one synchronous call.** `migrate(db, { migrationsFolder })` from `drizzle-orm/better-sqlite3/migrator` — runs at bridge startup, creates schema on cold start. The migration files need to ship inside the published `fartola` tarball.
+5. **Single-binary packaging is a tarball, not a `pkg`-style executable.** Node SEA can't bundle `better-sqlite3` cleanly. `npm install -g fartola` with a `bin` field + bundled `migrations/`, `dist/web/` (built SvelteKit assets) and `IOF.xsd` is the path that Just Works.
 6. **WebSocket fan-out is trivial.** `fastify.websocketServer.clients` iteration + per-connection channel-subscription state. Reconnect uses a small wrapper on the client; on `hello` with `last_seen_seq` server replays missed events from SQLite.
 7. **Walking skeleton is the right first wave.** Wave 0 should stub every layer (fake punch event → SQLite insert → REST list → WS push → fake receipt print) and only then deepen each layer. The Phase 0 bench-replay fixture (`packages/sportident/tests/fixtures/jonas/`) is the natural simulate-read source.
 
@@ -86,7 +86,7 @@ Phase 1 turns the Phase 0 NDJSON-emitting SI bridge into a runnable single-lapto
 | `libxmljs2-xsd`                      | Hand-rolled Zod-based "schema" against IOF XSD types  | Skip — SC#6 says "passes XSD validation," not "passes our partial schema." Use a real XSD validator.                                                                                               |
 | `i18next`                            | `@inlang/paraglide-js` (2.18.0)                       | Compiler-based, tree-shakable, smaller bundles. **But:** D-02 locks i18next + sv/en JSON catalogs, and UI-SPEC §Copywriting requires direct port of `01-SKETCHES/.../i18n.js`. Stick with i18next. |
 | `i18next`                            | `svelte-i18n` (4.0.1)                                 | Reactive store-based. Slightly more Svelte-idiomatic. D-02 chose i18next so we don't refactor in Phase 2.                                                                                          |
-| `@yao-pkg/pkg` for single-executable | `npm install -g fartol` tarball (CHOSEN)              | `pkg` and Node SEA both struggle with `better-sqlite3` native binding. Tarball install is REQ-OPS-001's literal contract.                                                                          |
+| `@yao-pkg/pkg` for single-executable | `npm install -g fartola` tarball (CHOSEN)              | `pkg` and Node SEA both struggle with `better-sqlite3` native binding. Tarball install is REQ-OPS-001's literal contract.                                                                          |
 | `socket.io`                          | native `WebSocket` + small reconnect wrapper (CHOSEN) | UI-SPEC §"Auto-reconnect" already specifies the wrapper. socket.io is heavy; D-13 says native WS.                                                                                                  |
 
 **Installation (apps/edge/):**
@@ -94,7 +94,7 @@ Phase 1 turns the Phase 0 NDJSON-emitting SI bridge into a runnable single-lapto
 ```bash
 pnpm add fastify @fastify/websocket @fastify/static @fastify/cors @fastify/sensible \
   better-sqlite3 drizzle-orm zod fast-xml-parser libxmljs2-xsd \
-  node-thermal-printer i18next @fartol/sportident@workspace:*
+  node-thermal-printer i18next @fartola/sportident@workspace:*
 pnpm add -D drizzle-kit @types/better-sqlite3 tsx tsup
 ```
 
@@ -102,7 +102,7 @@ pnpm add -D drizzle-kit @types/better-sqlite3 tsx tsup
 
 ```bash
 pnpm add svelte @sveltejs/kit @sveltejs/adapter-static i18next \
-  @fartol/shared-types@workspace:*
+  @fartola/shared-types@workspace:*
 pnpm add -D vite vitest @playwright/test
 ```
 
@@ -183,7 +183,7 @@ pnpm add -D vite vitest @playwright/test
        │   │  │                         │  │  • clubs (autocomplete)  │  │  │
        │   │  │                         │  │  D-09 carve-out          │  │  │
        │   │  └─────────────────────────┘  └──────────────────────────┘  │  │
-       │   │  Daily online backup → fartol.db.bak-YYYY-MM-DD             │  │
+       │   │  Daily online backup → fartola.db.bak-YYYY-MM-DD             │  │
        │   └─────────────────────────────────────────────────────────────┘  │
        │                                                                    │
        │   Drizzle embedded migrator runs at startup:                       │
@@ -204,12 +204,12 @@ pnpm add -D vite vitest @playwright/test
 ### Recommended Project Structure
 
 ```
-fartol/                                  (workspace root)
+fartola/                                  (workspace root)
 ├── apps/
 │   ├── edge/                            (Fastify bridge — the binary entry)
 │   │   ├── src/
 │   │   │   ├── server.ts                (Fastify app factory + register plugins)
-│   │   │   ├── bin/fartol.ts            (#!/usr/bin/env node — the `fartol` bin)
+│   │   │   ├── bin/fartola.ts            (#!/usr/bin/env node — the `fartola` bin)
 │   │   │   ├── db/
 │   │   │   │   ├── schema.ts            (Drizzle schema-as-TS: events + config tables)
 │   │   │   │   ├── index.ts             (connect, set WAL pragmas, run migrator)
@@ -241,7 +241,7 @@ fartol/                                  (workspace root)
 │   │   ├── drizzle/                     (generated SQL migrations — bundled)
 │   │   ├── drizzle.config.ts            (dev-only, for `drizzle-kit generate`)
 │   │   ├── tsup.config.ts
-│   │   └── package.json                 (bin: "fartol": "./dist/bin/fartol.cjs")
+│   │   └── package.json                 (bin: "fartola": "./dist/bin/fartola.cjs")
 │   └── web/                             (SvelteKit SPA → built into apps/web/build)
 │       ├── src/
 │       │   ├── routes/
@@ -324,7 +324,7 @@ export const competitions = sqliteTable('competitions', {
 
 ### Pattern 2: Embedded migrator at bridge cold start
 
-**What:** Run `migrate(db, { migrationsFolder })` synchronously during `apps/edge/src/server.ts` startup. `migrationsFolder` resolves to the bundled `drizzle/` directory inside the installed `fartol` package.
+**What:** Run `migrate(db, { migrationsFolder })` synchronously during `apps/edge/src/server.ts` startup. `migrationsFolder` resolves to the bundled `drizzle/` directory inside the installed `fartola` package.
 
 **When to use:** Every cold start. Drizzle's migrator is idempotent — second start is a no-op.
 
@@ -364,7 +364,7 @@ export function initDb(dbPath: string) {
 
 **What:** Register `@fastify/static` for the `apps/web/build/` directory with `wildcard: false`, then set `setNotFoundHandler` to send `200.html` for non-`/api/*` non-`/ws` URLs. SvelteKit's SPA router takes over client-side.
 
-**When to use:** Production binary (`fartol` running). In dev, Vite serves the web side on port 5173 and Fastify on 3000 with a proxy.
+**When to use:** Production binary (`fartola` running). In dev, Vite serves the web side on port 5173 and Fastify on 3000 with a proxy.
 
 **Example:**
 
@@ -566,7 +566,7 @@ export function exportResultList(
       '@xmlns': 'http://www.orienteering.org/datastandard/3.0',
       '@iofVersion': '3.0',
       '@createTime': new Date().toISOString(),
-      '@creator': 'FartOL v0.1',
+      '@creator': 'fartOLa v0.1',
       Event: { Name: comp.name, StartTime: { Date: comp.date } },
       ClassResult: buildClassResults(state),
     },
@@ -606,7 +606,7 @@ export function exportResultList(
 | Validation schema for REST DTOs              | Type guards by hand                             | `zod`                                                                                             | Shared between `apps/edge/` and `apps/web/` via `packages/shared-types/`.                                      |
 | Daily backup logic                           | rsync wrapper / shell script                    | `db.backup()` from better-sqlite3 + `setTimeout` chain at midnight                                | The online backup API is page-by-page consistent; file copy of a WAL-mode DB is NOT consistent.                |
 | File watcher for migrations during dev       | `chokidar` plumbing                             | `drizzle-kit generate` is one-shot; no watcher needed                                             | Migrations are generated explicitly.                                                                           |
-| Single executable packaging with native deps | `pkg` / `nexe` / Node SEA                       | `npm install -g fartol` (CHOSEN)                                                                  | `pkg` + `better-sqlite3` is a known pain point. Tarball install is REQ-OPS-001's literal contract.             |
+| Single executable packaging with native deps | `pkg` / `nexe` / Node SEA                       | `npm install -g fartola` (CHOSEN)                                                                  | `pkg` + `better-sqlite3` is a known pain point. Tarball install is REQ-OPS-001's literal contract.             |
 | Course-file format parsing for Purple Pen    | Reverse-engineering Purple Pen's binary `.ppen` | Use the IOF XML 3.0 CourseData export Purple Pen produces via File → Create Data Interchange File | Purple Pen exports IOF XML 3.0 already. Same parser handles REQ-EVT-CMP-002 and REQ-EVT-CMP-003 + REQ-STD-001. |
 
 **Key insight:** The single biggest scope win is that **Purple Pen `.xml`** in CONTEXT.md D-03 IS IOF XML 3.0 CourseData (verified against purple-pen.org docs). Plan a single XML import pipeline keyed on the root element name (`CourseData` vs `EntryList` vs future `ClassList`). Three requirements (REQ-EVT-CMP-002, REQ-EVT-CMP-003, REQ-STD-001) collapse to one importer + a dispatcher.
@@ -619,7 +619,7 @@ Phase 1 is **greenfield** for everything except `packages/sportident/` (which is
 | ------------------- | ------------------------------------------------------------------------------------------- | --------------- |
 | Stored data         | None — Phase 1 creates the DB from empty (see "Schema push detection" below)                | None            |
 | Live service config | None — no Datadog/Cloudflare/Tailscale config involved                                      | None            |
-| OS-registered state | None — `fartol` runs as a Node process, not a systemd unit or scheduled task in Phase 1     | None            |
+| OS-registered state | None — `fartola` runs as a Node process, not a systemd unit or scheduled task in Phase 1     | None            |
 | Secrets / env vars  | None — no secret keys in Phase 1; localhost-only deployment                                 | None            |
 | Build artifacts     | None pre-existing; Phase 1 creates new build outputs (`apps/edge/dist/`, `apps/web/build/`) | None            |
 
@@ -658,9 +658,9 @@ server: {
 
 ### Pitfall 3: WAL mode and SQLite file copy
 
-**What goes wrong:** Operator copies `fartol.db` to a USB stick mid-event for "backup" but misses uncommitted WAL data. Restore is silently incomplete.
+**What goes wrong:** Operator copies `fartola.db` to a USB stick mid-event for "backup" but misses uncommitted WAL data. Restore is silently incomplete.
 
-**Why it happens:** With WAL mode, recent writes live in `fartol.db-wal` until checkpoint. Naïve `cp` only catches the main file.
+**Why it happens:** With WAL mode, recent writes live in `fartola.db-wal` until checkpoint. Naïve `cp` only catches the main file.
 
 **How to avoid:** REQ-OPS-003 daily backup MUST use `db.backup(destPath)` (the online backup API). The promise resolves only when the destination is a consistent snapshot. Schedule via a `setTimeout` chain that re-arms for the next midnight.
 
@@ -742,8 +742,8 @@ server: {
 
 ```typescript
 // Source: packages/sportident/src/output/ndjson.ts (Phase 0 surface) + research/architecture.md event log schema
-import { SerialTransport, SiMainStation, NdjsonEmitter } from '@fartol/sportident';
-import type { CardReadEvent, FrameErrorEvent, ConnectionChangedEvent } from '@fartol/sportident';
+import { SerialTransport, SiMainStation, NdjsonEmitter } from '@fartola/sportident';
+import type { CardReadEvent, FrameErrorEvent, ConnectionChangedEvent } from '@fartola/sportident';
 import { events } from '../db/schema.ts';
 import { db } from '../db/index.ts';
 import { sql } from 'drizzle-orm';
@@ -871,7 +871,7 @@ export function scheduleDailyBackup(db: Database, backupDir: string) {
   const tick = () => {
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
-    const dest = path.join(backupDir, `fartol.db.bak-${dateStr}`);
+    const dest = path.join(backupDir, `fartola.db.bak-${dateStr}`);
 
     db.backup(dest)
       .then(() => {
@@ -932,7 +932,7 @@ export default {
 | A3  | The Skogis SVG can be rendered as monochrome ESC/POS raster within 80mm column without bitmap-rasterizer dependency.                                                  | UI-SPEC §Receipt templates + Pattern 6 | MEDIUM — `node-thermal-printer` supports `.printImage()` for PNG; we'd render SVG → PNG buffer (e.g., via `sharp` or canvas), then send. Adds a dep. Verify in walking-skeleton wave.                          |
 | A4  | Daily backup at midnight is the right granularity for a training event (20–40 starters, single day).                                                                  | Pattern + Pitfall 3                    | LOW — REQ-OPS-003 says "daily backup during event," and Tuesday training is a single ~2h window. A second snapshot at event-end would be cheap to add.                                                         |
 | A5  | `setNotFoundHandler` fires for any non-static, non-API path, including paths that have a query string.                                                                | Pattern 3                              | LOW — Fastify routing dispatches by path, not query. Verified via fastify-static README.                                                                                                                       |
-| A6  | Drizzle migrator works when `migrationsFolder` is inside an npm-installed package (`node_modules/fartol/dist/drizzle`), not just a relative path.                     | Pattern 2                              | LOW — `migrationsFolder` is just a string path; pass `path.join(__dirname, '../drizzle')` and it resolves wherever the package lives.                                                                          |
+| A6  | Drizzle migrator works when `migrationsFolder` is inside an npm-installed package (`node_modules/fartola/dist/drizzle`), not just a relative path.                     | Pattern 2                              | LOW — `migrationsFolder` is just a string path; pass `path.join(__dirname, '../drizzle')` and it resolves wherever the package lives.                                                                          |
 | A7  | The 30-day GDPR retention (REQ-PRIV-002) is a per-competition flag — competitions older than 30 days get personal-data fields scrubbed on a daily cron, results stay. | Security Domain + Don't Hand-Roll      | MEDIUM — interpretation of "data retention: 30 days post-event for contact information; competition results retained per federation rules." Discuss with Jonas if he wants delete-all vs scrub-name-club-only. |
 | A8  | Single-laptop deployment means no `setuid` for `serialport` is needed — user is added to `dialout` group.                                                             | Security Domain                        | LOW — this is the standard Linux pattern; the bench laptop already works this way for Phase 0.                                                                                                                 |
 | A9  | Auto-print toggle persists per competition in SQLite (not per operator session).                                                                                      | Pattern 6 + UI-SPEC                    | LOW — UI-SPEC §"Auto-print toggle" explicitly says event-level.                                                                                                                                                |
@@ -942,7 +942,7 @@ export default {
 
 1. **`libxmljs2-xsd` native build vs `xmllint-wasm` for SC#6.**
    - What we know: both validate against IOF.xsd; `libxmljs2-xsd` is faster but needs `node-gyp` + libxml2-dev at install; `xmllint-wasm` is pure-WASM but ~5MB.
-   - What's unclear: whether `pnpm install --prod` of the published `fartol` package succeeds on a fresh laptop without dev tools. If not, `xmllint-wasm` wins despite the size.
+   - What's unclear: whether `pnpm install --prod` of the published `fartola` package succeeds on a fresh laptop without dev tools. If not, `xmllint-wasm` wins despite the size.
    - Recommendation: Wave 0 includes a "fresh-laptop install smoke" subtask that tries `libxmljs2-xsd` first. Fall back to `xmllint-wasm` if install fails.
 
 2. **REQ-PRIV-002 retention semantics for "contact info."**
@@ -1014,8 +1014,8 @@ export default {
 
 | Req ID                   | Behavior                                                     | Test Type            | Automated Command                                                  | File Exists? |
 | ------------------------ | ------------------------------------------------------------ | -------------------- | ------------------------------------------------------------------ | ------------ |
-| REQ-HW-001..004          | Phase 0 carry-forward (SI card read + CRC)                   | unit + integration   | `pnpm --filter @fartol/sportident test`                            | ✅ Phase 0   |
-| REQ-EVT-001              | Events get `(node_id, local_seq)` tuple and become immutable | unit                 | `pnpm --filter @fartol/edge test --test-name-pattern="event log"`  | ❌ Wave 0    |
+| REQ-HW-001..004          | Phase 0 carry-forward (SI card read + CRC)                   | unit + integration   | `pnpm --filter @fartola/sportident test`                            | ✅ Phase 0   |
+| REQ-EVT-001              | Events get `(node_id, local_seq)` tuple and become immutable | unit                 | `pnpm --filter @fartola/edge test --test-name-pattern="event log"`  | ❌ Wave 0    |
 | REQ-EVT-002              | No UPDATEs/DELETEs on events table (append-only)             | unit                 | `apps/edge/src/db/events.test.ts::test_append_only`                | ❌ Wave 0    |
 | REQ-EVT-003              | All derived state comes from reducers                        | unit                 | `apps/edge/src/db/projections/reduce.test.ts`                      | ❌ Wave 0    |
 | REQ-EVT-004              | Reducers are deterministic + idempotent                      | unit                 | `reduce.test.ts::test_replay_idempotent`                           | ❌ Wave 0    |
@@ -1036,7 +1036,7 @@ export default {
 | REQ-STD-001              | IOF XML 3.0 import (Course + Entry + Class)                  | integration          | shared with REQ-EVT-CMP-002/003                                    | (above)      |
 | REQ-STD-002              | IOF XML 3.0 export (Result list)                             | integration          | shared with REQ-EVT-CMP-008                                        | (above)      |
 | REQ-STD-003              | IOF XML 2.0.3 read (legacy)                                  | integration          | `apps/edge/src/xml/iof203Import.test.ts`                           | ❌ Wave 5    |
-| REQ-OPS-001              | `npm install -g fartol && fartol` boots cleanly              | manual-only          | `scripts/install-smoke.sh` (Wave 5)                                | ❌ Wave 5    |
+| REQ-OPS-001              | `npm install -g fartola && fartola` boots cleanly              | manual-only          | `scripts/install-smoke.sh` (Wave 5)                                | ❌ Wave 5    |
 | REQ-OPS-002              | Bridge survives restart with zero data loss                  | integration          | `apps/edge/src/restart.test.ts`                                    | ❌ Wave 5    |
 | REQ-OPS-003              | Daily SQLite backup, no human action                         | integration          | `apps/edge/src/backup/backup.test.ts`                              | ❌ Wave 5    |
 | REQ-PRIV-001             | Consent timestamp captured at walk-up                        | unit                 | `apps/edge/src/routes/competitors.test.ts::test_consent`           | ❌ Wave 3    |
@@ -1086,7 +1086,7 @@ _Test infrastructure detected (Phase 0): `node --test` runner + lefthook + commi
 | V11 Business Logic          | yes           | DNF/MP detection (D-12 reducer) must be tested against adversarial punch sequences (out-of-order, duplicate, malformed).       |
 | V12 Files & Resources       | yes           | Course-XML upload size cap (Fastify `bodyLimit`). Reject filenames that contain path traversal.                                |
 | V13 API & Web Service       | yes           | All API JSON, all input validated. `@fastify/sensible` for 4xx response shapes.                                                |
-| V14 Configuration           | yes           | `fartol` reads minimal env (e.g., `FARTOL_DB_PATH`, `FARTOL_BIND_HOST`); no secrets in env.                                    |
+| V14 Configuration           | yes           | `fartola` reads minimal env (e.g., `FARTOLA_DB_PATH`, `FARTOLA_BIND_HOST`); no secrets in env.                                    |
 
 ### Known Threat Patterns for Node + Fastify + Browser stack
 

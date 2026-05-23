@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Tests for `RecordSink` — Plan 06 Task 1 (codex review #6: directional
 // transcript; codex review #7: allowedRoots path validation).
@@ -32,7 +32,7 @@ after(() => {
 });
 
 const newBasename = (label: string): string => {
-  const b = path.join(TMP, `fartol-record-test-${label}-${NONCE}`);
+  const b = path.join(TMP, `fartola-record-test-${label}-${NONCE}`);
   cleanup.push(b);
   return b;
 };
@@ -92,7 +92,7 @@ describe('RecordSink — directional transcript + path validation', () => {
 
   test('basename under cwd accepted with default allowedRoots ([cwd])', async () => {
     // Use a basename inside cwd that we will clean up explicitly.
-    const basename = path.join(cwd, `fartol-record-test-cwd-${NONCE}`);
+    const basename = path.join(cwd, `fartola-record-test-cwd-${NONCE}`);
     cleanup.push(basename);
     const sink = new RecordSink({
       device_path: '/dev/null',
@@ -123,7 +123,7 @@ describe('RecordSink — directional transcript + path validation', () => {
   test('rejects basename outside allowed roots — `../escape` resolves above cwd', () => {
     // With only [cwd] in allowedRoots, a basename whose parent is the
     // workspace root resolves to the workspace root (one level above cwd, which
-    // is .../FartOL itself). Use a basename that resolves to /tmp but only [cwd]
+    // is .../fartOLa itself). Use a basename that resolves to /tmp but only [cwd]
     // is allowed.
     assert.throws(
       () =>

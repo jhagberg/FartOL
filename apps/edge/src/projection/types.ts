@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // CompetitionState + view types for the pure-reducer projection layer.
 // The reducer in `./reduce.ts` turns (events table + course + competitors)
@@ -18,7 +18,7 @@
 // - .planning/adr/0003-event-sourcing-as-core-data-model.md
 // - REQ-EVT-003 / REQ-EVT-004 (reducer is pure + idempotent)
 
-import type { NdjsonPunch, HalfDayClock } from '@fartol/sportident';
+import type { NdjsonPunch, HalfDayClock } from '@fartola/sportident';
 
 // Phase 2.0 extension (2026-05-18): four operator-flagged states added on
 // top of the auto-detected PEND/OK/MP/DNF set. Each maps to an IOF v3

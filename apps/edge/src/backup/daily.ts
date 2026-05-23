@@ -1,7 +1,7 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // scheduleDailyBackup — cron-in-process daily SQLite backup. Runs at the
-// next local midnight + every 24h thereafter; produces `fartol.db.bak-
+// next local midnight + every 24h thereafter; produces `fartola.db.bak-
 // YYYY-MM-DD` files in `opts.backupDir` (default './backups'), retains the
 // most recent N (default 7), prunes older snapshots.
 //
@@ -80,7 +80,7 @@ const RETRY_MS = 60 * 60 * 1000;
  * medium review feedback. */
 function prune(dir: string, keepLast: number): void {
   if (!existsSync(dir)) return;
-  const files = readdirSync(dir).filter((f) => /^fartol\.db\.bak-\d{4}-\d{2}-\d{2}$/.test(f));
+  const files = readdirSync(dir).filter((f) => /^fartola\.db\.bak-\d{4}-\d{2}-\d{2}$/.test(f));
   // YYYY-MM-DD sorts lexicographically. Sort ascending then reverse so the
   // newest sits at index 0, matching the prior mtime-DESC semantics.
   files.sort();
@@ -104,7 +104,7 @@ export function scheduleDailyBackup(handle: DbHandle, opts: BackupOpts): BackupH
 
   async function runOnce(): Promise<{ dest: string }> {
     const dateStr = formatLocalDate(new Date(now()));
-    const dest = path.join(opts.backupDir, `fartol.db.bak-${dateStr}`);
+    const dest = path.join(opts.backupDir, `fartola.db.bak-${dateStr}`);
     // better-sqlite3 db.backup(filename) is the WAL-consistent online API.
     // Two calls on the same day overwrite the same destination — node will
     // unlink the existing file inside the native binding.

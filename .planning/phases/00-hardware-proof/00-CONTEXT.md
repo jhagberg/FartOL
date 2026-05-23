@@ -88,7 +88,7 @@ on every incoming frame; malformed frames are logged and rejected.
 - **D-15:** JSON field names: **snake_case** end-to-end. Same style as
   the SQL table that will hold these events in Phase 1.
 - **D-16:** Invocation: package exposes a **bin** (e.g.
-  `fartol-readout`) **AND** a pnpm script (e.g. `pnpm dev:readout`).
+  `fartola-readout`) **AND** a pnpm script (e.g. `pnpm dev:readout`).
   Devs prefer pnpm; the bin is the supported public entry point.
 
 ### Test strategy

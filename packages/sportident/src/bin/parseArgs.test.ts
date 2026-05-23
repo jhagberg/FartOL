@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Regression tests for the --device / --record / --replay argument parser.
 // Driven by the gemini-code-assist review of PR #1 which flagged that
@@ -12,7 +12,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { parseArgs } from './fartol-readout.ts';
+import { parseArgs } from './fartola-readout.ts';
 
 describe('parseArgs (gemini PR #1 hardening)', () => {
   test('happy path: positional values for all three string flags', () => {

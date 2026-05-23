@@ -1,12 +1,12 @@
 name: Demo feedback
 description: Tell us what worked, what was missing, and what felt wrong in the public demo.
-title: "[demo] "
-labels: ["demo-feedback"]
+title: '[demo] '
+labels: ['demo-feedback']
 body:
   - type: markdown
     attributes:
       value: |
-        Tack för att du testar FartOL. Skriv gärna på svenska eller engelska.
+        Tack för att du testar fartOLa. Skriv gärna på svenska eller engelska.
         Demon kör helt i webbläsaren — ingen hårdvara och ingen backend.
   - type: dropdown
     id: role
@@ -25,27 +25,27 @@ body:
     id: what-worked
     attributes:
       label: Vad funkade?
-      placeholder: "T.ex. flödet för att starta en träning, kvittomallarna, walk-up..."
+      placeholder: 'T.ex. flödet för att starta en träning, kvittomallarna, walk-up...'
     validations:
       required: false
   - type: textarea
     id: what-missing
     attributes:
       label: Vad saknades eller var fel?
-      placeholder: "Beskriv så konkret du kan. Skärmdumpar uppskattas men krävs inte."
+      placeholder: 'Beskriv så konkret du kan. Skärmdumpar uppskattas men krävs inte.'
     validations:
       required: true
   - type: input
     id: browser
     attributes:
       label: Webbläsare och enhet
-      placeholder: "Chrome 130 / MacBook Air · Firefox / Pixel 7"
+      placeholder: 'Chrome 130 / MacBook Air · Firefox / Pixel 7'
     validations:
       required: false
   - type: textarea
     id: extra
     attributes:
       label: Övrigt
-      placeholder: "Idéer, jämförelser med MeOS/OLA, krav från ert förbund..."
+      placeholder: 'Idéer, jämförelser med MeOS/OLA, krav från ert förbund...'
     validations:
       required: false

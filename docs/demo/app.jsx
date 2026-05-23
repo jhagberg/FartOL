@@ -1,4 +1,4 @@
-// FartOL Phase 1 prototype — app shell, routing, state
+// fartOLa Phase 1 prototype — app shell, routing, state
 const { useState, useEffect, useMemo, useRef } = React;
 
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
@@ -199,12 +199,12 @@ function App() {
       <main className="main">
         <div className="topbar">
           <div className="crumb">
-            {route === 'home' && <>FartOL / <strong>{t('nav.competitions')}</strong></>}
-            {route === 'readout' && <>FartOL / 4-klubbs 2026-05-20 / <strong>{t('nav.readout')}</strong></>}
-            {route === 'results' && <>FartOL / 4-klubbs 2026-05-20 / <strong>{t('nav.results')}</strong></>}
-            {route === 'export' && <>FartOL / 4-klubbs 2026-05-20 / <strong>{t('nav.export')}</strong></>}
-            {route === 'registration' && <>FartOL / 4-klubbs 2026-05-20 / <strong>Registreringsdisk</strong></>}
-            {route === 'hyrbrickor' && <>FartOL / 4-klubbs 2026-05-20 / <strong>Hyrbrickor</strong></>}
+            {route === 'home' && <>fartOLa / <strong>{t('nav.competitions')}</strong></>}
+            {route === 'readout' && <>fartOLa / 4-klubbs 2026-05-20 / <strong>{t('nav.readout')}</strong></>}
+            {route === 'results' && <>fartOLa / 4-klubbs 2026-05-20 / <strong>{t('nav.results')}</strong></>}
+            {route === 'export' && <>fartOLa / 4-klubbs 2026-05-20 / <strong>{t('nav.export')}</strong></>}
+            {route === 'registration' && <>fartOLa / 4-klubbs 2026-05-20 / <strong>Registreringsdisk</strong></>}
+            {route === 'hyrbrickor' && <>fartOLa / 4-klubbs 2026-05-20 / <strong>Hyrbrickor</strong></>}
           </div>
           <div className="spacer"></div>
           <Phase2StatusStrip phase2={window.MOCK_PHASE2} />

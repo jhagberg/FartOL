@@ -7,7 +7,7 @@ tags: [eventor, sqlite, drizzle, saxes, streaming, schema, adr, boot-wiring]
 # Dependency graph
 requires:
   - phase: 01-single-laptop-training-mvp
-    provides: schema.ts Drizzle idiom; migrate.ts embedded runner; backup/daily.ts handle pattern; routes/admin.ts FARTOL_DEV gate; xml/parse.ts T-FILE-IMPORT preflight
+    provides: schema.ts Drizzle idiom; migrate.ts embedded runner; backup/daily.ts handle pattern; routes/admin.ts FARTOLA_DEV gate; xml/parse.ts T-FILE-IMPORT preflight
 provides:
   - Six new SQLite tables (eventor_competitors, eventor_clubs, meos_competitors, meos_classes, meos_clubs, hired_cards) via single generated migration 0002_phase2.sql
   - competitors.source TEXT NOT NULL DEFAULT 'walkup' (enum walkup|entrylist|meos)
@@ -15,7 +15,7 @@ provides:
   - apps/edge/src/eventor/download.ts — gzipped fetch over the exact MeOS-mirror Eventor URL
   - apps/edge/src/eventor/cache.ts — transactional snapshot replace + config marker
   - apps/edge/src/eventor/boot.ts — EventorHandle { runNow, stop } with 7-day staleness gate, no_key short-circuit, warn-and-run network degradation
-  - bin/fartol.ts wiring (fire-and-forget after app.listen) + POST /api/__admin/eventor/refresh
+  - bin/fartola.ts wiring (fire-and-forget after app.listen) + POST /api/__admin/eventor/refresh
   - ADR-0009 covering the 252 919-row PII trade-off
   - REQUIREMENTS.md REQ-EXT-MEOS-001 entry under new "External integration" section
 affects:
@@ -60,7 +60,7 @@ key-files:
     - apps/edge/drizzle/meta/_journal.json
     - apps/edge/src/routes/admin.ts
     - apps/edge/src/routes/admin.test.ts
-    - apps/edge/src/bin/fartol.ts
+    - apps/edge/src/bin/fartola.ts
     - apps/edge/package.json
     - pnpm-lock.yaml
     - .planning/REQUIREMENTS.md
@@ -75,7 +75,7 @@ key-decisions:
 patterns-established:
   - 'Pattern: SAX streaming parser with O(1) memory per record (saxes 6, pathStack, current Partial<T>)'
   - 'Pattern: Transactional snapshot replace = DELETE + bulk-INSERT + config marker, all inside one sqlite.transaction() — partial failure rolls back ENTIRELY'
-  - 'Pattern: { runNow, stop } handle decorated on FastifyInstance, surfaced via FARTOL_DEV-gated admin POST endpoint'
+  - 'Pattern: { runNow, stop } handle decorated on FastifyInstance, surfaced via FARTOLA_DEV-gated admin POST endpoint'
   - 'Pattern: T-FILE-IMPORT preflight (DOCTYPE/ENTITY regex on first 512 bytes) applied to streaming AND DOM parsers'
 
 requirements-completed: [REQ-STD-004, REQ-OPS-001, REQ-PRIV-002]
@@ -187,11 +187,11 @@ Plan metadata commit follows this summary.
 - `apps/edge/drizzle/meta/_journal.json` — appended 0002_phase2
   entry; existing 0000+0001 entries untouched (codex C-H1 lock).
 - `apps/edge/src/routes/admin.ts` — added POST
-  `/api/__admin/eventor/refresh` behind the FARTOL_DEV gate; extended
-  FastifyInstance declaration with `fartolEventor`.
+  `/api/__admin/eventor/refresh` behind the FARTOLA_DEV gate; extended
+  FastifyInstance declaration with `fartolaEventor`.
 - `apps/edge/src/routes/admin.test.ts` — 3 new tests for the new
   endpoint (gate, success with stub, no-handle path).
-- `apps/edge/src/bin/fartol.ts` — scheduleEventorBoot wired after
+- `apps/edge/src/bin/fartola.ts` — scheduleEventorBoot wired after
   the existing backup/retention block; fire-and-forget `runNow()`
   AFTER `app.listen`; `eventor.stop()` added to shutdown.
 - `apps/edge/package.json` — `saxes: 6.0.0` (exact pin, no caret).
@@ -272,8 +272,8 @@ test added). No scope creep; production code lands as planned.
 
 - **First-time `pnpm install` required**: the worktree had no
   `node_modules`. Resolved by running `pnpm install` followed by
-  `pnpm --filter @fartol/sportident build` so the workspace
-  `@fartol/sportident` package's `dist/index.d.ts` resolved. No
+  `pnpm --filter @fartola/sportident build` so the workspace
+  `@fartola/sportident` package's `dist/index.d.ts` resolved. No
   scope impact; standard first-run setup.
 
 ## User Setup Required
@@ -287,13 +287,13 @@ acceptance, but useful for the bench dry-run before Wednesday's
 1. Place the Eventor API key in `.eventor-env` (gitignored, commit
    7ec8866).
 2. Source it before booting the bridge:
-   `set -a; source .eventor-env; set +a; fartol --port 3000`.
+   `set -a; source .eventor-env; set +a; fartola --port 3000`.
 3. Watch the logs for `Eventor: refresh ok — N competitors, M clubs`
    (~5 s on a fresh DB, ~250 k rows landed).
 4. Subsequent boots within 7 days will log `Eventor: cache N dagar
 gammal — skipping refresh`. Force a refresh with
    `curl -X POST http://localhost:3000/api/__admin/eventor/refresh`
-   (requires `FARTOL_DEV=1`).
+   (requires `FARTOLA_DEV=1`).
 
 ## Next Phase Readiness
 
@@ -326,7 +326,7 @@ gammal — skipping refresh`. Force a refresh with
 - [x] `apps/edge/src/eventor/download.ts` — FOUND
 - [x] `apps/edge/src/eventor/boot.ts` — FOUND
 - [x] `apps/edge/src/eventor/boot.test.ts` — FOUND
-- [x] `apps/edge/src/bin/fartol.ts` — UPDATED, scheduleEventorBoot wired
+- [x] `apps/edge/src/bin/fartola.ts` — UPDATED, scheduleEventorBoot wired
 - [x] `apps/edge/src/routes/admin.ts` — UPDATED, /api/\_\_admin/eventor/refresh added
 - [x] `apps/edge/src/routes/admin.test.ts` — UPDATED, 3 new tests
 - [x] `.planning/adr/0009-eventor-runner-cache.md` — FOUND, status: accepted

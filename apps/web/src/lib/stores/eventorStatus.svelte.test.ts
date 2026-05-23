@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Vitest coverage for the eventorStatus runes store (Plan 02-02 task 4).
 //
@@ -30,7 +30,7 @@ describe('eventorStatus store', () => {
             state: 'ready',
             ageDays: 2,
             competitorCount: 252919,
-            fartol_dev: false,
+            fartola_dev: false,
           }),
           { status: 200, headers: { 'content-type': 'application/json' } }
         )
@@ -41,7 +41,7 @@ describe('eventorStatus store', () => {
     expect(s.state).toBe('ready');
     expect(s.ageDays).toBe(2);
     expect(s.competitorCount).toBe(252919);
-    expect(s.fartol_dev).toBe(false);
+    expect(s.fartola_dev).toBe(false);
   });
 
   it('refreshEventorStatus on network failure sets state=offline', async () => {
@@ -69,7 +69,7 @@ describe('eventorStatus store', () => {
           state: 'ready',
           ageDays: 0,
           competitorCount: 100,
-          fartol_dev: true,
+          fartola_dev: true,
         }),
         { status: 200, headers: { 'content-type': 'application/json' } }
       );
@@ -80,7 +80,7 @@ describe('eventorStatus store', () => {
     const statusCall = calls.find((u) => u.includes('/api/eventor/status'));
     expect(adminCall, 'admin refresh POST invoked').toBeTruthy();
     expect(statusCall, 'status GET invoked afterwards').toBeTruthy();
-    expect(mod.getEventorStatus().fartol_dev).toBe(true);
+    expect(mod.getEventorStatus().fartola_dev).toBe(true);
     expect(mod.getEventorStatus().competitorCount).toBe(100);
   });
 });

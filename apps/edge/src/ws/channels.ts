@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Pure channel-name parsing + validation for the WS plugin. Two channel
 // kinds in Phase 1: `readout:<competitionId>` (raw event stream — receives
@@ -16,7 +16,7 @@
 // - .planning/phases/01-single-laptop-training-mvp/01-03-PLAN.md task 1
 // - .planning/phases/01-single-laptop-training-mvp/01-REVIEWS.md §C-M1
 
-import type { ChannelName } from '@fartol/shared-types';
+import type { ChannelName } from '@fartola/shared-types';
 
 export type { ChannelName };
 export type ChannelKind = 'readout' | 'results';

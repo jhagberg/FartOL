@@ -32,7 +32,7 @@ created: 2026-05-12
 
 - **After every task commit:** Run `pnpm test`
 - **After every plan wave:** Run `pnpm lint && pnpm typecheck && pnpm test`
-- **Before `/gsd-verify-work` / tagging `v0.0.1-handshake`:** Full suite green + `./scripts/hardware-smoke.sh` exits 0 + one manual `pnpm exec fartol-readout --once` inspection
+- **Before `/gsd-verify-work` / tagging `v0.0.1-handshake`:** Full suite green + `./scripts/hardware-smoke.sh` exits 0 + one manual `pnpm exec fartola-readout --once` inspection
 - **Max feedback latency:** 10 seconds (per-task) / 30 seconds (per-wave with lint+typecheck)
 
 ---

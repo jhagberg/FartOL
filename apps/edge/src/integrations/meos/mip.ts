@@ -1,9 +1,9 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // MeOS Input Protocol (MIP) server — Fastify route `GET /mip` that MeOS
-// polls every few seconds to learn about walk-up registrations FartOL has
-// taken. This is FartOL → MeOS direktanmälningar sync per Phase 2.0 locked
-// decision #2 (FartOL primary; MeOS parallel backup).
+// polls every few seconds to learn about walk-up registrations fartOLa has
+// taken. This is fartOLa → MeOS direktanmälningar sync per Phase 2.0 locked
+// decision #2 (fartOLa primary; MeOS parallel backup).
 //
 // Wire shape (mip.xsd v3.0, pinned at apps/edge/src/integrations/meos/mip.xsd):
 //   <?xml version="1.0" encoding="UTF-8"?>
@@ -24,7 +24,7 @@
 //     NEW card_number — so the next /mip poll naturally re-serializes the
 //     updated runner and MeOS UPDATEs (matches by <extId>) rather than
 //     INSERTing.
-//   - D-MIP-4: <classname> string + <extId> FartOL competitor UUID.
+//   - D-MIP-4: <classname> string + <extId> fartOLa competitor UUID.
 //     Verified against MeOS source at /home/jonas/src/meos/code/onlineinput.cpp:989-997
 //     (falls back to oe.getClass(clsName) when classid absent).
 //
@@ -155,7 +155,7 @@ export default async function registerMipRoute(app: FastifyInstance): Promise<vo
     // an empty <MIPData lastid="0"/> — safe default that MeOS treats as
     // "nothing to consume yet." Per the Plan task 1 must-have:
     // "GET /mip with no active competition returns lastid=0 (no error)."
-    const activeRow = app.fartolDb.db
+    const activeRow = app.fartolaDb.db
       .select({ value: configTable.value })
       .from(configTable)
       .where(eq(configTable.key, ACTIVE_COMP_KEY))
@@ -173,7 +173,7 @@ export default async function registerMipRoute(app: FastifyInstance): Promise<vo
     //
     // Pitfall 2 mitigation: ALWAYS filter by competition_id so cross-
     // competition local_seqs don't bleed into the MIP poll.
-    const rows = app.fartolDb.db
+    const rows = app.fartolaDb.db
       .select({
         localSeq: events.localSeq,
         payload: events.payload,
@@ -217,7 +217,7 @@ export default async function registerMipRoute(app: FastifyInstance): Promise<vo
     const competitorRows: CompetitorRow[] = [];
     for (let i = 0; i < competitorIds.length; i += INARRAY_CHUNK) {
       const slice = competitorIds.slice(i, i + INARRAY_CHUNK);
-      const partial = app.fartolDb.db
+      const partial = app.fartolaDb.db
         .select()
         .from(competitors)
         .where(inArray(competitors.id, slice))
@@ -230,7 +230,7 @@ export default async function registerMipRoute(app: FastifyInstance): Promise<vo
     const classRows =
       classIds.length === 0
         ? []
-        : app.fartolDb.db
+        : app.fartolaDb.db
             .select({ id: classes.id, name: classes.name })
             .from(classes)
             .where(inArray(classes.id, classIds))
@@ -249,7 +249,7 @@ export default async function registerMipRoute(app: FastifyInstance): Promise<vo
     if (pollCardNumbers.length > 0) {
       for (let i = 0; i < pollCardNumbers.length; i += INARRAY_CHUNK) {
         const slice = pollCardNumbers.slice(i, i + INARRAY_CHUNK);
-        const partial = app.fartolDb.db
+        const partial = app.fartolaDb.db
           .select({ cardNumber: hiredCards.cardNumber })
           .from(hiredCards)
           .where(
@@ -279,7 +279,7 @@ export default async function registerMipRoute(app: FastifyInstance): Promise<vo
       // Landmine: MeOS rejects entries with empty <classname> (falls back
       // to <classid> which we don't emit — D-MIP-4). Skip rather than
       // emit something MeOS will reject. Log at warn so operator can
-      // diagnose the "walk-up exists in FartOL but never lands in MeOS"
+      // diagnose the "walk-up exists in fartOLa but never lands in MeOS"
       // symptom (code-review F-007 — missing class is the only path that
       // produces this silent drop, and it's near-impossible to debug
       // without the log line). No-op at 4-klubbs scale (5 classes, no

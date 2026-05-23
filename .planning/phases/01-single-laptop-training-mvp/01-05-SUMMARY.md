@@ -108,7 +108,7 @@ completed: 2026-05-14
 
 - **XSD validation gates every ingest.** Both endpoints call `validateXml(xmlSource)` before opening a DB transaction. The bundled IOF.xsd is read once at module load (`__schemaInfo.bytes > 1000` smoke-checked in test 1). xmllint-wasm runs in pure WebAssembly — no native postinstall, no platform-specific binary fragility.
 
-- **C-H3 atomic-wizard endpoint LOCKED end-to-end.** `POST /api/competitions/from-wizard` wraps competition INSERT + ingest in a single `app.fartolDb.sqlite.transaction(() => { ... })`. The two regression tests are GREEN:
+- **C-H3 atomic-wizard endpoint LOCKED end-to-end.** `POST /api/competitions/from-wizard` wraps competition INSERT + ingest in a single `app.fartolaDb.sqlite.transaction(() => { ... })`. The two regression tests are GREEN:
   - `competitionsFromWizard.test.ts` test 2 (early-exit rollback): posting the corrupt CourseData fixture returns 400 xsd_invalid and the competitions row count is unchanged.
   - `competitionsFromWizard.test.ts` test 3 (mid-transaction rollback — THE GATE): a custom adversarial CourseData that PASSES parse + XSD but mentions an undeclared control code throws inside `ingestCourseData` → the transaction rolls back → 422 ingest_failed → competitions row count unchanged. This is the canonical C-H3 regression input.
   - Test 7 covers the C-M4 + entrylist_without_courses path: posting an EntryList against an empty competition rolls back the competition INSERT.
@@ -208,7 +208,7 @@ _No plan metadata commit lands from this agent — the orchestrator owns STATE.m
 
 **2. [Rule 3 — Blocking] Build script needed mkdir -p before cp**
 
-- **Found during:** `pnpm --filter @fartol/edge build` smoke test after writing the new build script.
+- **Found during:** `pnpm --filter @fartola/edge build` smoke test after writing the new build script.
 - **Issue:** `tsup` does not create `dist/xml/` because there are no source files under `src/xml/` matching the entry points; the `cp src/xml/IOF.xsd dist/xml/IOF.xsd` step then failed with "cannot create regular file 'dist/xml/IOF.xsd': No such file or directory".
 - **Fix:** Inserted `mkdir -p dist/xml` between `tsup` and `cp`. The build now produces `dist/xml/IOF.xsd` reliably.
 - **Files modified:** `apps/edge/package.json`.
@@ -217,7 +217,7 @@ _No plan metadata commit lands from this agent — the orchestrator owns STATE.m
 
 **3. [Rule 3 — Blocking] TS strict — Buffer is not assignable to BlobPart**
 
-- **Found during:** `pnpm --filter @fartol/edge typecheck` after writing `import.test.ts`.
+- **Found during:** `pnpm --filter @fartola/edge typecheck` after writing `import.test.ts`.
 - **Issue:** TS 5.6 + strict mode complain that Node's `Buffer<ArrayBufferLike>` is not assignable to `BlobPart` (= `ArrayBufferView<ArrayBuffer>` — strictly ArrayBuffer, not ArrayBufferLike which includes SharedArrayBuffer). The error trips when constructing the multipart `new File([bytes], filename)`.
 - **Fix:** Copy the buffer bytes into a fresh `ArrayBuffer`-backed `Uint8Array` via `const ab = new ArrayBuffer(...); new Uint8Array(ab).set(bytes); new File([ab], filename)`. The fresh ArrayBuffer is unambiguously `ArrayBuffer` (not `SharedArrayBuffer`), so the BlobPart constraint is satisfied. Cheap copy (one alloc + one memcpy), only used in tests.
 - **Files modified:** `apps/edge/src/routes/import.test.ts`.
@@ -262,7 +262,7 @@ _No plan metadata commit lands from this agent — the orchestrator owns STATE.m
 
 ## User Setup Required
 
-None. `pnpm install` picks up the three new deps. No external services. The bundled IOF.xsd is at `apps/edge/src/xml/IOF.xsd` after `git pull`; the build script copies it to `dist/xml/IOF.xsd` on `pnpm --filter @fartol/edge build`. xmllint-wasm runs from `node_modules/xmllint-wasm/xmllint.wasm` with no extra steps.
+None. `pnpm install` picks up the three new deps. No external services. The bundled IOF.xsd is at `apps/edge/src/xml/IOF.xsd` after `git pull`; the build script copies it to `dist/xml/IOF.xsd` on `pnpm --filter @fartola/edge build`. xmllint-wasm runs from `node_modules/xmllint-wasm/xmllint.wasm` with no extra steps.
 
 ## Next Phase Readiness
 
@@ -322,9 +322,9 @@ None — every path is production-ready.
 **Behavior verified:**
 
 - `pnpm -r --if-present typecheck`: clean across all 4 workspace projects.
-- `pnpm --filter @fartol/edge test`: 113/113 pass (+38 over plan-04 baseline).
+- `pnpm --filter @fartola/edge test`: 113/113 pass (+38 over plan-04 baseline).
 - `pnpm -r --if-present test`: 108 sportident + 3 shared-types + 5 web + 113 edge = 229 tests, 0 fail.
-- `pnpm --filter @fartol/edge build`: produces `dist/xml/IOF.xsd` (216 KB) alongside the standard tsup outputs.
+- `pnpm --filter @fartola/edge build`: produces `dist/xml/IOF.xsd` (216 KB) alongside the standard tsup outputs.
 - `competitionsFromWizard.test.ts` test 2 (XSD-fail rollback): PASSES — competitions count unchanged after 400 xsd_invalid.
 - `competitionsFromWizard.test.ts` test 3 (mid-transaction rollback): PASSES — competitions count unchanged after 422 ingest_failed (unknown control 99 throw inside transaction).
 - `entryImport.test.ts` test 4 (C-M4): PASSES — every imported competitor has consent_status='pending_first_read' AND consent_at_ms=null.

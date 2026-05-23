@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test C-H3 regression coverage for POST /api/competitions/from-wizard.
 // The atomic-rollback contract is the load-bearing reason this endpoint
@@ -135,7 +135,7 @@ describe('POST /api/competitions/from-wizard (C-H3 atomic)', () => {
     // it; libxml2 accepts it (the schema permits arbitrary CourseControl
     // codes without cross-referencing the Control list); ingestCourseData
     // throws inside doIngest with "unknown control 99". Because the throw
-    // happens INSIDE app.fartolDb.sqlite.transaction, better-sqlite3 rolls
+    // happens INSIDE app.fartolaDb.sqlite.transaction, better-sqlite3 rolls
     // BOTH the competition INSERT and any partial ingest writes back.
     const adversarial =
       '<?xml version="1.0" encoding="UTF-8"?>' +

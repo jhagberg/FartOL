@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // REST handler: `GET /api/competitions/:id/results`. Returns the cached
 // projection (or computes it on first read) as a snapshot ResultView[]
@@ -37,7 +37,7 @@ export default async function registerResultsRoute(app: FastifyInstance): Promis
       // 404 short-circuit so an unknown competition doesn't return an empty
       // results envelope (which would be indistinguishable from a real
       // competition with zero classes).
-      const compRow = app.fartolDb.db
+      const compRow = app.fartolaDb.db
         .select({ id: competitions.id })
         .from(competitions)
         .where(eq(competitions.id, id))
@@ -59,7 +59,7 @@ export default async function registerResultsRoute(app: FastifyInstance): Promis
         return undefined;
       }
 
-      const classRows = app.fartolDb.db
+      const classRows = app.fartolaDb.db
         .select({ id: classes.id, name: classes.name })
         .from(classes)
         .where(eq(classes.competitionId, id))

@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Fastify @fastify/websocket plugin + /ws route + wsBroadcast decorator.
 // Implements RESEARCH §"Pattern 4: WebSocket channels with hello-replay
@@ -41,27 +41,27 @@ import type { WebSocket } from 'ws';
 
 import { eq } from 'drizzle-orm';
 
-import type { ChannelName, WsHelloMessage, WsSubscribeMessage } from '@fartol/shared-types';
+import type { ChannelName, WsHelloMessage, WsSubscribeMessage } from '@fartola/shared-types';
 import { isValidChannel, channelKind, isValidSeq } from './channels.ts';
 import { replayChannel } from './replay.ts';
 import type { DbHandle } from '../db/index.ts';
 import { classes as classesTable } from '../db/schema.ts';
 
 // ---------------------------------------------------------------------------
-// FastifyInstance decoration — wsBroadcast + fartolDb + fartolNodeId.
+// FastifyInstance decoration — wsBroadcast + fartolaDb + fartolaNodeId.
 // Module augmentation so consumers (routes/dev.ts, plan 06 bridge, etc.) get
 // typed access without an `as any` cast.
 // ---------------------------------------------------------------------------
 
 declare module 'fastify' {
   interface FastifyInstance {
-    fartolDb: DbHandle;
-    fartolNodeId: string;
+    fartolaDb: DbHandle;
+    fartolaNodeId: string;
     /** Phase 2.0 — wired in server.ts from BuildServerOpts.allowLan. When
      * true the WS origin allow-list permits same-origin LAN hosts so the
      * MeOS parallel-run laptop can subscribe to readout / registration
      * channels. Loopback only when false. */
-    fartolAllowLan: boolean;
+    fartolaAllowLan: boolean;
     wsBroadcast: (
       channel: ChannelName,
       envelope: { type: string; payload: unknown; seq?: number }
@@ -102,7 +102,7 @@ const ORIGIN_ALLOW_LIST = new Set([
 // the loopback-only Set above is the authority. Code-review F-001
 // (codex) BLOCKER fix — the MeOS parallel laptop must be able to open
 // the SPA over LAN, and once the page loads it sends Origin: http://
-// <fartol-lan-ip>:3000 which the loopback-only Set rejected.
+// <fartola-lan-ip>:3000 which the loopback-only Set rejected.
 const LAN_ORIGIN_REGEXES: RegExp[] = [
   /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$/,
   /^http:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/,
@@ -139,14 +139,14 @@ async function wsPlugin(app: FastifyInstance): Promise<void> {
   const clients = new Map<WebSocket, ConnState>();
 
   // Capture the allow-lan decorator at plugin-registration time. server.ts
-  // decorates `fartolAllowLan` BEFORE registering this plugin (the
+  // decorates `fartolaAllowLan` BEFORE registering this plugin (the
   // decorate() call sits in the same block as the wsPlugin register
   // call), so reading it here is safe. Default false if the decorator is
   // somehow absent (e.g. a test path that registers the WS plugin
   // directly without going through buildServer).
   const allowLan =
-    'fartolAllowLan' in app
-      ? Boolean((app as unknown as { fartolAllowLan?: boolean }).fartolAllowLan)
+    'fartolaAllowLan' in app
+      ? Boolean((app as unknown as { fartolaAllowLan?: boolean }).fartolaAllowLan)
       : false;
 
   await app.register(websocket, {
@@ -224,7 +224,7 @@ async function wsPlugin(app: FastifyInstance): Promise<void> {
         // C-M1: raw `replay` envelopes are EXCLUSIVE to readout: channels.
         // T-EVENT-REPLAY: skip replay entirely on a malformed seq.
         if (!seqIsValid) continue;
-        const rows = replayChannel(app.fartolDb, ch, hello.last_seen_seq, app.fartolNodeId);
+        const rows = replayChannel(app.fartolaDb, ch, hello.last_seen_seq, app.fartolaNodeId);
         for (const row of rows) {
           if (socket.readyState !== 1 /* OPEN */) break;
           try {
@@ -254,7 +254,7 @@ async function wsPlugin(app: FastifyInstance): Promise<void> {
         let projection = app.projectionStore.get(competitionId);
         if (projection === null) projection = app.projectionStore.recomputeNow(competitionId);
         if (projection !== null) {
-          const classRows = app.fartolDb.db
+          const classRows = app.fartolaDb.db
             .select({ id: classesTable.id, name: classesTable.name })
             .from(classesTable)
             .where(eq(classesTable.competitionId, competitionId))
@@ -318,10 +318,10 @@ async function wsPlugin(app: FastifyInstance): Promise<void> {
   app.decorate('wsBroadcast', broadcast);
 }
 
-// Plugin must NOT be encapsulated — the decorators (fartolDb, fartolNodeId,
+// Plugin must NOT be encapsulated — the decorators (fartolaDb, fartolaNodeId,
 // wsBroadcast) need to flow up to the parent scope where /api/* routes
 // register. Wrap with fastify-plugin to skip encapsulation.
 export default fp(wsPlugin, {
-  name: '@fartol/ws',
+  name: '@fartola/ws',
   fastify: '5.x',
 });

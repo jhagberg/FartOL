@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Label + control wrapper. Six-pixel gap per UI-SPEC §"Field rows" so
   the wizard form, the walk-up modal, and the receipt-template panel all

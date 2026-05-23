@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Session-scoped operator endpoints that toggle the bridge's runtime state:
 //
@@ -15,7 +15,7 @@
 // mitigation).
 //
 // reconnect-bridge is wired via the optional `app.reconnectBridge` hook
-// (set by apps/edge/src/bin/fartol.ts when it owns a live SerialTransport).
+// (set by apps/edge/src/bin/fartola.ts when it owns a live SerialTransport).
 // When the bridge is detached (e.g. tests, --no-bridge), the route returns
 // 503 with a small body. The route never mutates the bridge directly.
 //
@@ -34,7 +34,7 @@ import { config, competitions } from '../db/schema.ts';
 const ACTIVE_COMP_KEY = 'active_competition_id';
 
 export function loadActiveCompetitionId(app: FastifyInstance): string | null {
-  const row = app.fartolDb.db
+  const row = app.fartolaDb.db
     .select({ value: config.value })
     .from(config)
     .where(eq(config.key, ACTIVE_COMP_KEY))
@@ -47,10 +47,10 @@ function setActiveCompetitionIdRow(app: FastifyInstance, id: string | null): voi
   // available, but for a singleton we can do a simple delete+insert when
   // setting and delete-only when clearing.
   if (id === null) {
-    app.fartolDb.db.delete(config).where(eq(config.key, ACTIVE_COMP_KEY)).run();
+    app.fartolaDb.db.delete(config).where(eq(config.key, ACTIVE_COMP_KEY)).run();
     return;
   }
-  app.fartolDb.db
+  app.fartolaDb.db
     .insert(config)
     .values({ key: ACTIVE_COMP_KEY, value: id })
     .onConflictDoUpdate({ target: config.key, set: { value: id } })
@@ -59,7 +59,7 @@ function setActiveCompetitionIdRow(app: FastifyInstance, id: string | null): voi
 
 export default async function registerSessionsRoutes(app: FastifyInstance): Promise<void> {
   // Restore active competition from config on plugin register. The route
-  // module is registered after fartolDb is decorated (server.ts ordering),
+  // module is registered after fartolaDb is decorated (server.ts ordering),
   // so the lookup is safe here.
   app.activeCompetitionId = loadActiveCompetitionId(app);
 
@@ -77,7 +77,7 @@ export default async function registerSessionsRoutes(app: FastifyInstance): Prom
     const id = body.competition_id;
     // Verify the comp exists — guards against typos that would leave events
     // with a competition_id FK that fails on insert later.
-    const exists = app.fartolDb.db
+    const exists = app.fartolaDb.db
       .select({ id: competitions.id })
       .from(competitions)
       .where(eq(competitions.id, id))
@@ -125,7 +125,7 @@ declare module 'fastify' {
      * means the bridge is idle (events persist with competition_id=null,
      * no WS broadcast). Mirrors the `config` table singleton. */
     activeCompetitionId: string | null;
-    /** Optional hook owned by apps/edge/src/bin/fartol.ts. When set, the
+    /** Optional hook owned by apps/edge/src/bin/fartola.ts. When set, the
      * POST /api/sessions/reconnect-bridge route invokes it to trigger a
      * SerialTransport teardown + retry chain. Absent in tests / --no-bridge. */
     reconnectBridge?: () => Promise<void>;

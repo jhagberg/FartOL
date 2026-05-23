@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for the Eventor cache + download pipeline
 // (Plan 02-01 task 3). Validates:
@@ -92,7 +92,7 @@ describe('downloadEventorPayloads — URL + header + tempfile shape', () => {
     const compGz = gzipSync(readFileSync(COMPETITORS_XML));
     const clubsGz = gzipSync(readFileSync(CLUBS_XML));
     const { impl, calls } = makeMockFetch(compGz, clubsGz);
-    const tmp = mkdtempSync(path.join(tmpdir(), 'fartol-eventor-dl-'));
+    const tmp = mkdtempSync(path.join(tmpdir(), 'fartola-eventor-dl-'));
     try {
       const result = await downloadEventorPayloads({
         apiKey: 'TEST-KEY-1234',
@@ -134,7 +134,7 @@ describe('downloadEventorPayloads — URL + header + tempfile shape', () => {
     const compZipBytes = readFileSync(COMPETITORS_ZIP);
     const clubsXmlBytes = readFileSync(CLUBS_XML);
     const { impl } = makeMockFetch(compZipBytes, clubsXmlBytes);
-    const tmp = mkdtempSync(path.join(tmpdir(), 'fartol-eventor-pkzip-'));
+    const tmp = mkdtempSync(path.join(tmpdir(), 'fartola-eventor-pkzip-'));
     try {
       const result = await downloadEventorPayloads({
         apiKey: 'TEST-KEY-1234',
@@ -157,7 +157,7 @@ describe('downloadEventorPayloads — URL + header + tempfile shape', () => {
   test('rejects body with neither PKZIP / gzip / XML magic with a descriptive error', async () => {
     const junk = Buffer.from([0xff, 0xfe, 0xfd, 0xfc, 0xfb]);
     const { impl } = makeMockFetch(junk, junk);
-    const tmp = mkdtempSync(path.join(tmpdir(), 'fartol-eventor-junk-'));
+    const tmp = mkdtempSync(path.join(tmpdir(), 'fartola-eventor-junk-'));
     try {
       await assert.rejects(
         () =>
@@ -218,7 +218,7 @@ describe('ingestEventorCache — bulk-upsert + config marker + rollback', () => 
       assert.equal(handle.db.select().from(eventorCompetitors).all().length, 3);
 
       // Second call with a smaller 2-record fixture (write to a tmpfile).
-      const tmp = mkdtempSync(path.join(tmpdir(), 'fartol-eventor-snap-'));
+      const tmp = mkdtempSync(path.join(tmpdir(), 'fartola-eventor-snap-'));
       const smaller = path.join(tmp, 'smaller.xml');
       writeFileSync(
         smaller,
@@ -254,7 +254,7 @@ describe('ingestEventorCache — bulk-upsert + config marker + rollback', () => 
 
       // Construct an XML file that will trigger a parse error when streamed.
       // saxes will throw on malformed XML; here we use a tag-imbalance shape.
-      const tmp = mkdtempSync(path.join(tmpdir(), 'fartol-eventor-bad-'));
+      const tmp = mkdtempSync(path.join(tmpdir(), 'fartola-eventor-bad-'));
       const bad = path.join(tmp, 'broken.xml');
       writeFileSync(
         bad,

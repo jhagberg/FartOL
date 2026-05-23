@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Shared Zod-issue → wire error mapper for plan 04 REST routes. Every route
 // uses the same structured 400 shape so SvelteKit forms (plan 12 wizard +

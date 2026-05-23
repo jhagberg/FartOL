@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // REST handler: `POST /api/competitions/:id/print-receipt`. Resolves the
 // competitor + competition + class + course + projection (via
@@ -44,7 +44,7 @@ import type {
   PrintCourse,
   PrintPlaceContext,
 } from '../print/sink.ts';
-import { skogisFromInput } from '@fartol/shared-types';
+import { skogisFromInput } from '@fartola/shared-types';
 import { issuesToErrors } from './_zod-errors.ts';
 
 const TEMPLATE_VALUES = ['classic', 'standing', 'detailed', 'top4', 'minimal', 'kids'] as const;
@@ -75,14 +75,14 @@ export default async function registerPrintRoute(
       }
       const { competitor_id, template: bodyTemplate } = parsed.data;
 
-      const compRow = app.fartolDb.db
+      const compRow = app.fartolaDb.db
         .select()
         .from(competitions)
         .where(eq(competitions.id, competitionId))
         .get();
       if (!compRow) return reply.code(404).send({ error: 'competition_not_found' });
 
-      const competitorRow = app.fartolDb.db
+      const competitorRow = app.fartolaDb.db
         .select()
         .from(competitorsTable)
         .where(
@@ -94,7 +94,7 @@ export default async function registerPrintRoute(
         .get();
       if (!competitorRow) return reply.code(404).send({ error: 'competitor_not_found' });
 
-      const classRow = app.fartolDb.db
+      const classRow = app.fartolaDb.db
         .select()
         .from(classesTable)
         .where(eq(classesTable.id, competitorRow.classId))
@@ -102,7 +102,7 @@ export default async function registerPrintRoute(
       if (!classRow) return reply.code(404).send({ error: 'class_not_found' });
 
       // Course: pick the course whose class_id matches; null if none.
-      const courseRow = app.fartolDb.db
+      const courseRow = app.fartolaDb.db
         .select()
         .from(courses)
         .where(and(eq(courses.competitionId, competitionId), eq(courses.classId, classRow.id)))
@@ -110,7 +110,7 @@ export default async function registerPrintRoute(
       // Control codes (ordered) for the course, when one exists.
       const controlCodes: number[] = [];
       if (courseRow) {
-        const rows = app.fartolDb.db
+        const rows = app.fartolaDb.db
           .select({ code: controlsTable.code, idx: courseControls.orderIdx })
           .from(courseControls)
           .innerJoin(controlsTable, eq(controlsTable.id, courseControls.controlId))

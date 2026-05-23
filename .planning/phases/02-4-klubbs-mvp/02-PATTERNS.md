@@ -9,7 +9,7 @@
 | New/Modified File | Role | Data Flow | Closest Analog | Match Quality |
 |---|---|---|---|---|
 | `apps/edge/src/eventor/cache.ts` | Background job (streaming ingest) | File-I/O + transactional bulk-upsert | `apps/edge/src/ingest/entryImport.ts` + `apps/edge/src/xml/parse.ts` | role-match (no streaming analog yet) |
-| `apps/edge/src/eventor/boot.ts` | Background job (boot hook + admin trigger) | Event-driven (boot, admin button) | `apps/edge/src/backup/daily.ts` (handle pattern) + `apps/edge/src/bin/fartol.ts` (wiring) | role-match (no on-boot analog yet) |
+| `apps/edge/src/eventor/boot.ts` | Background job (boot hook + admin trigger) | Event-driven (boot, admin button) | `apps/edge/src/backup/daily.ts` (handle pattern) + `apps/edge/src/bin/fartola.ts` (wiring) | role-match (no on-boot analog yet) |
 | `apps/edge/src/integrations/meos/mip.ts` | Fastify route plugin | request-response (GET, serializes XML) | `apps/edge/src/routes/export.ts` (XML serialize) + `apps/edge/src/routes/clubs.ts` (param query) | role-match |
 | `apps/edge/src/integrations/meos/mop.ts` | Fastify route plugin | request-response (POST XML body) | `apps/edge/src/routes/import.ts` (XML upload) + `apps/edge/src/ingest/entryImport.ts` (transactional ingest) | role-match |
 | `apps/edge/src/integrations/meos/shared.ts` | Shared types | n/a (pure types + parser glue) | `apps/edge/src/xml/parse.ts` (typed normalizers) | role-match |
@@ -128,30 +128,30 @@ if (/<!ENTITY/i.test(xmlSource)) {
 
 ### 2. `apps/edge/src/eventor/boot.ts` (background job, boot hook + admin trigger)
 
-**Analog 1 (boot wiring):** `apps/edge/src/bin/fartol.ts` lines 510-518
+**Analog 1 (boot wiring):** `apps/edge/src/bin/fartola.ts` lines 510-518
 **Analog 2 (RetentionHandle / BackupHandle pattern):** `apps/edge/src/backup/daily.ts`
 
 **Why these analogs:**
-- bin/fartol.ts is where the daily backup + retention schedulers are wired
+- bin/fartola.ts is where the daily backup + retention schedulers are wired
   today. Plan 2 should add the Eventor on-boot fetch (D-EV-1) at the same
   hook point (after buildServer, before listen) and decorate the app the
-  same way (`app.fartolEventor = ...`) so the admin route can call `runNow()`.
+  same way (`app.fartolaEventor = ...`) so the admin route can call `runNow()`.
 - backup/daily.ts shows the canonical handle shape: `{ runNow(), stop() }`
   with internal `setTimeout`-chained scheduling. We don't need the recurring
   chain (D-EV-1 explicitly rejects cron — bridge is competition-only, not
   always-on), but the `runNow()`/`stop()` symmetry is the contract the admin
   route consumes.
 
-**Existing wiring pattern (from bin/fartol.ts lines 510-518):**
+**Existing wiring pattern (from bin/fartola.ts lines 510-518):**
 ```typescript
 // Plan 17 — start the daily backup + retention schedulers. ...
 const backup = scheduleDailyBackup(handle, { backupDir: opts.backupDir });
 const retention = scheduleDailyRetention(handle, { retentionDays: opts.retentionDays });
-app.fartolBackup = backup;
-app.fartolRetention = retention;
+app.fartolaBackup = backup;
+app.fartolaRetention = retention;
 ```
 
-**Shutdown wiring (from bin/fartol.ts lines 520-547):**
+**Shutdown wiring (from bin/fartola.ts lines 520-547):**
 ```typescript
 const shutdown = async (code: number): Promise<void> => {
   try { if (lifecycle) await lifecycle.stop(); } catch { /* best-effort */ }
@@ -175,7 +175,7 @@ export interface BackupHandle {
 **Admin route binding (from routes/admin.ts lines 59-71):**
 ```typescript
 app.post('/api/__admin/run-backup-now', async (_req, reply) => {
-  const backup = app.fartolBackup;
+  const backup = app.fartolaBackup;
   if (!backup) {
     return reply.code(200).send({ ok: false, error: 'no_backup' });
   }
@@ -193,23 +193,23 @@ app.post('/api/__admin/run-backup-now', async (_req, reply) => {
 ```typescript
 declare module 'fastify' {
   interface FastifyInstance {
-    fartolBackup?: BackupHandle | undefined;
-    fartolRetention?: RetentionHandle | undefined;
+    fartolaBackup?: BackupHandle | undefined;
+    fartolaRetention?: RetentionHandle | undefined;
   }
 }
 ```
 
 **What to copy / what to change:**
 - **Copy verbatim:** the `{ runNow(), stop() }` handle shape; the
-  `app.fartolEventor` decoration pattern; the FARTOL_DEV admin-route gate
-  (mirror admin.ts's `if (process.env['FARTOL_DEV'] !== '1') return;`).
+  `app.fartolaEventor` decoration pattern; the FARTOLA_DEV admin-route gate
+  (mirror admin.ts's `if (process.env['FARTOLA_DEV'] !== '1') return;`).
 - **Change:** no setTimeout chain. The boot path is one-shot: check `config`
   table for `last_eventor_refresh_at_ms`, compare to `Date.now() - 7d`, fetch
   if stale, log "Eventor: cache N dagar gammal" if not. Pull Eventor API key
   from `process.env['EVENTOR_API_KEY']` (loaded by `.eventor-env` dotenv —
   commit 7ec8866). Fetch should NOT block `app.listen()` — fire-and-forget
   with logging, matching the SI bridge's `void lifecycle.start();` pattern
-  in bin/fartol.ts line 507. D-EV-3 mandates warn-and-run-with-cache on
+  in bin/fartola.ts line 507. D-EV-3 mandates warn-and-run-with-cache on
   network failure — exception handler logs but does NOT throw.
 
 ---
@@ -235,7 +235,7 @@ export default async function registerExportRoutes(app: FastifyInstance): Promis
       const { id } = req.params;
       const status = parseStatus(req.query.status);
 
-      const compRow = app.fartolDb.db
+      const compRow = app.fartolaDb.db
         .select()
         .from(competitions)
         .where(eq(competitions.id, id))
@@ -272,7 +272,7 @@ const ClubsQuery = z.object({
 import { gt, and, eq } from 'drizzle-orm';
 import { events } from '../../db/schema.ts';
 
-const rows = app.fartolDb.db
+const rows = app.fartolaDb.db
   .select()
   .from(events)
   .where(and(
@@ -300,7 +300,7 @@ const rows = app.fartolDb.db
   reuses `events.local_seq` directly — no new state. Response shape per MIP
   XSD v3.0 (uploaded 2026-05-14, see `.planning/research/meos-protocols.md`):
   `<MIPData lastid="N"><entry>...</entry></MIPData>` with `<extId>` carrying
-  the FartOL competitor UUID (D-MIP-4) and `<classname>` carrying the
+  the fartOLa competitor UUID (D-MIP-4) and `<classname>` carrying the
   string class name (verified at `/home/jonas/src/meos/code/onlineinput.cpp:989-997`).
   Empty `lastid → 0` is valid; empty response is `<MIPData lastid="N"/>`.
 
@@ -897,23 +897,23 @@ function toast(msg: string): void {
 
 **Suggested skeleton (operator-procedural format):**
 ```markdown
-# Parallel MeOS + FartOL runbook
+# Parallel MeOS + fartOLa runbook
 
-**Audience:** Stora Tuna OK competition operators running FartOL as primary
+**Audience:** Stora Tuna OK competition operators running fartOLa as primary
 with MeOS as parallel safety backup (locked decision #2).
 **Tested on:** 4-klubbs training, 2026-05-20.
 
 ## Before the event (T-2 hours)
 
-1. Power on the FartOL laptop. Plug in BSM7/8 SI reader to `/dev/ttyUSB0`.
+1. Power on the fartOLa laptop. Plug in BSM7/8 SI reader to `/dev/ttyUSB0`.
 2. Power on the MeOS laptop. Connect both laptops to the same LAN switch.
-   Verify ping: `ping <fartol-laptop-ip>` from MeOS.
-3. On FartOL: `fartol --port 3000 --bind-host 0.0.0.0 --allow-lan
+   Verify ping: `ping <fartola-laptop-ip>` from MeOS.
+3. On fartOLa: `fartola --port 3000 --bind-host 0.0.0.0 --allow-lan
    --competition-id <id>`. Confirm the readout page is reachable at
-   `http://<fartol-ip>:3000/competition/<id>/readout` from the MeOS laptop.
+   `http://<fartola-ip>:3000/competition/<id>/readout` from the MeOS laptop.
 4. On MeOS: open Anmälningsläge. Tools → Online → Configure MIP+MOP:
-   - MIP URL: `http://<fartol-ip>:3000/mip` (no password — closed club LAN).
-   - MOP URL: `http://<fartol-ip>:3000/mop`.
+   - MIP URL: `http://<fartola-ip>:3000/mip` (no password — closed club LAN).
+   - MOP URL: `http://<fartola-ip>:3000/mop`.
    - Poll interval: 5 seconds.
 5. **Pre-flight check**: confirm the five 4-klubbs classes
    (Vit / Grön / Gul / Orange / Violett) are set up in MeOS (D-MIP-4
@@ -934,8 +934,8 @@ with MeOS as parallel safety backup (locked decision #2).
 ## Known limitations (Phase 2.0)
 
 - **D-LIM-1**: MOP `<cmp>` does NOT carry the hired flag. Hyrbrickor
-  marked in MeOS during a FartOL outage will NOT auto-import on recovery;
-  re-enter manually in FartOL.
+  marked in MeOS during a fartOLa outage will NOT auto-import on recovery;
+  re-enter manually in fartOLa.
 - **Multi-course-per-card same event**: Phase 2.0 limits one course per
   card per competition. Workaround for the H45+open-course case: register
   the runner twice with two different cards.
@@ -1079,15 +1079,15 @@ export function ingestXxx(handle, ..., opts: { outerTransaction?: boolean } = {}
 `from-wizard`-style atomic compositions. Phase 2.0 only needs the
 standalone path, but keep the `opts.outerTransaction` seam for Phase 2.1.
 
-### S-3: events table inserts via `app.fartolNextLocalSeq` (apply to: routes that emit events)
+### S-3: events table inserts via `app.fartolaNextLocalSeq` (apply to: routes that emit events)
 
 **Source:** `apps/edge/src/routes/competitors.ts` lines 220-241
 ```typescript
-seq = app.fartolNextLocalSeq(app.fartolDb, app.fartolNodeId);
-app.fartolDb.db
+seq = app.fartolaNextLocalSeq(app.fartolaDb, app.fartolaNodeId);
+app.fartolaDb.db
   .insert(events)
   .values({
-    nodeId: app.fartolNodeId,
+    nodeId: app.fartolaNodeId,
     localSeq: seq,
     competitionId,
     eventType: 'card_bound',
@@ -1133,7 +1133,7 @@ into the same structured 409 the pre-flight returns.
 **Source:** repository convention — `apps/edge/src/db/schema.ts` columns are
 snake_case (`event_type`, `card_number`, `competition_id`) at the SQL layer;
 Drizzle TS field names are camelCase (`eventType`, `cardNumber`, `competitionId`);
-DTOs in `@fartol/shared-types` use snake_case (`competition_id`, `card_number`).
+DTOs in `@fartola/shared-types` use snake_case (`competition_id`, `card_number`).
 
 ### S-7: T-FILE-IMPORT XML parser hardening (apply to: cache.ts, shared.ts)
 

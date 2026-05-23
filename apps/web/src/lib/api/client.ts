@@ -1,8 +1,8 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Typed REST client wrapper for the Phase 1 edge<->web contract. Functions
 // are 1:1 with the Fastify route handlers in apps/edge/src/routes/*; the
-// shapes come from @fartol/shared-types so a wire-side change forces a
+// shapes come from @fartola/shared-types so a wire-side change forces a
 // type error here before the form sees runtime garbage.
 //
 // JSON-only by default (`apiFetch`). The single multipart caller —
@@ -36,7 +36,7 @@ import type {
   HiredCardsListResponse,
   HiredCardReturnResponse,
   HealthDTO,
-} from '@fartol/shared-types';
+} from '@fartola/shared-types';
 
 // ---------------------------------------------------------------------------
 // Error surface
@@ -609,7 +609,7 @@ export function searchEventorClubs(
 }
 
 /** GET /api/eventor/status — current cache health for the TweaksPanel
- * indicator. fartol_dev is server-side-derived from process.env at
+ * indicator. fartola_dev is server-side-derived from process.env at
  * request time so the UI's admin-button gate is correct in production
  * builds (import.meta.env.DEV would be bundler-time and always false). */
 export function getEventorStatus(): Promise<EventorStatusDTO> {
@@ -758,7 +758,7 @@ export function getBridgeStatus(): Promise<{ state: 'opening' | 'open' | 'closed
 }
 
 // ---------------------------------------------------------------------------
-// Dev — Simulate read (gated by FARTOL_DEV=1 server-side)
+// Dev — Simulate read (gated by FARTOLA_DEV=1 server-side)
 // ---------------------------------------------------------------------------
 
 export interface SimulateReadPayload {

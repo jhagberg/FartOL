@@ -40,7 +40,7 @@ DNF / MP detection → thermal receipt → IOF XML 3.0 ResultList export.
 - Restart-safe bridge process, daily SQLite backup
   (REQ-OPS-001..003).
 - Privacy: consent + 30-day retention (REQ-PRIV-001, REQ-PRIV-002).
-- Single `fartol` binary: one Fastify process, REST `/api/*`,
+- Single `fartola` binary: one Fastify process, REST `/api/*`,
   WebSocket `/ws`, static SvelteKit build at `/`.
 
 **Out of scope (deferred to later phases):**
@@ -91,10 +91,10 @@ DNF / MP detection → thermal receipt → IOF XML 3.0 ResultList export.
   `packages/sportident/` + `packages/shared-types/`. Update
   `pnpm-workspace.yaml` to include both `apps/*` and `packages/*`.
   Runtime apps vs reusable libraries are visually separated.
-- **D-06:** Production binary = **single `fartol` binary**. One
+- **D-06:** Production binary = **single `fartola` binary**. One
   Fastify process serves built SvelteKit assets (adapter-static
   output, SPA fallback `200.html`) at `/`, REST at `/api/*`,
-  WebSocket at `/ws`. Honors REQ-OPS-001 (`npm install -g fartol` →
+  WebSocket at `/ws`. Honors REQ-OPS-001 (`npm install -g fartola` →
   run). Dev: `pnpm dev` runs Vite at :5173 + Fastify at :3000 with
   proxy.
 - **D-07:** SvelteKit adapter = **`@sveltejs/adapter-static`** with
@@ -161,7 +161,7 @@ Areas where the planner / executor has flexibility:
   organization.
 - Drizzle migration tool choice (`drizzle-kit generate` + manual
   run vs. embedded migrator at bridge startup). Suggest embedded
-  migrator so `npm install -g fartol && fartol` Just Works.
+  migrator so `npm install -g fartola && fartola` Just Works.
 - SvelteKit project structure (`src/routes/` layout, store/runes
   organization, component library — likely Skeleton or shadcn-svelte).
 - WebSocket message envelope (`{type, payload, seq}` suggested) and
@@ -222,7 +222,7 @@ Areas where the planner / executor has flexibility:
   `SiMainStation`, `SerialTransport`, `NdjsonEmitter`, all five
   event types (`card_inserted`, `card_read`, `card_removed`,
   `frame_error`, `connection_changed`), `schema_version: 1`.
-- `packages/sportident/bin/fartol-readout` — Phase 0 CLI; reference
+- `packages/sportident/bin/fartola-readout` — Phase 0 CLI; reference
   for how `apps/edge/` consumes the SI surface (event handlers
   wired to NdjsonEmitter).
 
@@ -280,7 +280,7 @@ event_time_ms, recorded_at_ms, payload)`. Phase 1 instantiates
   events (`connection_changed`, `card_inserted`, `card_read`,
   `card_removed`, `frame_error`) directly to a Drizzle-backed event
   inserter — that's the entire bridge-to-event-log path.
-- **`packages/sportident/bin/fartol-readout`** — Reference
+- **`packages/sportident/bin/fartola-readout`** — Reference
   implementation of "open serialport, run station, emit NDJSON."
   `apps/edge/`'s bridge entrypoint is structurally the same minus
   the stdout sink.
@@ -312,7 +312,7 @@ event_time_ms, recorded_at_ms, payload)`. Phase 1 instantiates
   `packages/shared-types/`.
 - **Built web assets baked into the bridge binary** — at install
   time, `pnpm build` produces `apps/web/build/`, the Fastify app
-  serves it. The published `fartol` package bundles the build
+  serves it. The published `fartola` package bundles the build
   output so global install works without a second build step.
 
 </code_context>

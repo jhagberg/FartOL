@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // REST handler: `GET /api/competitions/:id/readout`. Returns the live
 // readout-view state in a single envelope so plan 13's SvelteKit
@@ -146,7 +146,7 @@ export default async function registerReadoutRoute(app: FastifyInstance): Promis
       // test 6): an empty result for a nonexistent competition is the
       // same shape as a real-but-empty competition; downstream plans can
       // layer a 404 if desired.
-      const cardReadRows = app.fartolDb.db
+      const cardReadRows = app.fartolaDb.db
         .select()
         .from(events)
         .where(and(eq(events.competitionId, id), eq(events.eventType, 'card_read')))
@@ -155,7 +155,7 @@ export default async function registerReadoutRoute(app: FastifyInstance): Promis
         .all();
 
       // Build the card_number → competitor index for this competition.
-      const compRows = app.fartolDb.db
+      const compRows = app.fartolaDb.db
         .select()
         .from(competitorsTable)
         .where(eq(competitorsTable.competitionId, id))
@@ -176,14 +176,14 @@ export default async function registerReadoutRoute(app: FastifyInstance): Promis
       // SELECTs: courses for this competition, then one joined SELECT
       // pulling all course_controls × controls for these courses ordered
       // by (course_id, order_idx). Group in TS.
-      const courseRows = app.fartolDb.db
+      const courseRows = app.fartolaDb.db
         .select()
         .from(courses)
         .where(eq(courses.competitionId, id))
         .all();
       const expectedByClassId = new Map<string, number[]>();
       if (courseRows.length > 0) {
-        const codeRows = app.fartolDb.db
+        const codeRows = app.fartolaDb.db
           .select({
             courseId: courseControls.courseId,
             orderIdx: courseControls.orderIdx,
@@ -214,7 +214,7 @@ export default async function registerReadoutRoute(app: FastifyInstance): Promis
       // field comes from a single round-trip rather than a per-card
       // sub-query. The fleet size is small (tens of rentals at 4-klubbs
       // scale) so the in-memory map is cheap.
-      const openHiredRows = app.fartolDb.db
+      const openHiredRows = app.fartolaDb.db
         .select()
         .from(hiredCards)
         .where(and(eq(hiredCards.competitionId, id), isNull(hiredCards.returnedAtMs)))
@@ -288,7 +288,7 @@ export default async function registerReadoutRoute(app: FastifyInstance): Promis
       // `app.activeCompetitionId` inside the sessions plugin scope does
       // not propagate to sibling plugin scopes (this route). The DB row is
       // a single source of truth that every plugin sees.
-      const activeRow = app.fartolDb.db
+      const activeRow = app.fartolaDb.db
         .select({ value: config.value })
         .from(config)
         .where(eq(config.key, ACTIVE_COMP_KEY))

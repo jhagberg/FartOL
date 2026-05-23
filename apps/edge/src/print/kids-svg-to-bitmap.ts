@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Skogis SVG → PNG bitmap pipeline for the ESC/POS kids template. Pure
 // pipeline: descriptor → minimal SVG string → sharp() → PNG buffer at
@@ -20,7 +20,7 @@
 //   simplicity since it's already a common Node native dep)
 
 import { createRequire } from 'node:module';
-import { skogisFromInput, type SkogisDescriptor } from '@fartol/shared-types';
+import { skogisFromInput, type SkogisDescriptor } from '@fartola/shared-types';
 
 export interface KidsBitmapInput {
   card_number: number;

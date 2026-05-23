@@ -1,8 +1,8 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Walking-skeleton PrinterSink that writes one JSON line per print() to
 // stdout. Proves the print interface is wired without a /dev/usb/lp0 — a
-// Playwright e2e in plan 03 spawns the bridge with FARTOL_DEV=1 and
+// Playwright e2e in plan 03 spawns the bridge with FARTOLA_DEV=1 and
 // asserts the stdout-sink line appears after a simulate-read. Plan 15
 // swaps this for the real ESC/POS driver behind the same interface.
 //

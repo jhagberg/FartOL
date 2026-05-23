@@ -197,9 +197,9 @@ Plan 01-11 commits on `gsd/phase-1-training-mvp`:
 
 ## Verification
 
-- `pnpm --filter @fartol/web typecheck` — passes (svelte-kit sync + tsc --noEmit)
-- `pnpm --filter @fartol/web test` — 14/14 tests pass (ws/client 4, smoke 1, i18n 4, tweaks 5)
-- `pnpm --filter @fartol/web build` — succeeds; `apps/web/build/200.html` present
+- `pnpm --filter @fartola/web typecheck` — passes (svelte-kit sync + tsc --noEmit)
+- `pnpm --filter @fartola/web test` — 14/14 tests pass (ws/client 4, smoke 1, i18n 4, tweaks 5)
+- `pnpm --filter @fartola/web build` — succeeds; `apps/web/build/200.html` present
 - i18n parity: 149 keys in sv.json, 149 keys in en.json (full parity test in i18n.test.ts asserts this on every run)
 
 ## User Setup Required
@@ -227,7 +227,7 @@ Verified each commit hash exists in `git log`:
 
 Verified each created file exists on disk (19 new files + 1 modified +layout.svelte).
 
-Verified `pnpm --filter @fartol/web typecheck && pnpm --filter @fartol/web test` exits 0 with 14/14 tests green.
+Verified `pnpm --filter @fartola/web typecheck && pnpm --filter @fartola/web test` exits 0 with 14/14 tests green.
 
 ---
 

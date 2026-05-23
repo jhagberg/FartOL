@@ -1,11 +1,11 @@
-# FartOL — Single-Laptop Training MVP
+# fartOLa — Single-Laptop Training MVP
 
 Self-contained Node.js binary that runs a complete orienteering training
 event end-to-end on one Linux laptop. Speaks SportIdent BSM7/8-USB,
 prints to thermal receipt printers, and exports IOF XML 3.0 ResultList
 files.
 
-This is Phase 1 of the FartOL roadmap — the training-grade MVP. Phase 2+
+This is Phase 1 of the fartOLa roadmap — the training-grade MVP. Phase 2+
 adds multi-secretary sync, federation upload (Eventor), and the children's
 finish-screen recruitment tool. See the repo's `.planning/PROJECT.md` for
 the long-term vision.
@@ -17,21 +17,21 @@ The binary uses `better-sqlite3` (prebuilt native binding) and `serialport`
 (also prebuilt) so there's no toolchain requirement.
 
 ```bash
-npm install -g <path-to-fartol-tarball>.tgz
+npm install -g <path-to-fartola-tarball>.tgz
 ```
 
 Verify:
 
 ```bash
-fartol --help
+fartola --help
 ```
 
 ## Run
 
 ```bash
-fartol --port 3000 \
-       --db-path ~/.local/share/fartol/fartol.db \
-       --backup-dir ~/.local/share/fartol/backups
+fartola --port 3000 \
+       --db-path ~/.local/share/fartola/fartola.db \
+       --backup-dir ~/.local/share/fartola/backups
 ```
 
 Then open <http://localhost:3000/> in Chrome or Edge. The SvelteKit SPA is
@@ -44,7 +44,7 @@ separate dev server is needed in production.
 | --------------------- | -------------- | ------------------------------------------------------------------- |
 | `--port <int>`        | `3000`         | HTTP server port.                                                   |
 | `--bind-host <host>`  | `127.0.0.1`    | Listen host. Use `0.0.0.0` + `--allow-lan` to expose to LAN.        |
-| `--db-path <path>`    | `./fartol.db`  | SQLite database file (auto-created with WAL + migrations).          |
+| `--db-path <path>`    | `./fartola.db` | SQLite database file (auto-created with WAL + migrations).          |
 | `--backup-dir <path>` | `./backups`    | Daily SQLite snapshot directory (last 7 kept).                      |
 | `--retention-days N`  | `30`           | PII scrub age in days (REQ-PRIV-002).                               |
 | `--serial-path <p>`   | `/dev/ttyUSB0` | SerialPort device path for the SI reader. Ignored if `--no-bridge`. |
@@ -55,13 +55,13 @@ separate dev server is needed in production.
 
 Environment variables:
 
-| Variable              | Effect                                                            |
-| --------------------- | ----------------------------------------------------------------- |
-| `FARTOL_DEV=1`        | Enables `/api/__dev/*` + `/api/__admin/*` operator endpoints.     |
-| `FARTOL_PRINTER`      | `cups` (default), `stdout` (dev), `direct` (ESC/POS via USB).     |
-| `FARTOL_CUPS_QUEUE`   | CUPS queue name when `FARTOL_PRINTER=cups` (default Star TSP143). |
-| `FARTOL_PRINTER_TYPE` | `star` (default), `epson`, `brother` — direct ESC/POS dialect.    |
-| `FARTOL_NODE_ID`      | Override the auto-generated node id.                              |
+| Variable               | Effect                                                             |
+| ---------------------- | ------------------------------------------------------------------ |
+| `FARTOLA_DEV=1`        | Enables `/api/__dev/*` + `/api/__admin/*` operator endpoints.      |
+| `FARTOLA_PRINTER`      | `cups` (default), `stdout` (dev), `direct` (ESC/POS via USB).      |
+| `FARTOLA_CUPS_QUEUE`   | CUPS queue name when `FARTOLA_PRINTER=cups` (default Star TSP143). |
+| `FARTOLA_PRINTER_TYPE` | `star` (default), `epson`, `brother` — direct ESC/POS dialect.     |
+| `FARTOLA_NODE_ID`      | Override the auto-generated node id.                               |
 
 ## Hardware setup
 
@@ -71,7 +71,7 @@ Environment variables:
    the reader without root):
 
    ```bash
-   sudo cp "$(npm prefix -g)/lib/node_modules/@fartol/edge/udev/99-fartol-sportident.rules" \
+   sudo cp "$(npm prefix -g)/lib/node_modules/@fartola/edge/udev/99-fartola-sportident.rules" \
            /etc/udev/rules.d/
    sudo udevadm control --reload-rules
    ```
@@ -111,7 +111,7 @@ For direct ESC/POS over `/dev/usb/lp*` (no CUPS):
    ls /dev/usb/lp*
    ```
 
-3. Launch with `FARTOL_PRINTER=direct fartol ...`.
+3. Launch with `FARTOLA_PRINTER=direct fartola ...`.
 
 ## Restart-safe deployment via systemd
 
@@ -119,16 +119,16 @@ The tarball ships a user-scope systemd unit example. Install:
 
 ```bash
 mkdir -p ~/.config/systemd/user
-cp "$(npm prefix -g)/lib/node_modules/@fartol/edge/systemd/fartol.service" \
+cp "$(npm prefix -g)/lib/node_modules/@fartola/edge/systemd/fartola.service" \
    ~/.config/systemd/user/
 systemctl --user daemon-reload
-systemctl --user enable --now fartol
-systemctl --user status fartol
+systemctl --user enable --now fartola
+systemctl --user status fartola
 ```
 
 The unit restarts on crash (`Restart=on-failure`, `RestartSec=5s`), so a
 SQLite WAL hiccup or a stuck SI bridge doesn't take down the event.
-Journal output is available via `journalctl --user -u fartol -f`.
+Journal output is available via `journalctl --user -u fartola -f`.
 
 ## Backups
 
@@ -137,7 +137,7 @@ Journal output is available via `journalctl --user -u fartol -f`.
 `--backup-dir`. The last 7 snapshots are retained; older ones are pruned.
 
 Run a one-off backup via the operator endpoint
-(`FARTOL_DEV=1` required):
+(`FARTOLA_DEV=1` required):
 
 ```bash
 curl -X POST http://127.0.0.1:3000/api/__admin/run-backup-now
@@ -169,19 +169,19 @@ borrowed" threat model that Phase 1 targets.
 
 ## Troubleshooting
 
-| Symptom                                      | Likely cause + fix                                                                                                 |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `fartol` not on PATH after install           | Confirm `$(npm prefix -g)/bin` is on PATH; some systems use `~/.npm-global/bin`.                                   |
-| `/dev/ttyUSB0` permission denied             | User not in `dialout` group, or udev rule not loaded. Re-run the udev setup + log out/in.                          |
-| `Cannot lock port` on bridge startup         | Another process (or a stale `fartol`) is holding the SerialPort. `lsof /dev/ttyUSB0`; kill the holder.             |
-| Reader plugged in but `card_inserted` silent | Wrong reader path. Check `journalctl --user -u fartol -f` for `SI bridge open failed` and pass `--serial-path`.    |
-| Thermal printer prints garbage               | Wrong CUPS driver. Re-install the printer with the Star/Epson/Brother CUPS driver, or set `FARTOL_PRINTER=direct`. |
-| `EACCES /dev/usb/lp0` on direct print        | User not in `lp` group. Re-run the printer setup + log out/in.                                                     |
-| Database locked / WAL warning                | Another `fartol` is running against the same DB. Stop the other process first.                                     |
+| Symptom                                      | Likely cause + fix                                                                                                  |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `fartola` not on PATH after install          | Confirm `$(npm prefix -g)/bin` is on PATH; some systems use `~/.npm-global/bin`.                                    |
+| `/dev/ttyUSB0` permission denied             | User not in `dialout` group, or udev rule not loaded. Re-run the udev setup + log out/in.                           |
+| `Cannot lock port` on bridge startup         | Another process (or a stale `fartola`) is holding the SerialPort. `lsof /dev/ttyUSB0`; kill the holder.             |
+| Reader plugged in but `card_inserted` silent | Wrong reader path. Check `journalctl --user -u fartola -f` for `SI bridge open failed` and pass `--serial-path`.    |
+| Thermal printer prints garbage               | Wrong CUPS driver. Re-install the printer with the Star/Epson/Brother CUPS driver, or set `FARTOLA_PRINTER=direct`. |
+| `EACCES /dev/usb/lp0` on direct print        | User not in `lp` group. Re-run the printer setup + log out/in.                                                      |
+| Database locked / WAL warning                | Another `fartola` is running against the same DB. Stop the other process first.                                     |
 
 ## Source + license
 
-AGPL-3.0-or-later application code. The `@fartol/sportident` package
+AGPL-3.0-or-later application code. The `@fartola/sportident` package
 (bundled into this binary via tsup `noExternal`) is MIT-licensed; the
 upstream port from allestuetsmerweh/sportident.js carries its original
 attribution headers. See `NOTICE.md` in this directory for the cumulative

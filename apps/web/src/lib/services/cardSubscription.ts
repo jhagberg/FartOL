@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Shared WS card-event subscription. Locked by 02-02b-PLAN.md task 2.
 // Replaces inline WS code in ReadoutView (Phase 1) so /registration
@@ -28,7 +28,7 @@
 // - .planning/phases/02-4-klubbs-mvp/02-02b-PLAN.md task 2
 
 import { WsClient } from '$lib/ws/client.ts';
-import { readoutChannel, type WsEnvelope, type ChannelName } from '@fartol/shared-types';
+import { readoutChannel, type WsEnvelope, type ChannelName } from '@fartola/shared-types';
 
 export type CardClassification = 'known' | 'unknown' | 'unclassified';
 

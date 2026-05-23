@@ -24,7 +24,7 @@ provides:
   - packages/shared-types/src/dtos.ts — EventorStatusDTO grows the source enum (env|config|absent)
   - 24 new tests: 10 edge node:test (settings.test.ts) + 5 edge node:test (secrets.test.ts) + 3 edge node:test (eventor.test.ts Task-2 source) + 9 vitest (SettingsView.test.ts) — every behavior from the plan's truth-keys exercised
 affects:
-  - apps/edge/src/bin/fartol.ts — eventor boot now calls resolveSecret(handle, 'EVENTOR_API_KEY') instead of reading process.env directly; behavioural parity preserved when env is set
+  - apps/edge/src/bin/fartola.ts — eventor boot now calls resolveSecret(handle, 'EVENTOR_API_KEY') instead of reading process.env directly; behavioural parity preserved when env is set
   - apps/edge/src/routes/eventor.ts — /status endpoint returns the new `source` field consumed by SettingsView's banner
 
 # Tech tracking
@@ -50,7 +50,7 @@ key-files:
     - .planning/phases/02-4-klubbs-mvp/02-07-SUMMARY.md
   modified:
     - apps/edge/src/server.ts
-    - apps/edge/src/bin/fartol.ts
+    - apps/edge/src/bin/fartola.ts
     - apps/edge/src/routes/eventor.ts
     - apps/edge/src/routes/eventor.test.ts
     - apps/web/src/lib/components/TweaksPanel.svelte
@@ -82,7 +82,7 @@ completed: 2026-05-17
 
 # Phase 2 Plan 07: Settings UI for integration API keys summary
 
-**Operator-facing /installningar surface (Svelte 5) backed by GET + PUT /api/settings/integrations and a env→config→absent precedence helper, so Windows operators can paste the Eventor key without touching ~/.env.fartol. Boot precedence preserved: process.env still wins for Linux/CI operators. Pino redact paths scrub the value field defence-in-depth. Plan is DEFERRED — NOT part of the 2026-05-20 4-klubbs production gate (it lands now in parallel because the work is independent).**
+**Operator-facing /installningar surface (Svelte 5) backed by GET + PUT /api/settings/integrations and a env→config→absent precedence helper, so Windows operators can paste the Eventor key without touching ~/.env.fartola. Boot precedence preserved: process.env still wins for Linux/CI operators. Pino redact paths scrub the value field defence-in-depth. Plan is DEFERRED — NOT part of the 2026-05-20 4-klubbs production gate (it lands now in parallel because the work is independent).**
 
 ## Performance
 
@@ -114,7 +114,7 @@ See frontmatter for the full list. Highlights:
 **2. [Rule 2 - Missing critical functionality] EventorStatusDTO needed `source` field for SettingsView banner**
 
 - **Found during:** Task 2
-- **Issue:** Truth-key 4 in Task 2 mandates that GET /api/eventor/status mirror the env|config|absent precedence so SettingsView's banner ("Värdet kommer från ~/.env.fartol …") can render correctly. The existing DTO had `state` and `competitorCount` but no `source` tag.
+- **Issue:** Truth-key 4 in Task 2 mandates that GET /api/eventor/status mirror the env|config|absent precedence so SettingsView's banner ("Värdet kommer från ~/.env.fartola …") can render correctly. The existing DTO had `state` and `competitorCount` but no `source` tag.
 - **Fix:** Added `source: z.enum(['env', 'config', 'absent'])` to packages/shared-types/src/dtos.ts EventorStatusDTO, updated the route handler to populate it via resolveSecretSource. Web typecheck verifies the typed client consumers stay aligned.
 - **Files modified:** packages/shared-types/src/dtos.ts, apps/edge/src/routes/eventor.ts
 - **Commit:** b02f812
@@ -139,7 +139,7 @@ The plan deferred Task 4 to a manual checklist the operator runs at merge time. 
 #   - Set EVENTOR_API_KEY = AUDIT-CANARY-12345
 #   - Click Spara
 # Then grep the recent journal:
-journalctl --user -u fartol -n 200 | grep -c 'AUDIT-CANARY-12345'
+journalctl --user -u fartola -n 200 | grep -c 'AUDIT-CANARY-12345'
 # EXPECTED: 0
 # If non-zero, locate the offending log line and add its field path to
 # apps/edge/src/log/redact.ts LOGGER_REDACT_PATHS, then re-run.
@@ -150,7 +150,7 @@ journalctl --user -u fartol -n 200 | grep -c 'AUDIT-CANARY-12345'
 ### 4.2 — SQLite plain-text inspection (expected per ADR-0008)
 
 ```bash
-sqlite3 ~/.local/share/fartol/fartol.db \
+sqlite3 ~/.local/share/fartola/fartola.db \
   "SELECT key, value FROM config WHERE key LIKE '%_API_KEY';"
 # EXPECTED: rows show plain-text values. This is expected per the
 # project trust model (single-user laptop, full-disk encryption
@@ -177,7 +177,7 @@ curl -sS -X PUT http://127.0.0.1:3000/api/settings/integrations \
 ```bash
 curl -sS http://127.0.0.1:3000/api/settings/integrations | jq '.integrations[]'
 # EXPECTED: every object has key + set + source. No object has a
-# `value` field. Even in dev mode (FARTOL_DEV=1), the response shape
+# `value` field. Even in dev mode (FARTOLA_DEV=1), the response shape
 # is identical — the field is removed at the source, not gated.
 ```
 

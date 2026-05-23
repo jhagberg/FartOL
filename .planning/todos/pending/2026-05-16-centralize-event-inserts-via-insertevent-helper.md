@@ -15,7 +15,7 @@ source: PR #3 Gemini round-3 review, 2026-05-16 (medium)
 `apps/edge/src/si/eventInserter.ts` exports `insertEvent(handle, nodeId,
 eventType, eventTimeMs, payload, competitionId)` which centralizes:
 
-- `local_seq` generation (via `app.fartolNextLocalSeq` / `nextLocalSeq`
+- `local_seq` generation (via `app.fartolaNextLocalSeq` / `nextLocalSeq`
   injection point — PATTERNS S-2)
 - `recorded_at_ms = Date.now()` stamp
 - `node_id` from the per-process stable id
@@ -44,12 +44,12 @@ Each inline insert reconstructs the same shape: `nodeId`, `localSeq`,
   a `synthetic` flag, or a `created_by` audit column) would need touching
   every call site instead of one.
 - **Sequence-injection point**: PATTERNS S-2 lets test 9 swap
-  `fartolNextLocalSeq` to a throwing fn to verify atomicity. Inline
-  inserts that reach for `app.fartolNextLocalSeq` directly still go
+  `fartolaNextLocalSeq` to a throwing fn to verify atomicity. Inline
+  inserts that reach for `app.fartolaNextLocalSeq` directly still go
   through the injection point, but the indirection isn't enforced —
   someone could hardcode a seq and break the contract silently.
 - **Consistency**: most production-quality codebases centralize "insert
-  one event" once; FartOL did this for the bridge but not the REST
+  one event" once; fartOLa did this for the bridge but not the REST
   surface.
 
 ## Why we haven't refactored yet
@@ -66,8 +66,8 @@ Each inline insert reconstructs the same shape: `nodeId`, `localSeq`,
 1. Extend `insertEvent` to optionally accept a pre-computed `localSeq` so
    it can run inside an open transaction that already pulled the next
    seq (or thread the seq generator through the helper's args).
-2. Replace each inline `app.fartolDb.db.insert(events).values(...).run()`
-   in `routes/competitors.ts` with `insertEvent(app.fartolDb, app.fartolNodeId, 'card_bound', now, {...}, competitionId)`.
+2. Replace each inline `app.fartolaDb.db.insert(events).values(...).run()`
+   in `routes/competitors.ts` with `insertEvent(app.fartolaDb, app.fartolaNodeId, 'card_bound', now, {...}, competitionId)`.
 3. Repeat for `manual.ts` and `dev.ts` (sweep grep `\.insert(events)` to find all sites).
 4. Tests likely don't need changes — the inserted row shape is identical.
 

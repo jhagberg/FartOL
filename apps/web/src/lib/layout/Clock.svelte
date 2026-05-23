@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Wall-clock ticker. UI-SPEC §"Visual Anchors" — formats local time as
   HH:MM:SS in mono, ticks once per second via setInterval inside

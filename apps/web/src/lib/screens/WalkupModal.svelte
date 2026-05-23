@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   WalkupModal — overlay-on-readout walk-up registration (C-M3 LOCKED).
   Mounted by ReadoutView when ?walkup=<cardNumber> is present in the
@@ -39,9 +39,9 @@
   import Select from '$lib/ui/Select.svelte';
   import SmartRunnerSearch from '$lib/components/SmartRunnerSearch.svelte';
   import SmartClubSearch from '$lib/components/SmartClubSearch.svelte';
-  import type { EventorClubSuggestion } from '@fartol/shared-types';
+  import type { EventorClubSuggestion } from '@fartola/shared-types';
   import { ApiError } from '$lib/api/client.ts';
-  import type { ClassDTO, EventorLookupHit, EventorNameSuggestion } from '@fartol/shared-types';
+  import type { ClassDTO, EventorLookupHit, EventorNameSuggestion } from '@fartola/shared-types';
 
   interface Props {
     cardNumber: number;

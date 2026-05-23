@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // POST /api/competitions/:id/import — multipart XML upload that dispatches
 // on the XML root element to either ingestCourseData or ingestEntryList.
@@ -107,7 +107,7 @@ export default async function registerImportRoutes(app: FastifyInstance): Promis
       });
     }
 
-    const comp = app.fartolDb.db
+    const comp = app.fartolaDb.db
       .select({ id: competitions.id })
       .from(competitions)
       .where(eq(competitions.id, competitionId))
@@ -118,16 +118,16 @@ export default async function registerImportRoutes(app: FastifyInstance): Promis
 
     try {
       if (parsed.kind === 'CourseData') {
-        const result = ingestCourseData(app.fartolDb, competitionId, parsed.data);
+        const result = ingestCourseData(app.fartolaDb, competitionId, parsed.data);
         return reply.code(201).send({ kind: 'CourseData', ...result });
       } else {
-        const result = ingestEntryList(app.fartolDb, competitionId, parsed.data, Date.now());
+        const result = ingestEntryList(app.fartolaDb, competitionId, parsed.data, Date.now());
         // Plan 09: close the import-after-read race. The bridge may have
         // already inserted card_read events for cards belonging to the
         // newly-imported competitors. autoBindNewCompetitors emits one
         // synthetic card_bound per match so the next reduce() drops the
         // card from pending_unknown_cards AND attaches the prior read.
-        const autoBind = autoBindNewCompetitors(app.fartolDb, competitionId, app.fartolNodeId);
+        const autoBind = autoBindNewCompetitors(app.fartolaDb, competitionId, app.fartolaNodeId);
         if (autoBind.bound.length > 0) {
           app.projectionStore.markDirty(competitionId);
         }

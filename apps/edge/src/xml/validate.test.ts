@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for the bundled-XSD validator. Asserts:
 // - test 1: valid CourseData sample passes.

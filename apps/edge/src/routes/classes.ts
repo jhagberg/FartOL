@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // REST CRUD for classes — always nested under a competition (RESTful + matches
 // UI-SPEC §Wizard: classes are created either by the wizard or by the XML
@@ -18,7 +18,7 @@ import type { FastifyInstance } from 'fastify';
 import crypto from 'node:crypto';
 import { asc, eq } from 'drizzle-orm';
 
-import { ClassCreateInput, type ClassDTO } from '@fartol/shared-types';
+import { ClassCreateInput, type ClassDTO } from '@fartola/shared-types';
 import { competitions, classes } from '../db/schema.ts';
 import type { Class } from '../db/types.ts';
 import { issuesToErrors } from './_zod-errors.ts';
@@ -38,14 +38,14 @@ export default async function registerClasses(app: FastifyInstance): Promise<voi
     const { id } = req.params;
     // 404 if the competition doesn't exist — keeps the response contract
     // self-consistent (callers see 404 for an unknown parent).
-    const compRow = app.fartolDb.db
+    const compRow = app.fartolaDb.db
       .select({ id: competitions.id })
       .from(competitions)
       .where(eq(competitions.id, id))
       .get();
     if (!compRow) return reply.code(404).send({ error: 'competition not found' });
 
-    const rows = app.fartolDb.db
+    const rows = app.fartolaDb.db
       .select()
       .from(classes)
       .where(eq(classes.competitionId, id))
@@ -61,7 +61,7 @@ export default async function registerClasses(app: FastifyInstance): Promise<voi
     if (!parsed.success) {
       return reply.code(400).send(issuesToErrors(parsed.error.issues));
     }
-    const compRow = app.fartolDb.db
+    const compRow = app.fartolaDb.db
       .select({ id: competitions.id })
       .from(competitions)
       .where(eq(competitions.id, id))
@@ -74,7 +74,7 @@ export default async function registerClasses(app: FastifyInstance): Promise<voi
       name: parsed.data.name,
       shortName: parsed.data.short_name ?? null,
     };
-    app.fartolDb.db.insert(classes).values(row).run();
+    app.fartolaDb.db.insert(classes).values(row).run();
     return reply.code(201).send(classRowToDTO(row));
   });
 }

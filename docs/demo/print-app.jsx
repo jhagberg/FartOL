@@ -17,7 +17,7 @@ function PrintPage({ label, sub, children }) {
     <section className="print-page">
       <header className="print-head">
         <LogoMark />
-        <b style={{fontSize: 14}}>FartOL</b>
+        <b style={{fontSize: 14}}>fartOLa</b>
         <span className="print-tag muted">· Phase 1 · Single-laptop training MVP</span>
         <span className="print-label" style={{marginLeft: 'auto'}}>{label}</span>
         {sub && <span className="print-tag muted">{sub}</span>}

@@ -1,4 +1,4 @@
-// Mock data for FartOL prototype
+// Mock data for fartOLa prototype
 
 window.MOCK_COMPETITIONS = [
   { id: 'c1', name: 'Tisdagsträning v.20', date: '2026-05-13', status: 'live', starters: 28, finished: 11 },

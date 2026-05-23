@@ -1,5 +1,5 @@
 {
-  "name": "@fartol/sportident",
+  "name": "@fartola/sportident",
   "version": "0.0.0",
   "description": "Node.js library for reading SPORTident orienteering cards via BSM7/8-USB",
   "license": "MIT",
@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/jonashagberg/FartOL.git",
+    "url": "https://github.com/jhagberg/fartOLa.git",
     "directory": "packages/sportident"
   },
   "files": [
@@ -26,15 +26,15 @@
     }
   },
   "bin": {
-    "fartol-readout": "./dist/bin/fartol-readout.cjs",
-    "fartol-trainer": "./dist/bin/fartol-trainer.cjs"
+    "fartola-readout": "./dist/bin/fartola-readout.cjs",
+    "fartola-trainer": "./dist/bin/fartola-trainer.cjs"
   },
   "scripts": {
     "build": "tsup",
-    "dev:readout": "node src/bin/fartol-readout.ts",
-    "dev:record": "node --enable-source-maps src/bin/fartol-readout.ts --record",
-    "dev:replay": "node --enable-source-maps src/bin/fartol-readout.ts --replay",
-    "dev:trainer": "node --enable-source-maps src/bin/fartol-trainer.ts",
+    "dev:readout": "node src/bin/fartola-readout.ts",
+    "dev:record": "node --enable-source-maps src/bin/fartola-readout.ts --record",
+    "dev:replay": "node --enable-source-maps src/bin/fartola-readout.ts --replay",
+    "dev:trainer": "node --enable-source-maps src/bin/fartola-trainer.ts",
     "test": "node --test --test-reporter=spec 'src/**/*.test.ts'",
     "test:watch": "node --test --watch --test-reporter=spec 'src/**/*.test.ts'",
     "lint": "eslint src",

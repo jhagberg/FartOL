@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // local_seq next-value helper for the events table. Plan 02 ships this as a
 // trailing-edge SELECT max(local_seq) + 1 because Phase 1 has a single

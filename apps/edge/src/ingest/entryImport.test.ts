@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for ingestEntryList. Covers:
 //   - test 1: 2 classes + 3 competitors with 1 missing class → 2 competitors

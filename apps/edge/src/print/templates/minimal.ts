@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Minimal receipt — fastest possible printout. Header → name + class +
 // bricka → big total → place + gap. No splits table. UI-SPEC §"Receipt

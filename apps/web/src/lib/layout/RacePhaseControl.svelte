@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Sidebar race-phase control. Reads the active competition's
   race_started_at_ms (Phase 2.1 column added 2026-05-18) and renders one

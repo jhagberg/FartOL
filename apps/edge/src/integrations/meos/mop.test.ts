@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for POST /mop (Plan 02-04). Validates:
 //
@@ -52,7 +52,7 @@ import type { BroadcastSink } from '../../server.ts';
 import { openDatabase, type DbHandle } from '../../db/index.ts';
 import { ensureNodeId } from '../../db/node-id.ts';
 import { meosCompetitors, meosClasses, meosClubs, competitors } from '../../db/schema.ts';
-import { readoutChannel } from '@fartol/shared-types';
+import { readoutChannel } from '@fartola/shared-types';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MOP_XSD = readFileSync(path.join(__dirname, 'mop.xsd'), 'utf8');

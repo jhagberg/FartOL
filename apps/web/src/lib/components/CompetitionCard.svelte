@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Single competition tile rendered inside HomeView's auto-fill grid.
   Mirrors `screens-home.jsx` `.comp-card`:
@@ -19,7 +19,7 @@
   - 01-12-PLAN.md task 1
 -->
 <script lang="ts">
-  import type { CompetitionDTO } from '@fartol/shared-types';
+  import type { CompetitionDTO } from '@fartola/shared-types';
   import { t } from '$lib/i18n/index.ts';
 
   interface Props {

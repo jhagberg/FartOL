@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for `POST /api/competitions/:id/print-receipt`.
 // PATTERNS S-2 — every test injects a recording PrinterSink via

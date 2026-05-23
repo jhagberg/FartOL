@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Plan 02-05 — Hyrbricka finish-readout toast. Surfaces on a card_read
   when the matched competitor's card has an open hired_cards row (the

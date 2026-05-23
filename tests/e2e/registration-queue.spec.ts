@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Registration-desk queue + auto-advance e2e (plan 02-02b).
 //

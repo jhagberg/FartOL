@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Plan 02-05 — Hyrbricka end-to-end. Covers the walkup → readout →
 // Returnerad happy path that ties Plan 02-02 (walk-up hired_card writer)

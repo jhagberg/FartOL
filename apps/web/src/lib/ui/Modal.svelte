@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Scrim + dialog primitive. UI-SPEC §"Keyboard shortcuts" calls for Esc
   to dismiss; we wire the keydown listener at the document level so a

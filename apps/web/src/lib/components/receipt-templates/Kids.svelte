@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Kids receipt template — Skogis collectible critter. Inline SVG figure
   generated procedurally by skogis.ts from (cardNumber, name, club,

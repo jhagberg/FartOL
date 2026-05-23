@@ -173,7 +173,7 @@ Each chunk was committed atomically:
 - **Issue:** The Zod-inferred `CompetitorCreateInput` type makes `club` required after the `.nullable().optional().transform(v => v ?? null)` collapse — TS surfaces it as `string | null`, not `string | null | undefined`. The replace-card branch in WalkupModal omitted club entirely, failing typecheck.
 - **Fix:** pass `club: null` explicitly in the replace-card POST.
 - **Files modified:** apps/web/src/lib/screens/WalkupModal.svelte
-- **Verification:** `pnpm --filter @fartol/web typecheck` clean.
+- **Verification:** `pnpm --filter @fartola/web typecheck` clean.
 - **Committed in:** 827bd02
 
 ---
@@ -216,8 +216,8 @@ Verified:
 - ✅ `apps/web/src/routes/competition/[id]/results/+page.svelte` exists
 - ✅ NO `apps/web/src/routes/competition/[id]/walkup/` directory or file exists (C-M3 LOCKED)
 - ✅ Commits `917a88c`, `827bd02`, `e5f682c`, `447133d` exist on `gsd/phase-1-training-mvp`
-- ✅ `pnpm --filter @fartol/edge typecheck && test` — 213/213
-- ✅ `pnpm --filter @fartol/web typecheck && build && test` — 31/31, build clean
+- ✅ `pnpm --filter @fartola/edge typecheck && test` — 213/213
+- ✅ `pnpm --filter @fartola/web typecheck && build && test` — 31/31, build clean
 - ✅ `pnpm playwright test` — 13/13
 
 ---

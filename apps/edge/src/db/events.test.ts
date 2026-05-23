@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for the events table append-only invariant
 // (REQ-EVT-002, ADR-0003) and the (node_id, local_seq) primary key

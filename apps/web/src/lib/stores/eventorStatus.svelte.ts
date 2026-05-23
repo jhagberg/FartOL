@@ -1,12 +1,12 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Svelte 5 runes store mirroring bridgeStatus.svelte.ts. Backs the
 // TweaksPanel Eventor row (Plan 02-02 task 4).
 //
 //   getEventorStatus() returns the current snapshot (state, ageDays,
-//   competitorCount, fartol_dev, refreshing flag). On TweaksPanel
+//   competitorCount, fartola_dev, refreshing flag). On TweaksPanel
 //   mount the panel calls refreshEventorStatus() once to prime the
-//   row; clicking the FARTOL_DEV-gated "Uppdatera" button calls
+//   row; clicking the FARTOLA_DEV-gated "Uppdatera" button calls
 //   triggerEventorRefresh() which optimistically flips state to
 //   'refreshing' then re-fetches the status to land the truth.
 //
@@ -36,16 +36,16 @@ export interface EventorStatusState {
   state: EventorStatusVisible;
   ageDays: number | null;
   competitorCount: number;
-  /** Mirrors the server's fartol_dev — TweaksPanel gates the
+  /** Mirrors the server's fartola_dev — TweaksPanel gates the
    * "Uppdatera" button on this so production builds don't show it. */
-  fartol_dev: boolean;
+  fartola_dev: boolean;
 }
 
 let _state = $state<EventorStatusState>({
   state: 'unknown',
   ageDays: null,
   competitorCount: 0,
-  fartol_dev: false,
+  fartola_dev: false,
 });
 
 /** Returns the current snapshot. Reactive consumers (Svelte components)
@@ -70,7 +70,7 @@ export async function refreshEventorStatus(): Promise<void> {
       state: r.state,
       ageDays: r.ageDays,
       competitorCount: r.competitorCount,
-      fartol_dev: r.fartol_dev,
+      fartola_dev: r.fartola_dev,
     };
   } catch {
     _state = {
@@ -80,7 +80,7 @@ export async function refreshEventorStatus(): Promise<void> {
   }
 }
 
-/** POST /api/__admin/eventor/refresh (FARTOL_DEV-gated server-side).
+/** POST /api/__admin/eventor/refresh (FARTOLA_DEV-gated server-side).
  * Optimistically flips state to 'refreshing' so the panel shows feedback
  * immediately, then re-fetches the status after the admin endpoint
  * returns. */
@@ -88,7 +88,7 @@ export async function triggerEventorRefresh(): Promise<void> {
   _state = { ..._state, state: 'refreshing' };
   try {
     const res = await fetch('/api/__admin/eventor/refresh', { method: 'POST' });
-    // 404 happens when FARTOL_DEV is not set; either way we re-fetch the
+    // 404 happens when FARTOLA_DEV is not set; either way we re-fetch the
     // status to surface the truth (no_key/offline/ready depending on
     // server state).
     void res;

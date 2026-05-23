@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Three-step new-competition wizard. Codex C-H3 LOCKED: step 3 fires
   ONE atomic POST to /api/competitions/from-wizard — the previous

@@ -1,4 +1,4 @@
-# Example systemd user unit for the FartOL edge bridge.
+# Example systemd user unit for the fartOLa edge bridge.
 # Locked by:
 #   .planning/phases/01-single-laptop-training-mvp/01-18-PLAN.md task 2
 #   .planning/REQUIREMENTS.md REQ-OPS-002 (bridge survives restart with
@@ -7,31 +7,31 @@
 #
 # Installation:
 #   mkdir -p ~/.config/systemd/user
-#   cp $(npm prefix -g)/lib/node_modules/@fartol/edge/systemd/fartol.service \
+#   cp $(npm prefix -g)/lib/node_modules/@fartola/edge/systemd/fartola.service \
 #      ~/.config/systemd/user/
 #   systemctl --user daemon-reload
-#   systemctl --user enable --now fartol
-#   systemctl --user status fartol
+#   systemctl --user enable --now fartola
+#   systemctl --user status fartola
 #
 # `%h` expands to the invoking user's home directory; using the user-scope
 # manager (systemctl --user) means we don't need root and the unit is
-# isolated from system services. Set FARTOL_DEV=1 in an override file
-# (systemctl --user edit fartol) ONLY on bench / single-operator laptops —
+# isolated from system services. Set FARTOLA_DEV=1 in an override file
+# (systemctl --user edit fartola) ONLY on bench / single-operator laptops —
 # the dev gate exposes /api/__dev/* + /api/__admin/* (T-DEV-ENDPOINT,
 # T-ADMIN-DEV-GATE) which Phase 2 will replace with admin-token auth.
 
 [Unit]
-Description=FartOL training MVP edge bridge
+Description=fartOLa training MVP edge bridge
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=%h/.local/bin/fartol \
+ExecStart=%h/.local/bin/fartola \
   --port 3000 \
   --bind-host 127.0.0.1 \
-  --db-path %h/.local/share/fartol/fartol.db \
-  --backup-dir %h/.local/share/fartol/backups \
+  --db-path %h/.local/share/fartola/fartola.db \
+  --backup-dir %h/.local/share/fartola/backups \
   --retention-days 30
 Restart=on-failure
 RestartSec=5s
@@ -40,10 +40,10 @@ RestartSec=5s
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=%h/.local/share/fartol
+ReadWritePaths=%h/.local/share/fartola
 PrivateTmp=true
 
-# Logging routed to the user journal; tail with `journalctl --user -u fartol -f`.
+# Logging routed to the user journal; tail with `journalctl --user -u fartola -f`.
 StandardOutput=journal
 StandardError=journal
 

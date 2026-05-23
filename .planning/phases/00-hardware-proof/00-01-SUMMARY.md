@@ -9,7 +9,7 @@ requires: []
 provides:
   - pnpm workspace anchored at repo root (intentional D-01 deviation)
   - TypeScript strict toolchain (erasableSyntaxOnly + verbatimModuleSyntax + noUncheckedIndexedAccess + exactOptionalPropertyTypes)
-  - @fartol/sportident sub-package skeleton (MIT, ESM+CJS exports, fartol-readout bin path)
+  - @fartola/sportident sub-package skeleton (MIT, ESM+CJS exports, fartola-readout bin path)
   - tsup config with explicit outExtension stub (codex review #12)
   - lefthook pre-commit + commit-msg hooks with commitlint conventional rules
   - GitHub Actions CI workflow on ubuntu-latest with Corepack-pinned pnpm (codex review #9)
@@ -28,7 +28,7 @@ tech-stack:
     - prettier@3.8.3
     - lefthook@1.13.6 (D-08)
     - "@commitlint/cli@19.8.1 + @commitlint/config-conventional@19.8.1 (D-08)"
-    - serialport@13.0.0 (declared in @fartol/sportident; D-09)
+    - serialport@13.0.0 (declared in @fartola/sportident; D-09)
     - "@types/node@22.19.19"
     - globals@15.15.0
   patterns:
@@ -49,7 +49,7 @@ key-files:
     - lefthook.yml — pre-commit (prettier + eslint) and commit-msg (commitlint)
     - commitlint.config.cjs
     - .gitignore + .npmrc
-    - packages/sportident/package.json — @fartol/sportident, MIT, ESM+CJS exports, fartol-readout bin
+    - packages/sportident/package.json — @fartola/sportident, MIT, ESM+CJS exports, fartola-readout bin
     - packages/sportident/tsconfig.json — extends root
     - packages/sportident/tsup.config.ts — dual ESM+CJS + .d.ts + outExtension stub (codex #12)
     - packages/sportident/LICENSE — MIT
@@ -72,7 +72,7 @@ key-files:
 key-decisions:
   - "D-01 deviation: anchor pnpm-workspace.yaml in Phase 0 (codex review #10). 5 lines now vs Phase 1 restructure of package.json exports/paths."
   - "CI uses Corepack to pin pnpm from root packageManager field. Falls back to pnpm/action-setup@v4 with explicit version: if Corepack proves flaky (codex review #9 default)."
-  - "tsup outExtension explicitly returns .mjs for esm and .cjs for cjs so package.json bin (./dist/bin/fartol-readout.cjs) and exports map resolve to real files (codex review #12 stub; Plan 05 may extend)."
+  - "tsup outExtension explicitly returns .mjs for esm and .cjs for cjs so package.json bin (./dist/bin/fartola-readout.cjs) and exports map resolve to real files (codex review #12 stub; Plan 05 may extend)."
   - "ESLint flat config carries per-extension globals (Node globals for .ts/.js/.mjs/.cjs); .cjs explicitly typed as sourceType: commonjs so module/require/exports/process resolve."
   - "Root package.json is type: module so eslint.config.js loads as ESM without re-parsing warning."
 
@@ -89,7 +89,7 @@ completed: 2026-05-12
 
 # Phase 0 Plan 01: Wave 0 scaffolding Summary
 
-**FartOL repo bootstrapped to "git clone && pnpm install && pnpm lint && pnpm typecheck && pnpm test exits 0" with the full Phase 0 toolchain (pnpm + TypeScript strict + tsup + lefthook + commitlint + GitHub Actions CI) and every Wave 0 test/fixture path from 00-VALIDATION.md pre-created as a placeholder.**
+**fartOLa repo bootstrapped to "git clone && pnpm install && pnpm lint && pnpm typecheck && pnpm test exits 0" with the full Phase 0 toolchain (pnpm + TypeScript strict + tsup + lefthook + commitlint + GitHub Actions CI) and every Wave 0 test/fixture path from 00-VALIDATION.md pre-created as a placeholder.**
 
 ## Performance
 
@@ -102,10 +102,10 @@ completed: 2026-05-12
 ## Accomplishments
 
 - Root workspace toolchain installs and runs cleanly from a frozen lockfile.
-- `@fartol/sportident` sub-package skeleton in place with MIT LICENSE + NOTICE.md attributing upstream `allestuetsmerweh/sportident.js`, ESM+CJS export map, `fartol-readout` bin path, `serialport@^13` dep.
+- `@fartola/sportident` sub-package skeleton in place with MIT LICENSE + NOTICE.md attributing upstream `allestuetsmerweh/sportident.js`, ESM+CJS export map, `fartola-readout` bin path, `serialport@^13` dep.
 - All 8 Wave 0 node:test placeholder files exist at the exact paths called out by 00-VALIDATION.md; `pnpm test` runs them via `node --test` and reports `8 skipped / 0 failed`.
 - GitHub Actions CI workflow installs (frozen lockfile), lints, typechecks, and tests on `ubuntu-latest` with Corepack-pinned pnpm — no broken `${{ packageManager.split }}` expression (codex review #9).
-- tsup config carries the explicit `outExtension` stub so Plan 05's `bin: ./dist/bin/fartol-readout.cjs` will resolve to a real file on disk (codex review #12).
+- tsup config carries the explicit `outExtension` stub so Plan 05's `bin: ./dist/bin/fartola-readout.cjs` will resolve to a real file on disk (codex review #12).
 - D-01 deviation (anchoring workspace file in Phase 0 rather than Phase 1) explicitly documented in `pnpm-workspace.yaml` header and in this summary.
 
 ## Task Commits
@@ -135,12 +135,12 @@ Each task was committed atomically:
 
 ### Sub-package skeleton (Task 2)
 
-- `packages/sportident/package.json` — @fartol/sportident, MIT, ESM+CJS exports, fartol-readout bin (`./dist/bin/fartol-readout.cjs`), serialport@^13 dep
+- `packages/sportident/package.json` — @fartola/sportident, MIT, ESM+CJS exports, fartola-readout bin (`./dist/bin/fartola-readout.cjs`), serialport@^13 dep
 - `packages/sportident/tsconfig.json` — extends root, includes src/ and tests/
 - `packages/sportident/tsup.config.ts` — dual ESM+CJS + dts, target node22, explicit outExtension (codex #12)
-- `packages/sportident/LICENSE` — MIT (Copyright 2026 Jonas Hagberg and the FartOL contributors)
+- `packages/sportident/LICENSE` — MIT (Copyright 2026 Jonas Hagberg and the fartOLa contributors)
 - `packages/sportident/NOTICE.md` — upstream attribution (allestuetsmerweh/sportident.js MIT; per-magnusson reference-only GPL; GecoSI reference-only Apache-2.0)
-- `packages/sportident/README.md` — Phase 0 scope, run instructions, FARTOL_DEVICE env var
+- `packages/sportident/README.md` — Phase 0 scope, run instructions, FARTOLA_DEVICE env var
 - `packages/sportident/src/index.ts` — `export {};` stub for Plan 05
 
 ### Wave 0 test placeholders + CI + smoke (Task 3)
@@ -168,13 +168,13 @@ Each task was committed atomically:
 **Why we deviated now:**
 
 1. **Cost is trivial:** 5 lines of YAML + a comment header.
-2. **Cost of deferring:** Adding `pnpm-workspace.yaml` in Phase 1 alongside a new sibling package (likely `@fartol/ingester` or `@fartol/db`) forces a simultaneous restructure of root `package.json` (the `pnpm -r --if-present run lint` pattern only takes effect with a workspace file present) and any path-resolution machinery downstream. Doing it in one focused commit now beats juggling two structural changes in the same Phase 1 wave.
+2. **Cost of deferring:** Adding `pnpm-workspace.yaml` in Phase 1 alongside a new sibling package (likely `@fartola/ingester` or `@fartola/db`) forces a simultaneous restructure of root `package.json` (the `pnpm -r --if-present run lint` pattern only takes effect with a workspace file present) and any path-resolution machinery downstream. Doing it in one focused commit now beats juggling two structural changes in the same Phase 1 wave.
 3. **Codex review #10 explicitly flagged this:** Recommended documenting the deviation rather than reverting to D-01's literal text.
 
 **How it's documented:**
 
 - `pnpm-workspace.yaml` header carries an 8-line YAML comment explaining the deviation and pointing here.
-- Root scripts use the `-r --if-present` pattern, so when Phase 1 adds `@fartol/ingester` the existing `pnpm lint/typecheck/test` scripts pick it up without any further root edits.
+- Root scripts use the `-r --if-present` pattern, so when Phase 1 adds `@fartola/ingester` the existing `pnpm lint/typecheck/test` scripts pick it up without any further root edits.
 - This summary section satisfies the codex-review-mandated rationale capture.
 
 **Future-proofing:** When Phase 1 lands the second package, no edits are required here — it just appears under `packages/*`.
@@ -308,20 +308,20 @@ None for this plan. Plan-level `user_setup` entry says enable Corepack and prepa
 
 ## Self-Check: PASSED
 
-- `/home/jonas/src/FartOL/package.json` — FOUND
-- `/home/jonas/src/FartOL/pnpm-workspace.yaml` — FOUND (with D-01 deviation comment)
-- `/home/jonas/src/FartOL/tsconfig.json` — FOUND
-- `/home/jonas/src/FartOL/eslint.config.js` — FOUND
-- `/home/jonas/src/FartOL/lefthook.yml` — FOUND
-- `/home/jonas/src/FartOL/commitlint.config.cjs` — FOUND
-- `/home/jonas/src/FartOL/packages/sportident/package.json` — FOUND
-- `/home/jonas/src/FartOL/packages/sportident/tsup.config.ts` — FOUND (with outExtension)
-- `/home/jonas/src/FartOL/packages/sportident/LICENSE` — FOUND
-- `/home/jonas/src/FartOL/packages/sportident/NOTICE.md` — FOUND
+- `/home/jonas/src/fartOLa/package.json` — FOUND
+- `/home/jonas/src/fartOLa/pnpm-workspace.yaml` — FOUND (with D-01 deviation comment)
+- `/home/jonas/src/fartOLa/tsconfig.json` — FOUND
+- `/home/jonas/src/fartOLa/eslint.config.js` — FOUND
+- `/home/jonas/src/fartOLa/lefthook.yml` — FOUND
+- `/home/jonas/src/fartOLa/commitlint.config.cjs` — FOUND
+- `/home/jonas/src/fartOLa/packages/sportident/package.json` — FOUND
+- `/home/jonas/src/fartOLa/packages/sportident/tsup.config.ts` — FOUND (with outExtension)
+- `/home/jonas/src/fartOLa/packages/sportident/LICENSE` — FOUND
+- `/home/jonas/src/fartOLa/packages/sportident/NOTICE.md` — FOUND
 - All 8 Wave 0 test placeholders — FOUND
 - All 3 fixture dirs — FOUND
-- `/home/jonas/src/FartOL/scripts/hardware-smoke.sh` — FOUND (executable)
-- `/home/jonas/src/FartOL/.github/workflows/ci.yml` — FOUND (Corepack, no broken expression)
+- `/home/jonas/src/fartOLa/scripts/hardware-smoke.sh` — FOUND (executable)
+- `/home/jonas/src/fartOLa/.github/workflows/ci.yml` — FOUND (Corepack, no broken expression)
 - Commit `3b6afaf` (Task 1) — FOUND in git log
 - Commit `0a59fdc` (Task 2) — FOUND in git log
 - Commit `fd83a56` (Task 3) — FOUND in git log

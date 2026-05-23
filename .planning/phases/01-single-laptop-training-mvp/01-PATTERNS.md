@@ -24,7 +24,7 @@ explicitly under "No Analog Found."
 | `apps/edge/tsconfig.json` | config | n/a | `packages/sportident/tsconfig.json` | exact |
 | `apps/edge/tsup.config.ts` | config / build | n/a | `packages/sportident/tsup.config.ts` | exact (multi-entry + node22 target) |
 | `apps/edge/src/server.ts` | server / bootstrap | request-response + event-driven | (none) | greenfield — RESEARCH Pattern 3 |
-| `apps/edge/src/bin/fartol.ts` | bin / entrypoint | event-driven | `packages/sportident/src/bin/fartol-readout.ts` | role-match (binary entrypoint w/ argv + lifecycle + SIGINT) |
+| `apps/edge/src/bin/fartola.ts` | bin / entrypoint | event-driven | `packages/sportident/src/bin/fartola-readout.ts` | role-match (binary entrypoint w/ argv + lifecycle + SIGINT) |
 | `apps/edge/src/db/schema.ts` | model | CRUD + append-only | (none) | greenfield — RESEARCH Pattern 1 |
 | `apps/edge/src/db/migrate.ts` | utility / migration | n/a | (none) | greenfield — RESEARCH Pattern 2 |
 | `apps/edge/src/db/index.ts` | db handle | request-response | (none) | greenfield — RESEARCH Pattern 2 |
@@ -34,7 +34,7 @@ explicitly under "No Analog Found."
 | `apps/edge/src/routes/export.ts` | controller / file-I/O | transform | (none) | greenfield — RESEARCH Pattern 7 |
 | `apps/edge/src/ws/index.ts` | middleware / pub-sub | event-driven | (none) | greenfield — RESEARCH Pattern 4 |
 | `apps/edge/src/ws/channels.ts` | utility / pub-sub | event-driven | (none) | greenfield — RESEARCH Pattern 4 |
-| `apps/edge/src/si/bridge.ts` | service / adapter | event-driven | `packages/sportident/src/bin/fartol-readout.ts` | **exact** (wire `SiMainStation` events → sink) |
+| `apps/edge/src/si/bridge.ts` | service / adapter | event-driven | `packages/sportident/src/bin/fartola-readout.ts` | **exact** (wire `SiMainStation` events → sink) |
 | `apps/edge/src/projection/results.ts` | service / reducer | transform | (none) | greenfield — RESEARCH Pattern 5 |
 | `apps/edge/src/projection/dnf-mp.ts` | service / reducer | transform | (none) | greenfield — RESEARCH Pattern 5 |
 | `apps/edge/src/print/escpos.ts` | service / driver | file-I/O | (none) | greenfield — RESEARCH Pattern 6 |
@@ -87,9 +87,9 @@ explicitly under "No Analog Found."
 
 ## Pattern Assignments
 
-### `apps/edge/src/bin/fartol.ts` (bin / entrypoint, event-driven)
+### `apps/edge/src/bin/fartola.ts` (bin / entrypoint, event-driven)
 
-**Analog:** `packages/sportident/src/bin/fartol-readout.ts`
+**Analog:** `packages/sportident/src/bin/fartola-readout.ts`
 
 **Shebang + ESM entrypoint guard** (lines 1, 312–325):
 ```typescript
@@ -111,7 +111,7 @@ if (isEntrypoint) main().catch((err: unknown) => { /* structured fatal */ });
 ```
 
 **Minimal hand-rolled argv parsing** (lines 86–137): no `commander`/`yargs` dep.
-For `apps/edge/bin/fartol.ts` the flags will be `--port`, `--db-path`,
+For `apps/edge/bin/fartola.ts` the flags will be `--port`, `--db-path`,
 `--bind-host` (per RESEARCH §"Security Domain V14 Configuration").
 
 **Centralised shutdown + SIGINT + uncaught error handler** (lines 257–294):
@@ -125,7 +125,7 @@ process.on('SIGINT', () => { void shutdown(0); });
 station.on('error', (err: Error) => { /* emit structured event, exit 3 */ });
 ```
 
-Apply to `apps/edge/bin/fartol.ts` for `app.close()` (Fastify) + `db.close()` +
+Apply to `apps/edge/bin/fartola.ts` for `app.close()` (Fastify) + `db.close()` +
 SI bridge close. Also wires `process.on('uncaughtException')` per RESEARCH
 Pitfall 9.
 
@@ -133,7 +133,7 @@ Pitfall 9.
 
 ### `apps/edge/src/si/bridge.ts` (service / adapter, event-driven) — **EXACT analog**
 
-**Analog:** `packages/sportident/src/bin/fartol-readout.ts` lines 187–254
+**Analog:** `packages/sportident/src/bin/fartola-readout.ts` lines 187–254
 
 **Construct transport + station + wire all five events**:
 ```typescript
@@ -176,13 +176,13 @@ Phase 0 bin; new code, but the lifecycle event surface
 **Shape to copy**:
 ```jsonc
 {
-  "name": "@fartol/edge",
+  "name": "@fartola/edge",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "engines": { "node": ">=22.18.0" },
   "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.mjs" } },
-  "bin": { "fartol": "./dist/bin/fartol.cjs" },
+  "bin": { "fartola": "./dist/bin/fartola.cjs" },
   "scripts": {
     "build": "tsup",
     "test": "node --test --test-reporter=spec 'src/**/*.test.ts'",
@@ -194,8 +194,8 @@ Phase 0 bin; new code, but the lifecycle event surface
 ```
 
 Mirror exactly. Difference vs. sportident: `dependencies` add Fastify stack +
-Drizzle + node-thermal-printer + libxmljs2-xsd + `@fartol/sportident@workspace:*`
-+ `@fartol/shared-types@workspace:*` per RESEARCH §"Installation (apps/edge/)".
+Drizzle + node-thermal-printer + libxmljs2-xsd + `@fartola/sportident@workspace:*`
++ `@fartola/shared-types@workspace:*` per RESEARCH §"Installation (apps/edge/)".
 
 ---
 
@@ -227,7 +227,7 @@ Root `tsconfig.json` already locks `strict`, `noUncheckedIndexedAccess`,
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/server.ts', 'src/bin/fartol.ts'],   // ← change
+  entry: ['src/server.ts', 'src/bin/fartola.ts'],   // ← change
   format: ['esm', 'cjs'],
   dts: true,
   sourcemap: true,
@@ -245,7 +245,7 @@ export default defineConfig({
 ```
 
 The explicit `.mjs`/`.cjs` `outExtension` is load-bearing because the published
-tarball's `bin` field resolves to `./dist/bin/fartol.cjs`.
+tarball's `bin` field resolves to `./dist/bin/fartola.cjs`.
 
 ---
 
@@ -294,7 +294,7 @@ IOF EntryList, IOF ResultList). `process.cwd()` lies under pnpm workspaces.
 **Diff** (no build, no `bin`, no `dependencies`):
 ```jsonc
 {
-  "name": "@fartol/shared-types",
+  "name": "@fartola/shared-types",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -309,7 +309,7 @@ IOF EntryList, IOF ResultList). `process.cwd()` lies under pnpm workspaces.
 
 CONTEXT D-08 explicitly says no build step; `"exports": "./src/index.ts"`
 relies on `allowImportingTsExtensions` (already on in root tsconfig). Consumers
-import as `import type { ... } from '@fartol/shared-types';`.
+import as `import type { ... } from '@fartola/shared-types';`.
 
 ---
 
@@ -336,7 +336,7 @@ export type { ISerialTransport } from './transport/ISerialTransport.ts';
 **Analog:** `packages/sportident/src/output/ndjson.ts` lines 35–146
 
 Phase 0 already defines the locked event type union. shared-types either:
-1. **Re-exports** `@fartol/sportident`'s `NdjsonEvent`, `NdjsonBase`, `CardType`,
+1. **Re-exports** `@fartola/sportident`'s `NdjsonEvent`, `NdjsonBase`, `CardType`,
    `HalfDayClock`, `NdjsonPunch`, `ConnectionChangedEvent`, `CardInsertedEvent`,
    `CardReadEvent`, `CardRemovedEvent`, `FrameErrorEvent` — preferred to avoid
    drift.
@@ -401,25 +401,25 @@ explains exactly why this file exists — preserve it.
 ### Pattern S-1: File-header comment block
 
 **Source:** every file in `packages/sportident/src/` (see e.g. `ndjson.ts`
-lines 1–23, `fartol-readout.ts` lines 1–27)
+lines 1–23, `fartola-readout.ts` lines 1–27)
 
 **Apply to:** every new `.ts` file in `apps/edge/`, `apps/web/`,
 `packages/shared-types/`
 
 Pattern: 3–25 line header explaining (a) what the file is, (b) the upstream
-provenance ("Authored for fartol. Not ported from upstream." OR
+provenance ("Authored for fartola. Not ported from upstream." OR
 "Ported from allestuetsmerweh/sportident.js — …"), (c) which planning doc
 locks the behavior, (d) codex / gemini review fix notes inline, ending with
 `// See packages/<pkg>/NOTICE.md for cumulative attribution.` (the NOTICE pointer
 is Phase 0 D-11; only needed in `packages/sportident/`. For new
-fartol-authored files in `apps/*` and `packages/shared-types/`, end with the
+fartola-authored files in `apps/*` and `packages/shared-types/`, end with the
 planning-doc pointer only.)
 
 Example template for `apps/edge/src/server.ts`:
 ```typescript
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
-// Fastify bootstrap for the FartOL edge bridge. Registers @fastify/cors,
+// Fastify bootstrap for the fartOLa edge bridge. Registers @fastify/cors,
 // @fastify/sensible, @fastify/websocket, @fastify/static, then mounts REST
 // (/api/*), WS (/ws), and SPA-fallback handlers per
 // .planning/phases/01-single-laptop-training-mvp/01-RESEARCH.md §Pattern 3.
@@ -523,9 +523,9 @@ JSON payload; TS field accessors stay camelCase.
 
 ### Pattern S-7: Test-injectable lifecycle (no top-level side effects)
 
-**Source:** `packages/sportident/src/bin/fartol-readout.ts` lines 312–325
+**Source:** `packages/sportident/src/bin/fartola-readout.ts` lines 312–325
 
-**Apply to:** `apps/edge/src/bin/fartol.ts` and any module that performs I/O
+**Apply to:** `apps/edge/src/bin/fartola.ts` and any module that performs I/O
 at top level.
 
 Pattern: wrap startup in a `main()` function; only call it when the module is
@@ -595,7 +595,7 @@ action steps. These are the largest greenfield surfaces in Phase 1.
    pipes the four Phase 0 Jonas fixtures
    (`packages/sportident/tests/fixtures/jonas/`) through the bridge so
    subsequent waves iterate without `/dev/ttyUSB0` hardware. This is the only
-   in-repo asset Phase 1 reuses beyond the `@fartol/sportident` export surface.
+   in-repo asset Phase 1 reuses beyond the `@fartola/sportident` export surface.
 
 2. **One XML importer (RESEARCH key insight):** Purple Pen `.xml` IS IOF XML
    3.0 CourseData. `apps/edge/src/routes/import.ts` is a single endpoint that
@@ -624,13 +624,13 @@ action steps. These are the largest greenfield surfaces in Phase 1.
 
 ## Metadata
 
-**Analog search scope:** `/home/jonas/src/FartOL-phase-1/packages/sportident/`
+**Analog search scope:** `/home/jonas/src/fartOLa-phase-1/packages/sportident/`
 (all 60 source + test + fixture files), repo root tooling, root tsconfig.
 **Files scanned:** 65.
 **Pattern extraction date:** 2026-05-14.
 **Reads performed:** 1× CONTEXT, 1× UI-SPEC, 3× RESEARCH (chunked), 1× REQUIREMENTS,
 1× tsconfig, 1× sportident package.json, 1× sportident tsconfig, 1× sportident
-tsup.config, 1× sportident index.ts, 1× fartol-readout.ts, 1× ndjson.ts (first
+tsup.config, 1× sportident index.ts, 1× fartola-readout.ts, 1× ndjson.ts (first
 100 lines), 1× ndjson.test.ts (header), 1× siProtocol.test.ts (header),
 1× e2e.test.ts (header), 1× benchReplay.test.ts (header), 1× SerialTransport.ts
 (header). No file re-read.

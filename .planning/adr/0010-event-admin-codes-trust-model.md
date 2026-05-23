@@ -10,7 +10,7 @@ informed: []
 
 ## Context and Problem Statement
 
-Phase 2.0 deployed FartOL at the 4-klubbs onsdagsträning with
+Phase 2.0 deployed fartOLa at the 4-klubbs onsdagsträning with
 `--bind-host 0.0.0.0 --allow-lan` so the MeOS laptop and the
 registration-desk operator could both reach the bridge over the club
 Wi-Fi. That posture exposes the FULL sekretariat surface
@@ -118,7 +118,7 @@ via the cert.
 - Mistake-cost is high: revoking a paired device is a JSON edit.
 - Buys properties we don't need (non-repudiation, per-device audit).
 
-Right answer for Phase 6+ if FartOL ever ships to clubs with strict
+Right answer for Phase 6+ if fartOLa ever ships to clubs with strict
 device management requirements.
 
 ### E. Rely on Wi-Fi WPA2-PSK as the security boundary
@@ -176,7 +176,7 @@ operator handling).
 
 **Localhost bypass:** requests with `req.ip` ∈ `{127.0.0.1, ::1,
 ::ffff:127.0.0.1}` skip the cookie check entirely. The operator on
-the desk laptop is always allowed — same trust model as the FARTOL_DEV
+the desk laptop is always allowed — same trust model as the FARTOLA_DEV
 admin routes.
 
 **Rate limit:** per-IP token bucket on `POST /access`:
@@ -230,7 +230,7 @@ admin routes.
 ### Neutral
 
 - **Localhost bypass.** Operator on the desk laptop never needs a
-  code. Matches the existing FARTOL_DEV admin-route pattern; consistent
+  code. Matches the existing FARTOLA_DEV admin-route pattern; consistent
   with the trust model that the laptop itself is the trust boundary
   for operator-level actions.
 - **Helpers and the operator both write to `competitors.source =
@@ -269,7 +269,7 @@ ADR's assumptions:
 1. **Brute-force probe** — scripted POST loop hits the rate limit
    ceiling by attempt 11.
 2. **Log scrub** — `audit-canary-99` code in a POST body produces zero
-   matches in `journalctl --user -u fartol`.
+   matches in `journalctl --user -u fartola`.
 3. **Cookie scrub** — HttpOnly verified in browser DevTools (cookie
    not exposed to `document.cookie`).
 4. **Localhost bypass** — operator-desk curl POST succeeds without a

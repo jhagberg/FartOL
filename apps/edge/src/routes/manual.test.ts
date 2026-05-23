@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for the operator-attested DNF override flow:
 //
@@ -32,7 +32,7 @@ import { ensureNodeId } from '../db/node-id.ts';
 import { events } from '../db/schema.ts';
 import type { DbHandle } from '../db/index.ts';
 import type { FastifyInstance } from 'fastify';
-import type { ChannelName } from '@fartol/shared-types';
+import type { ChannelName } from '@fartola/shared-types';
 import { eq } from 'drizzle-orm';
 
 interface Ctx {

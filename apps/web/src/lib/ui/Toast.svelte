@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Single-instance toast. UI-SPEC §"Toasts" — auto-dismiss after 2s by
   default; the print-fail toast extends to 5s (longer dwell for an

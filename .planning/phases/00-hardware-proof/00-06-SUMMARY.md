@@ -16,8 +16,8 @@ tags:
 # Dependency graph
 requires: [00-05]
 provides:
-  - 'fartol-readout --record <basename>: tees stdout NDJSON to <basename>.expected.json AND captures a directional wire transcript (out <hex> / in <hex>, chronological) to <basename>.bytes.hex (codex review #6).'
-  - 'fartol-readout --replay <basename>: drives SiMainStation against the transcript via a deterministic PlaybackTransport that gates `in` chunks on the matching `out` and pumps every consecutive `in` after each `out` so multi-chunk fragmented responses reassemble correctly in parseAll.'
+  - 'fartola-readout --record <basename>: tees stdout NDJSON to <basename>.expected.json AND captures a directional wire transcript (out <hex> / in <hex>, chronological) to <basename>.bytes.hex (codex review #6).'
+  - 'fartola-readout --replay <basename>: drives SiMainStation against the transcript via a deterministic PlaybackTransport that gates `in` chunks on the matching `out` and pumps every consecutive `in` after each `out` so multi-chunk fragmented responses reassemble correctly in parseAll.'
   - 'scripts/hardware-smoke.sh: operator-driven preflight (ttyUSB0 + dialout + Node 22 + dist) + 4 separate per-card --record --once invocations + JSON-parsed NDJSON assertions (codex reviews #8 + LOW).'
   - 'packages/sportident/tests/fixtures/jonas/{si5,si9,si10,siac}-jonas-001.{bytes.hex,expected.json}: bench-captured fixture pairs from BSM7/8-USB on /dev/ttyUSB0 (serial 593656) on 2026-05-13.'
   - 'src/integration/benchReplay.test.ts: regression test driving the 4 bench fixtures through the production pipeline and asserting wire-event NDJSON byte-equality.'
@@ -32,7 +32,7 @@ tech-stack:
   patterns:
     - "Directional transcript format (codex review #6): bytes.hex is `# Captured ...` comment header + `out <hex>` per transport send + `in <hex>` per transport receive, chronological. Replay walks the file line-by-line; the PlaybackTransport pumps every consecutive `in` after each matching `out` so the OS-fragmented frames the real driver delivers (one logical wire frame across 2-3 chunks) reassemble via parseAll's byte buffer."
     - "Allowed-roots path validation (codex review #7): RecordSink + replayFixture both accept `allowedRoots: string[]` and reject basenames resolving outside any permitted root via path.resolve() before opening any file. Bin passes `[process.cwd(), '/tmp']`; tests pass `[cwd, '/tmp']`."
-    - 'Per-card --record --once smoke loop (codex review #8): scripts/hardware-smoke.sh runs `fartol-readout --record <basename> --once` 4 times, once per card type. Native per-card fixture production, no post-hoc splitting. JSON parsing via `node -e` (NOT grep on key-order) per codex review LOW.'
+    - 'Per-card --record --once smoke loop (codex review #8): scripts/hardware-smoke.sh runs `fartola-readout --record <basename> --once` 4 times, once per card type. Native per-card fixture production, no post-hoc splitting. JSON parsing via `node -e` (NOT grep on key-order) per codex review LOW.'
     - 'Bit-aware station config writes (gap-closure #1): SiMainStation.readCards now writes handshake-flag bits AT THE BIT LEVEL (autosend bit 0 of offset 0x73, handshake bit 0 of offset 0x74, beeps/flashes bits of offset 0x76) instead of byte-overwrites. Real bench data revealed the upstream config blob carries multiple flags packed into single bytes; byte-overwriting would clobber unrelated state.'
     - "Wire-format slice fix (gap-closure #2): real-wire GET_SYS_VAL response is `[addr_hi, addr_lo, offset_echo, ...128 cfg]` (131 param bytes); GET_SI5 / GET_SI8 responses are `[addr_hi, addr_lo, ...128 page_data]` (130 param bytes). The original ports of `typeSpecificRead` assumed 128 directly without the 2-byte addr prefix; bench captures of Jonas's reader revealed the real shape. SiCard5.typeSpecificRead and SiCard8.typeSpecificRead now do `frame.slice(4)` to skip [cmd, len, addr_hi, addr_lo]. New `src/integration/wireFormat.test.ts` regression-tests the exact shapes."
     - "Bench-replay regression test pattern: `BenchPlaybackTransport` drives SiMainStation against a parsed directional transcript; the test filters out `connection_changed` lifecycle events (real USB enumeration emits 2 `opening` transitions before `open`, synchronous playback can't reproduce that) and asserts byte-equal wire events (card_inserted, card_read, card_removed, frame_error) against the captured .expected.json."
@@ -53,7 +53,7 @@ key-files:
     - 'packages/sportident/tests/fixtures/jonas/siac-jonas-001.{bytes.hex,expected.json} — 18 + 6 lines, 1621 + 2307 bytes; card_number=8535005, 17 punches (real-run trace), card_series_byte=15'
     - 'scripts/repair-station-sn.mjs — one-off recovery helper that restored a station-config byte that the bit-packed bug accidentally cleared during smoke'
   modified:
-    - 'packages/sportident/src/bin/fartol-readout.ts — wired --record / --replay / --once flags into RecordSink and replayFixture; allowedRoots = [cwd, /tmp]'
+    - 'packages/sportident/src/bin/fartola-readout.ts — wired --record / --replay / --once flags into RecordSink and replayFixture; allowedRoots = [cwd, /tmp]'
     - 'packages/sportident/src/SiStation/SiMainStation.ts — gap-closure #1: bit-aware handshake writes (autosend/handshake/beeps/flashes at the bit level)'
     - 'packages/sportident/src/SiStation/BaseSiStation.ts — STATION_CONFIG_OFFSETS expanded to surface the bit-packed offsets (0x73 / 0x74 / 0x76)'
     - 'packages/sportident/src/SiCard/types/SiCard5.ts — gap-closure #2: typeSpecificRead now slices [cmd,len,addr_hi,addr_lo] off the response before splicing the 128-byte page'
@@ -63,9 +63,9 @@ key-files:
     - 'packages/sportident/src/integration/frameError.test.ts — same prefix-bytes update for synthetic fixtures'
     - 'packages/sportident/src/SiStation/SiTargetMultiplexer.ts — minor tweak supporting bit-aware writes'
     - 'scripts/hardware-smoke.sh — implementation body (Plan 01 stub replaced)'
-    - 'scripts/hardware-smoke.sh — c800067 fixup: invoke fartol-readout via `node "$DIST_BIN"` so the smoke is hermetic to pnpm exec path resolution'
+    - 'scripts/hardware-smoke.sh — c800067 fixup: invoke fartola-readout via `node "$DIST_BIN"` so the smoke is hermetic to pnpm exec path resolution'
     - 'packages/sportident/README.md — hardware-smoke runbook'
-    - 'scripts/check-mit-attribution.sh — allowlist extended for new fartol-authored files (record.ts, replay.ts, their tests, wireFormat.test.ts, benchReplay.test.ts)'
+    - 'scripts/check-mit-attribution.sh — allowlist extended for new fartola-authored files (record.ts, replay.ts, their tests, wireFormat.test.ts, benchReplay.test.ts)'
     - '.prettierignore — excludes packages/sportident/tests/fixtures/jonas/*.expected.json (NDJSON, not JSON)'
 
 key-decisions:
@@ -106,7 +106,7 @@ completed: 2026-05-13
 | --- | ----------------------------------------------------------------- | --------- | ---------------- |
 | 1   | --record/--replay modes with directional transcript               | `5bd7d9f` | `feat(00-06):`   |
 | 2   | hardware-smoke.sh + README runbook (per-card --record --once)     | `cb58703` | `feat(00-06):`   |
-| 2a  | smoke fixup — invoke fartol-readout via `node "$DIST_BIN"`        | `c800067` | `fix(00-06):`    |
+| 2a  | smoke fixup — invoke fartola-readout via `node "$DIST_BIN"`        | `c800067` | `fix(00-06):`    |
 | 3   | Bench captures (SI5/SI9/SI10/SIAC) + .gitignore + prettier ignore | `c33318a` | `test(00-06):`   |
 | 3b  | bench-replay regression test + PlaybackTransport multi-chunk fix  | `f8e3f37` | `test(00-06):`   |
 | 4   | Plan SUMMARY + STATE/ROADMAP updates                              | _this_    | `docs(00-06):`   |
@@ -278,11 +278,11 @@ Per-suite delta vs. Plan 05 baseline (76 tests):
 
 ```text
 CJS dist/index.cjs                  59.84 KB
-CJS dist/bin/fartol-readout.cjs     71.04 KB
+CJS dist/bin/fartola-readout.cjs     71.04 KB
 ESM dist/index.mjs                  ~60 KB
-ESM dist/bin/fartol-readout.mjs     70.16 KB
+ESM dist/bin/fartola-readout.mjs     70.16 KB
 DTS dist/index.d.ts                 21.58 KB
-DTS dist/bin/fartol-readout.d.ts    20.00 B
+DTS dist/bin/fartola-readout.d.ts    20.00 B
 ```
 
 ## MIT attribution audit
@@ -296,28 +296,28 @@ MIT attribution: OK (60 files scanned)
 
 - **Phase 1 (Single-laptop training MVP)** is unblocked. The NDJSON v1 contract is proven on real hardware against all 4 of Jonas's card types. Phase 1's event-log ingester can consume the same NDJSON stream the bench fixtures contain — schema is locked, snake_case is locked, ms-epoch is locked.
 - **Bench fixtures are part of CI now**: `pnpm test` includes `benchReplay.test.ts` which replays all 4 fixtures and asserts wire-event byte-equality. Any future regression in the protocol/decode/handshake/NDJSON pipeline will fail this test before reaching hardware.
-- **Recovery tooling stays in repo**: `scripts/repair-station-sn.mjs` is the one-shot helper that restored Jonas's reader's S/N byte after the bit-packed-flags bug clobbered it. Phase 1 should fold this into a more general "fartol-station --diagnose / --repair" CLI once the station-config refactor lands.
+- **Recovery tooling stays in repo**: `scripts/repair-station-sn.mjs` is the one-shot helper that restored Jonas's reader's S/N byte after the bit-packed-flags bug clobbered it. Phase 1 should fold this into a more general "fartola-station --diagnose / --repair" CLI once the station-config refactor lands.
 - **Phase 0 deep code review** (`.planning/phases/00-hardware-proof/00-REVIEW.md`) flagged 2 critical + 4 warning + 1 info findings. The critical CR-001 (ESM consumers can't construct SerialTransport via bare `require('serialport')`) is the first thing Phase 1's edge-bridge wave should address.
 
 ## Self-Check: PASSED
 
-- `/home/jonas/src/FartOL/.planning/phases/00-hardware-proof/00-06-SUMMARY.md` — FOUND
-- `/home/jonas/src/FartOL/packages/sportident/tests/fixtures/jonas/.gitignore` — FOUND
-- `/home/jonas/src/FartOL/packages/sportident/tests/fixtures/jonas/si5-jonas-001.bytes.hex` — FOUND (1167 bytes, 14 lines)
-- `/home/jonas/src/FartOL/packages/sportident/tests/fixtures/jonas/si5-jonas-001.expected.json` — FOUND (1164 bytes, 6 NDJSON lines)
-- `/home/jonas/src/FartOL/packages/sportident/tests/fixtures/jonas/si9-jonas-001.bytes.hex` — FOUND (1621 bytes, 18 lines)
-- `/home/jonas/src/FartOL/packages/sportident/tests/fixtures/jonas/si9-jonas-001.expected.json` — FOUND (1236 bytes, 6 NDJSON lines)
-- `/home/jonas/src/FartOL/packages/sportident/tests/fixtures/jonas/si10-jonas-001.bytes.hex` — FOUND (1621 bytes, 18 lines)
-- `/home/jonas/src/FartOL/packages/sportident/tests/fixtures/jonas/si10-jonas-001.expected.json` — FOUND (1348 bytes, 6 NDJSON lines)
-- `/home/jonas/src/FartOL/packages/sportident/tests/fixtures/jonas/siac-jonas-001.bytes.hex` — FOUND (1621 bytes, 18 lines)
-- `/home/jonas/src/FartOL/packages/sportident/tests/fixtures/jonas/siac-jonas-001.expected.json` — FOUND (2307 bytes, 6 NDJSON lines)
-- `/home/jonas/src/FartOL/packages/sportident/src/integration/benchReplay.test.ts` — FOUND (4 tests pass)
+- `/home/jonas/src/fartOLa/.planning/phases/00-hardware-proof/00-06-SUMMARY.md` — FOUND
+- `/home/jonas/src/fartOLa/packages/sportident/tests/fixtures/jonas/.gitignore` — FOUND
+- `/home/jonas/src/fartOLa/packages/sportident/tests/fixtures/jonas/si5-jonas-001.bytes.hex` — FOUND (1167 bytes, 14 lines)
+- `/home/jonas/src/fartOLa/packages/sportident/tests/fixtures/jonas/si5-jonas-001.expected.json` — FOUND (1164 bytes, 6 NDJSON lines)
+- `/home/jonas/src/fartOLa/packages/sportident/tests/fixtures/jonas/si9-jonas-001.bytes.hex` — FOUND (1621 bytes, 18 lines)
+- `/home/jonas/src/fartOLa/packages/sportident/tests/fixtures/jonas/si9-jonas-001.expected.json` — FOUND (1236 bytes, 6 NDJSON lines)
+- `/home/jonas/src/fartOLa/packages/sportident/tests/fixtures/jonas/si10-jonas-001.bytes.hex` — FOUND (1621 bytes, 18 lines)
+- `/home/jonas/src/fartOLa/packages/sportident/tests/fixtures/jonas/si10-jonas-001.expected.json` — FOUND (1348 bytes, 6 NDJSON lines)
+- `/home/jonas/src/fartOLa/packages/sportident/tests/fixtures/jonas/siac-jonas-001.bytes.hex` — FOUND (1621 bytes, 18 lines)
+- `/home/jonas/src/fartOLa/packages/sportident/tests/fixtures/jonas/siac-jonas-001.expected.json` — FOUND (2307 bytes, 6 NDJSON lines)
+- `/home/jonas/src/fartOLa/packages/sportident/src/integration/benchReplay.test.ts` — FOUND (4 tests pass)
 - Commit `c33318a` (Commit 1: bench fixtures) — FOUND in git log
 - Commit `f8e3f37` (Commit 2: bench-replay regression test) — FOUND in git log
-- `pnpm --filter @fartol/sportident exec tsc --noEmit` — exit 0
-- `pnpm --filter @fartol/sportident exec eslint src` — exit 0
-- `pnpm --filter @fartol/sportident exec node --test 'src/**/*.test.ts'` — 92 pass / 0 fail / 0 skipped
-- `pnpm --filter @fartol/sportident exec tsup` — build success, all artifacts present
+- `pnpm --filter @fartola/sportident exec tsc --noEmit` — exit 0
+- `pnpm --filter @fartola/sportident exec eslint src` — exit 0
+- `pnpm --filter @fartola/sportident exec node --test 'src/**/*.test.ts'` — 92 pass / 0 fail / 0 skipped
+- `pnpm --filter @fartola/sportident exec tsup` — build success, all artifacts present
 - `bash scripts/check-mit-attribution.sh` — exit 0 (60 files scanned)
 - v0.0.1-handshake tag — to be created in this commit's wake
 

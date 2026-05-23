@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for the single events-table insertion path. Covers the
 // REQ-EVT-001/002/003 invariants (event shape + per-node monotonic local_seq

@@ -1,4 +1,4 @@
-// Authored for fartol. SerialTransport unit tests against a FakeSerialPort.
+// Authored for fartola. SerialTransport unit tests against a FakeSerialPort.
 // Zero real-hardware dependency: the SerialTransport constructor accepts an
 // injection-point so tests substitute a FakeSerialPort that mimics the
 // serialport@13 API surface (open/write/drain/close + on('data'|'error'|'close')).

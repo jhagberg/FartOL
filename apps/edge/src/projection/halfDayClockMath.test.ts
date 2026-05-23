@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for halfDayClockToMs + diffMs. Covers the eight
 // scenarios from plan 01-07 task 1 verify gate, including:
@@ -16,7 +16,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import type { HalfDayClock } from '@fartol/sportident';
+import type { HalfDayClock } from '@fartola/sportident';
 import { halfDayClockToMs, diffMs } from './halfDayClockMath.ts';
 
 /** Build a HalfDayClock from a "seconds since the day's midnight" scalar.

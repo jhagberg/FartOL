@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // `inferCardType(cardNumber)` — single source of truth for the card-number to
 // card-type mapping used by both record and replay paths. Codex review CR-002

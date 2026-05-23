@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Detailed receipt template — MeOS-OZ style per-leg breakdown with
   per-leg rank (`Pl`) and time-lost (`+/−`) columns.

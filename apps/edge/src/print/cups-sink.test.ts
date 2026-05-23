@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -15,7 +15,7 @@ function makeEnvelope(): PrintEnvelope {
       competitor: {
         id: 'c1',
         name: 'Anna Testlopare',
-        club: 'FartOL OK',
+        club: 'fartOLa OK',
         class_id: 'cls-1',
         card_number: 7501853,
         status: 'OK',
@@ -35,7 +35,7 @@ function makeEnvelope(): PrintEnvelope {
       },
       competition: {
         id: 'comp-1',
-        name: 'FartOL Kvitto Test',
+        name: 'fartOLa Kvitto Test',
         date: '2026-05-14',
         receipt_template: 'classic',
         auto_print: false,
@@ -50,7 +50,7 @@ function makeEnvelope(): PrintEnvelope {
           {
             competitor_id: 'c1',
             name: 'Anna Testlopare',
-            club: 'FartOL OK',
+            club: 'fartOLa OK',
             class_id: 'cls-1',
             class_name: 'H21',
             card_number: 7501853,
@@ -80,9 +80,9 @@ describe('createCupsPrinterSink', () => {
 
     assert.equal(calls.length, 1);
     assert.equal(calls[0]!.command, 'lp');
-    assert.deepEqual(calls[0]!.args, ['-d', 'TSP143--STR_T-001-', '-t', 'FartOL-receipt', '-']);
+    assert.deepEqual(calls[0]!.args, ['-d', 'TSP143--STR_T-001-', '-t', 'fartOLa-receipt', '-']);
     const input = calls[0]!.input ?? '';
-    assert.match(input, /FartOL Kvitto Test/);
+    assert.match(input, /fartOLa Kvitto Test/);
     assert.match(input, /Bricka 7501853/);
     assert.match(input, /TOTAL/);
     assert.match(input, /Leder/);

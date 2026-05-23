@@ -1,11 +1,11 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // MeOS Online Protocol (MOP) receiver — Fastify route `POST /mop` that MeOS
 // pushes <MOPComplete> or <MOPDiff> updates to. Honors the four D-MOP-*
 // decisions from CONTEXT.md round 2:
 //
 //   - D-MOP-1: shadow `meos_competitors` / `meos_classes` / `meos_clubs`
-//     tables. FartOL ground truth in `competitors` stays untouched except
+//     tables. fartOLa ground truth in `competitors` stays untouched except
 //     for the explicit auto-merge step (D-MOP-3).
 //   - D-MOP-2: <MOPComplete> = TRUNCATE+INSERT inside ONE sqlite.transaction
 //     — partial-parse failure rolls back to the prior snapshot. <MOPDiff>
@@ -49,7 +49,7 @@ import {
   competitors,
   config as configTable,
 } from '../../db/schema.ts';
-import { readoutChannel } from '@fartol/shared-types';
+import { readoutChannel } from '@fartola/shared-types';
 import { toArray, asInt, asString, asBool } from './shared.ts';
 
 /** 50 MB cap per RESEARCH "Plan 4 — MOP route" + plan 02-04 must_haves. MeOS
@@ -158,7 +158,7 @@ export default async function registerMopRoute(app: FastifyInstance): Promise<vo
     // Resolve the active competition outside the transaction — the config
     // table is read-only here. If no competition is active, the auto-merge
     // step is skipped entirely (MeOS shadow rows still land in meos_*).
-    const activeRow = app.fartolDb.db
+    const activeRow = app.fartolaDb.db
       .select({ value: configTable.value })
       .from(configTable)
       .where(eq(configTable.key, ACTIVE_COMP_KEY))
@@ -166,13 +166,13 @@ export default async function registerMopRoute(app: FastifyInstance): Promise<vo
     const activeCompetitionId = activeRow?.value ?? null;
 
     try {
-      app.fartolDb.sqlite.transaction(() => {
+      app.fartolaDb.sqlite.transaction(() => {
         if (rootKey === 'MOPComplete') {
           // D-MOP-2: drop prior snapshot. If any subsequent UPSERT throws,
           // the surrounding transaction rolls back AND restores these rows.
-          app.fartolDb.db.run(sql`DELETE FROM meos_competitors`);
-          app.fartolDb.db.run(sql`DELETE FROM meos_classes`);
-          app.fartolDb.db.run(sql`DELETE FROM meos_clubs`);
+          app.fartolaDb.db.run(sql`DELETE FROM meos_competitors`);
+          app.fartolaDb.db.run(sql`DELETE FROM meos_classes`);
+          app.fartolaDb.db.run(sql`DELETE FROM meos_clubs`);
         }
 
         // ---- <cmp> --------------------------------------------------------
@@ -182,7 +182,7 @@ export default async function registerMopRoute(app: FastifyInstance): Promise<vo
           const id = asInt(cmp['@_id']);
           if (id === null) continue;
           if (asBool(cmp['@_delete'])) {
-            app.fartolDb.db.delete(meosCompetitors).where(eq(meosCompetitors.id, id)).run();
+            app.fartolaDb.db.delete(meosCompetitors).where(eq(meosCompetitors.id, id)).run();
             continue;
           }
           const base = (cmp['base'] as Record<string, unknown> | undefined) ?? {};
@@ -205,7 +205,7 @@ export default async function registerMopRoute(app: FastifyInstance): Promise<vo
             cardNumber: card === 0 ? null : card,
             lastMopUpdateMs: nowMs,
           };
-          app.fartolDb.db
+          app.fartolaDb.db
             .insert(meosCompetitors)
             .values(row)
             .onConflictDoUpdate({ target: meosCompetitors.id, set: row })
@@ -224,7 +224,7 @@ export default async function registerMopRoute(app: FastifyInstance): Promise<vo
           // future XSD revision (or a lenient MeOS build) can use it without
           // requiring a code change.
           if (asBool(cls['@_delete'])) {
-            app.fartolDb.db.delete(meosClasses).where(eq(meosClasses.id, id)).run();
+            app.fartolaDb.db.delete(meosClasses).where(eq(meosClasses.id, id)).run();
             continue;
           }
           const row = {
@@ -233,7 +233,7 @@ export default async function registerMopRoute(app: FastifyInstance): Promise<vo
             ord: asInt(cls['@_ord']),
             lastMopUpdateMs: nowMs,
           };
-          app.fartolDb.db
+          app.fartolaDb.db
             .insert(meosClasses)
             .values(row)
             .onConflictDoUpdate({ target: meosClasses.id, set: row })
@@ -247,7 +247,7 @@ export default async function registerMopRoute(app: FastifyInstance): Promise<vo
           const id = asInt(org['@_id']);
           if (id === null) continue;
           if (asBool(org['@_delete'])) {
-            app.fartolDb.db.delete(meosClubs).where(eq(meosClubs.id, id)).run();
+            app.fartolaDb.db.delete(meosClubs).where(eq(meosClubs.id, id)).run();
             continue;
           }
           const row = {
@@ -256,7 +256,7 @@ export default async function registerMopRoute(app: FastifyInstance): Promise<vo
             nat: asString(org['@_nat']),
             lastMopUpdateMs: nowMs,
           };
-          app.fartolDb.db
+          app.fartolaDb.db
             .insert(meosClubs)
             .values(row)
             .onConflictDoUpdate({ target: meosClubs.id, set: row })
@@ -288,7 +288,7 @@ export default async function registerMopRoute(app: FastifyInstance): Promise<vo
           // INSERT each with crypto.randomUUID() in a JS loop. Still runs
           // inside the surrounding sqlite.transaction() so the all-or-nothing
           // atomicity (D-MOP-2) is preserved.
-          const eligible = app.fartolDb.db.all<{
+          const eligible = app.fartolaDb.db.all<{
             name: string;
             club: string | null;
             card_number: number;
@@ -320,7 +320,7 @@ export default async function registerMopRoute(app: FastifyInstance): Promise<vo
           `);
 
           for (const row of eligible) {
-            app.fartolDb.db
+            app.fartolaDb.db
               .insert(competitors)
               .values({
                 id: crypto.randomUUID(),

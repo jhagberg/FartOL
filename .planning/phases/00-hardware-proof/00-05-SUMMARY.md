@@ -19,7 +19,7 @@ provides:
   - 'NdjsonEmitter: 5-event stable v1 schema (schema_version=1, snake_case, ms-epoch host ts) for downstream Phase 1 ingester'
   - 'frame_error pipeline: parseAll(onFrameError) -> SiMainStation.emit("frameError") -> NdjsonEmitter.frame_error -> stdout NDJSON + stderr human diagnostic. Zero console.* interception anywhere in the call graph (codex review #1 closed end-to-end through Plans 02 + 04 + 05).'
   - 'emitDiagnostic: stderr one-line ISO-prefixed writer for operator visibility'
-  - 'bin/fartol-readout: public entry point. Reads $FARTOL_DEVICE (default /dev/ttyUSB0), --device/--once/--include-raw-pages flags, SIGINT-safe close.'
+  - 'bin/fartola-readout: public entry point. Reads $FARTOLA_DEVICE (default /dev/ttyUSB0), --device/--once/--include-raw-pages flags, SIGINT-safe close.'
   - 'packages/sportident/src/index.ts: full public API (18 exports) per RESEARCH §"Open Questions #6"'
   - 'scripts/check-mit-attribution.sh: codex review #13 audit script with allowlist; wired into root pnpm lint chain (Plan 01)'
   - 'integration/e2e.test.ts: fixture-replay end-to-end (synthetic bytes -> NDJSON line) proving the Plans 02+03+04+05 pipeline without hardware'
@@ -41,7 +41,7 @@ key-files:
     - 'packages/sportident/src/output/ndjson.ts — NdjsonEmitter + 5 event-type interfaces + NdjsonEvent discriminated union + helpers (288 LOC)'
     - 'packages/sportident/src/output/diagnostics.ts — emitDiagnostic (29 LOC)'
     - 'packages/sportident/src/output/diagnostics.test.ts — 1 test (24 LOC)'
-    - 'packages/sportident/src/bin/fartol-readout.ts — public entry point (180 LOC)'
+    - 'packages/sportident/src/bin/fartola-readout.ts — public entry point (180 LOC)'
     - 'packages/sportident/src/integration/e2e.test.ts — fixture-replay e2e (204 LOC, replaces Wave 0 placeholder)'
     - 'scripts/check-mit-attribution.sh — MIT NOTICE-header audit (62 LOC, +x)'
   modified:
@@ -56,7 +56,7 @@ key-decisions:
   - "card_holder fields normalised to snake_case at the NDJSON boundary (NdjsonEmitter's snakeCaseKeys helper). Alternative — rewriting the ported decoder — would have created drift from upstream and touched a Plan 03 file. The boundary transform is one-level (flat dict) and provably equivalent for the current card_holder schema."
   - 'Half-day clock helper (toHalfDayClock) emits weekday: null. The SiTimestamp scalar from the Phase 0 decoder is a plain number with no weekday byte attached; weekday lives elsewhere in storage and is currently unread by Phase 0 decoders. Phase 1 will plumb it through when wall-clock reconstruction matters.'
   - "MIT audit grep pattern is regex, not literal string. The original literal 'Ported from allestuetsmerweh/sportident.js' would have failed on the existing 'Ported (simplified) from ...' and 'Ported (heavily simplified) from ...' and 'Derived from ...' headers in SiStation/* and tests/fixtures/upstream/siac-typical.ts. Relaxed pattern preserves the intent (catch missing attribution) without forcing unnecessary header rewrites."
-  - 'bin/fartol-readout uses a hand-rolled minimal arg parser (no commander/yargs dep). Surface is small (--device, --once, --include-raw-pages, --record placeholder, --replay placeholder, --help) and avoiding a dep keeps the package install lean. The `--record`/`--replay` flags are stubbed: they parse but only carry the value; Plan 06 wires the implementations.'
+  - 'bin/fartola-readout uses a hand-rolled minimal arg parser (no commander/yargs dep). Surface is small (--device, --once, --include-raw-pages, --record placeholder, --replay placeholder, --help) and avoiding a dep keeps the package install lean. The `--record`/`--replay` flags are stubbed: they parse but only carry the value; Plan 06 wires the implementations.'
   - "setBlocking on process.stdout._handle is wrapped in try/catch — it's an internal Node API per RESEARCH §Landmines #12. Best-effort: piped writes don't drop on SIGTERM if it works; if Node ever changes the internal shape, the bin still runs (silently no-ops on the stdout-blocking)."
   - 'NdjsonEvent is exported as a discriminated union keyed on `event`. Downstream Phase 1 ingester can `JSON.parse(line) as NdjsonEvent` and switch on event to get full type narrowing.'
 
@@ -76,7 +76,7 @@ completed: 2026-05-12
 
 # Phase 0 Plan 05: NDJSON output + bin entry Summary
 
-**Landed the Phase 0 deliverable contract: D-13 NDJSON on stdout, D-14 ms-epoch host timestamps, D-15 snake_case fields end-to-end, D-16 `fartol-readout` bin runnable via `pnpm exec`. Wired Plan 02's typed `parseAll(onFrameError)` callback straight through SiMainStation's `'frameError'` event into NdjsonEmitter's `frame_error` method (codex review #1 final closure — zero `console.warn` or stdout-warning interception anywhere in the call graph). Built the public API surface (`packages/sportident/src/index.ts`, 18 named exports per RESEARCH §"Open Questions #6") with side-effect imports of the 4 card-type modules so the BaseSiCard registries populate at consumer import. e2e fixture-replay (`integration/e2e.test.ts`) proves the full Plans 02+03+04+05 pipeline without hardware: synthetic SI5_DET frame + SI5 fixture replay -> 3-line NDJSON sequence (connection_changed/open, card_inserted, card_read) with punches byte-equal to `si5Fixture.cardData.punches`. MIT-attribution audit script (`scripts/check-mit-attribution.sh`, codex review #13) scans 54 files in the upstream-port tree and exits 0; wired into root `pnpm lint` chain from Plan 01. Cumulative: 76 tests pass / 0 fail. tsup build produces all four expected artifacts (`.mjs` + `.cjs` for both `dist/index` and `dist/bin/fartol-readout`) plus `.d.ts`.**
+**Landed the Phase 0 deliverable contract: D-13 NDJSON on stdout, D-14 ms-epoch host timestamps, D-15 snake_case fields end-to-end, D-16 `fartola-readout` bin runnable via `pnpm exec`. Wired Plan 02's typed `parseAll(onFrameError)` callback straight through SiMainStation's `'frameError'` event into NdjsonEmitter's `frame_error` method (codex review #1 final closure — zero `console.warn` or stdout-warning interception anywhere in the call graph). Built the public API surface (`packages/sportident/src/index.ts`, 18 named exports per RESEARCH §"Open Questions #6") with side-effect imports of the 4 card-type modules so the BaseSiCard registries populate at consumer import. e2e fixture-replay (`integration/e2e.test.ts`) proves the full Plans 02+03+04+05 pipeline without hardware: synthetic SI5_DET frame + SI5 fixture replay -> 3-line NDJSON sequence (connection_changed/open, card_inserted, card_read) with punches byte-equal to `si5Fixture.cardData.punches`. MIT-attribution audit script (`scripts/check-mit-attribution.sh`, codex review #13) scans 54 files in the upstream-port tree and exits 0; wired into root `pnpm lint` chain from Plan 01. Cumulative: 76 tests pass / 0 fail. tsup build produces all four expected artifacts (`.mjs` + `.cjs` for both `dist/index` and `dist/bin/fartola-readout`) plus `.d.ts`.**
 
 ## Performance
 
@@ -131,7 +131,7 @@ No `console.warn` / `console.log` / `console.error` is invoked anywhere in this 
 
 - `frameError.test.ts` plan-05 bridge test: `mock.method(console, 'warn'/'log'/'error', ...)` followed by assertion that all three `callCount() === 0` after a full parseAll + emitter.frame_error round-trip.
 - `grep -rEn 'console\.warn' packages/sportident/src/` returns exit 1 (no matches anywhere — production code AND comments are clean).
-- `grep -cE 'console\.(log|warn)' packages/sportident/src/bin/fartol-readout.ts` returns 0.
+- `grep -cE 'console\.(log|warn)' packages/sportident/src/bin/fartola-readout.ts` returns 0.
 - `grep -cE 'console\.(log|warn)' packages/sportident/src/output/ndjson.ts` returns 0.
 
 ### tsup build (codex review #12)
@@ -140,16 +140,16 @@ No `console.warn` / `console.log` / `console.error` is invoked anywhere in this 
 
 ```
 CJS dist/index.cjs                  58.56 KB
-CJS dist/bin/fartol-readout.cjs     57.39 KB
+CJS dist/bin/fartola-readout.cjs     57.39 KB
 ESM dist/index.mjs                  57.17 KB
-ESM dist/bin/fartol-readout.mjs     57.68 KB
+ESM dist/bin/fartola-readout.mjs     57.68 KB
 DTS dist/index.d.ts                 21.16 KB
 DTS dist/index.d.cts                21.16 KB
-DTS dist/bin/fartol-readout.d.ts    20.00 B
-DTS dist/bin/fartol-readout.d.cts   20.00 B
+DTS dist/bin/fartola-readout.d.ts    20.00 B
+DTS dist/bin/fartola-readout.d.cts   20.00 B
 ```
 
-`package.json` `bin` field `"fartol-readout": "./dist/bin/fartol-readout.cjs"` (Plan 01) resolves to a real file on disk — Plan 06's smoke script can `pnpm exec fartol-readout` against the built artifact.
+`package.json` `bin` field `"fartola-readout": "./dist/bin/fartola-readout.cjs"` (Plan 01) resolves to a real file on disk — Plan 06's smoke script can `pnpm exec fartola-readout` against the built artifact.
 
 Smoke-verified that the CJS bundle's runtime exports are functional:
 
@@ -165,7 +165,7 @@ SiMainStation=function NdjsonEmitter=function SiCard5=function
 
 `scripts/check-mit-attribution.sh` enumerates every `.ts` under `packages/sportident/src/**` and `packages/sportident/tests/fixtures/upstream/**` (54 files at the time of writing) and verifies each non-allowlisted file carries the canonical attribution line in its first 10 lines. The grep pattern is `(Ported|Derived)( \(qualifier\))? from allestuetsmerweh/sportident\.js`, which matches all three variants the codebase uses ("Ported from", "Ported (simplified) from", "Derived from").
 
-Allowlist (files authored for fartol, no upstream content): 20 entries covering transport/, output/, bin/, integration tests, the storage barrel, the public index.ts, and the per-decoder test files.
+Allowlist (files authored for fartola, no upstream content): 20 entries covering transport/, output/, bin/, integration tests, the storage barrel, the public index.ts, and the per-decoder test files.
 
 Final output:
 
@@ -177,7 +177,7 @@ Root `pnpm lint` chain already calls `lint:attribution` (Plan 01 wired it with a
 
 ```sh
 $ pnpm run lint:attribution
-> fartol@0.0.0 lint:attribution /home/jonas/src/FartOL
+> fartola@0.0.0 lint:attribution /home/jonas/src/fartOLa
 > bash scripts/check-mit-attribution.sh || echo 'check-mit-attribution.sh not yet present (Plan 05 lands it); skipping'
 
 MIT attribution: OK (54 files scanned)
@@ -203,11 +203,11 @@ This test catches any future regression that breaks the protocol→decoder→sta
 
 ```ts
 // Plan 06's hardware smoke script can spawn the bin against /dev/ttyUSB0:
-//   pnpm exec fartol-readout --device /dev/ttyUSB0 --once
-// or via FARTOL_DEVICE env var.
+//   pnpm exec fartola-readout --device /dev/ttyUSB0 --once
+// or via FARTOLA_DEVICE env var.
 //
 // Programmatic consumers (Phase 1 ingester eventually) import from
-// @fartol/sportident:
+// @fartola/sportident:
 import {
   SerialTransport,
   SiMainStation,
@@ -217,7 +217,7 @@ import {
   // ... 18 named exports total
   type FrameError,
   type NdjsonEvent,
-} from '@fartol/sportident';
+} from '@fartola/sportident';
 ```
 
 `NdjsonEvent` is the discriminated union: `JSON.parse(line) as NdjsonEvent`, then switch on `event` ('connection_changed' | 'card_inserted' | 'card_read' | 'card_removed' | 'frame_error') for full type narrowing.
@@ -249,7 +249,7 @@ import {
 - **Found during:** Task 2 acceptance-criteria verification (`grep -rEn 'console\.warn' packages/sportident/src/` should return nothing).
 - **Issue:** Three of Plan 03's card-decoder NOTICE-header comments contained the literal `console.warn` token in a "removed console.warn mismatch" phrase, plus my own Task 2 bin/test files mentioned `console.warn` interception in comments. The plan's strict grep audit treats any literal occurrence (including comments) as a violation.
 - **Fix:** Reworded 3 cross-plan NOTICE headers (SiCard5.ts, SiCard9.ts, ModernSiCard.ts) plus 1 bin comment plus 1 test-comment block to use the phrase "stdout-warning" instead of the literal token. Same wording technique Plan 02 used for its own siProtocol.ts compliance.
-- **Files modified:** `packages/sportident/src/SiCard/types/{SiCard5,SiCard9,ModernSiCard}.ts`, `packages/sportident/src/bin/fartol-readout.ts`, `packages/sportident/src/integration/frameError.test.ts`.
+- **Files modified:** `packages/sportident/src/SiCard/types/{SiCard5,SiCard9,ModernSiCard}.ts`, `packages/sportident/src/bin/fartola-readout.ts`, `packages/sportident/src/integration/frameError.test.ts`.
 - **Verification:** `grep -rEn 'console\.warn' packages/sportident/src/` exit 1 (no matches anywhere).
 - **Committed in:** `3be5c9d` (Task 2).
 
@@ -276,7 +276,7 @@ import {
 - **Found during:** Both Task 1 GREEN and Task 2 commit attempts (lefthook pre-commit).
 - **Issue:** Initial files had per-arrow-parameter newlines / line-length conventions that prettier reformatted to fit `printWidth: 100`.
 - **Fix:** Ran `pnpm exec prettier --write` on the affected files, re-staged.
-- **Files modified:** `packages/sportident/src/output/ndjson.ts`, `packages/sportident/src/output/diagnostics.ts`, `packages/sportident/src/output/ndjson.test.ts`, `packages/sportident/src/integration/frameError.test.ts`, `packages/sportident/src/bin/fartol-readout.ts`, `packages/sportident/src/integration/e2e.test.ts` (whitespace only).
+- **Files modified:** `packages/sportident/src/output/ndjson.ts`, `packages/sportident/src/output/diagnostics.ts`, `packages/sportident/src/output/ndjson.test.ts`, `packages/sportident/src/integration/frameError.test.ts`, `packages/sportident/src/bin/fartola-readout.ts`, `packages/sportident/src/integration/e2e.test.ts` (whitespace only).
 - **Verification:** lefthook clean on re-attempt; all tests still pass.
 
 **Total deviations:** 5 auto-fixed (5 Rule 1 bugs — all toolchain / decoder-output / grep-audit follow-ons that the plan didn't anticipate exactly). No scope creep — all five were necessary to make the plan's acceptance criteria pass. None changed the plan's design intent.
@@ -314,26 +314,26 @@ Per-suite breakdown:
 ## tsup build output
 
 ```
-CLI Building entry: src/index.ts, src/bin/fartol-readout.ts
+CLI Building entry: src/index.ts, src/bin/fartola-readout.ts
 CLI Target: node22
 CLI Cleaning output folder
 ESM Build start
 CJS Build start
 CJS dist/index.cjs                  58.56 KB
-CJS dist/bin/fartol-readout.cjs     57.40 KB
+CJS dist/bin/fartola-readout.cjs     57.40 KB
 CJS dist/index.cjs.map              154.91 KB
-CJS dist/bin/fartol-readout.cjs.map 159.55 KB
+CJS dist/bin/fartola-readout.cjs.map 159.55 KB
 CJS ⚡️ Build success in 31ms
 ESM dist/index.mjs                  57.17 KB
-ESM dist/bin/fartol-readout.mjs     57.69 KB
+ESM dist/bin/fartola-readout.mjs     57.69 KB
 ESM dist/index.mjs.map              152.15 KB
-ESM dist/bin/fartol-readout.mjs.map 159.59 KB
+ESM dist/bin/fartola-readout.mjs.map 159.59 KB
 ESM ⚡️ Build success in 33ms
 DTS Build start
 DTS ⚡️ Build success in 2532ms
-DTS dist/bin/fartol-readout.d.ts  20.00 B
+DTS dist/bin/fartola-readout.d.ts  20.00 B
 DTS dist/index.d.ts               21.16 KB
-DTS dist/bin/fartol-readout.d.cts 20.00 B
+DTS dist/bin/fartola-readout.d.cts 20.00 B
 DTS dist/index.d.cts              21.16 KB
 ```
 
@@ -348,39 +348,39 @@ MIT attribution: OK (54 files scanned)
 
 ## Self-Check: PASSED
 
-- `/home/jonas/src/FartOL/packages/sportident/src/output/ndjson.ts` — FOUND (NdjsonEmitter + 5 event-type interfaces; zero console.\* matches)
-- `/home/jonas/src/FartOL/packages/sportident/src/output/diagnostics.ts` — FOUND (emitDiagnostic, stderr default)
-- `/home/jonas/src/FartOL/packages/sportident/src/output/ndjson.test.ts` — FOUND (11 tests pass)
-- `/home/jonas/src/FartOL/packages/sportident/src/output/diagnostics.test.ts` — FOUND (1 test passes)
-- `/home/jonas/src/FartOL/packages/sportident/src/bin/fartol-readout.ts` — FOUND (#!/usr/bin/env node shebang + SIGINT handler + 5 station.on calls + typed FrameError handler; zero console.log/warn matches)
-- `/home/jonas/src/FartOL/packages/sportident/src/index.ts` — FOUND (18 export lines covering full public surface)
-- `/home/jonas/src/FartOL/packages/sportident/src/integration/e2e.test.ts` — FOUND (fixture-replay e2e, 1 test passes)
-- `/home/jonas/src/FartOL/packages/sportident/src/integration/frameError.test.ts` — FOUND (6 tests including plan-05 NDJSON-bridge assertion)
-- `/home/jonas/src/FartOL/scripts/check-mit-attribution.sh` — FOUND (executable, exits 0)
-- `/home/jonas/src/FartOL/packages/sportident/dist/index.mjs` — FOUND (57.17 KB)
-- `/home/jonas/src/FartOL/packages/sportident/dist/index.cjs` — FOUND (58.56 KB)
-- `/home/jonas/src/FartOL/packages/sportident/dist/bin/fartol-readout.mjs` — FOUND (57.69 KB)
-- `/home/jonas/src/FartOL/packages/sportident/dist/bin/fartol-readout.cjs` — FOUND (57.40 KB)
-- `/home/jonas/src/FartOL/packages/sportident/dist/index.d.ts` — FOUND
+- `/home/jonas/src/fartOLa/packages/sportident/src/output/ndjson.ts` — FOUND (NdjsonEmitter + 5 event-type interfaces; zero console.\* matches)
+- `/home/jonas/src/fartOLa/packages/sportident/src/output/diagnostics.ts` — FOUND (emitDiagnostic, stderr default)
+- `/home/jonas/src/fartOLa/packages/sportident/src/output/ndjson.test.ts` — FOUND (11 tests pass)
+- `/home/jonas/src/fartOLa/packages/sportident/src/output/diagnostics.test.ts` — FOUND (1 test passes)
+- `/home/jonas/src/fartOLa/packages/sportident/src/bin/fartola-readout.ts` — FOUND (#!/usr/bin/env node shebang + SIGINT handler + 5 station.on calls + typed FrameError handler; zero console.log/warn matches)
+- `/home/jonas/src/fartOLa/packages/sportident/src/index.ts` — FOUND (18 export lines covering full public surface)
+- `/home/jonas/src/fartOLa/packages/sportident/src/integration/e2e.test.ts` — FOUND (fixture-replay e2e, 1 test passes)
+- `/home/jonas/src/fartOLa/packages/sportident/src/integration/frameError.test.ts` — FOUND (6 tests including plan-05 NDJSON-bridge assertion)
+- `/home/jonas/src/fartOLa/scripts/check-mit-attribution.sh` — FOUND (executable, exits 0)
+- `/home/jonas/src/fartOLa/packages/sportident/dist/index.mjs` — FOUND (57.17 KB)
+- `/home/jonas/src/fartOLa/packages/sportident/dist/index.cjs` — FOUND (58.56 KB)
+- `/home/jonas/src/fartOLa/packages/sportident/dist/bin/fartola-readout.mjs` — FOUND (57.69 KB)
+- `/home/jonas/src/fartOLa/packages/sportident/dist/bin/fartola-readout.cjs` — FOUND (57.40 KB)
+- `/home/jonas/src/fartOLa/packages/sportident/dist/index.d.ts` — FOUND
 - Commit `70020bb` (Task 1 RED) — FOUND in git log
 - Commit `84d9719` (Task 1 GREEN) — FOUND in git log
 - Commit `3be5c9d` (Task 2) — FOUND in git log
-- `pnpm --filter @fartol/sportident exec tsc --noEmit` — exit 0
-- `pnpm --filter @fartol/sportident exec eslint src` — exit 0
-- `pnpm --filter @fartol/sportident exec node --test 'src/**/*.test.ts'` — 76 pass / 0 fail / 0 skipped
+- `pnpm --filter @fartola/sportident exec tsc --noEmit` — exit 0
+- `pnpm --filter @fartola/sportident exec eslint src` — exit 0
+- `pnpm --filter @fartola/sportident exec node --test 'src/**/*.test.ts'` — 76 pass / 0 fail / 0 skipped
 - `grep -rEn 'console\.warn' packages/sportident/src/` — exit 1 (no matches anywhere)
 - `grep -cE 'console\.(log|warn)' packages/sportident/src/output/ndjson.ts` — 0
-- `grep -cE 'console\.(log|warn)' packages/sportident/src/bin/fartol-readout.ts` — 0
+- `grep -cE 'console\.(log|warn)' packages/sportident/src/bin/fartola-readout.ts` — 0
 - `grep -c '^export' packages/sportident/src/index.ts` — 18 (>= 14)
-- `grep -c "station.on(" packages/sportident/src/bin/fartol-readout.ts` — 5 (== 5 events wired)
-- `grep -cE "frameError.*FrameError" packages/sportident/src/bin/fartol-readout.ts` — 2 (>= 1)
+- `grep -c "station.on(" packages/sportident/src/bin/fartola-readout.ts` — 5 (== 5 events wired)
+- `grep -cE "frameError.*FrameError" packages/sportident/src/bin/fartola-readout.ts` — 2 (>= 1)
 - `grep -c 'lint:attribution' package.json` — 2
 - `grep -c 'outExtension' packages/sportident/tsup.config.ts` — 2
 
 ## Next Plan Readiness
 
 - Plan 06 (Wave 5 hardware smoke + `--record` / `--replay`) can:
-  - Spawn `pnpm exec fartol-readout --device /dev/ttyUSB0 --once` against real hardware and assert NDJSON appears on stdout. The bin is fully wired; only the actual `/dev/ttyUSB0` connection remains to be tested.
+  - Spawn `pnpm exec fartola-readout --device /dev/ttyUSB0 --once` against real hardware and assert NDJSON appears on stdout. The bin is fully wired; only the actual `/dev/ttyUSB0` connection remains to be tested.
   - Implement `--record <path>` and `--replay <path>` (flags already parsed; the parser routes their values into `opts.record` / `opts.replay`).
   - Add a `record.ts` / `replay.ts` pair under `src/bin/` — the MIT attribution allowlist already includes these paths so no audit-script update is needed when they land.
   - Rely on the NDJSON v1 schema being stable — `schema_version: 1` is locked and any Phase 1 ingester can be developed against the spec without further Phase 0 schema churn.

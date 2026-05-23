@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   /competition/:id/registration — the registration-desk operator surface.
   Thin shell mounting RegistrationView. Mirrors the readout/+page.svelte

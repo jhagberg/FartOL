@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   ReceiptMirror — tab strip + ReceiptPaper containing the selected
   template. Klassisk is the default per UI-SPEC §"Receipt template

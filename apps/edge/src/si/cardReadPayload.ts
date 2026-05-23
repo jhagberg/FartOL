@@ -1,10 +1,10 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Builds the events.payload column body for `card_read` events. Mirrors
 // `NdjsonEmitter.card_read` EXACTLY (packages/sportident/src/output/ndjson.ts
 // lines 241-296) so the events.payload JSON shape is byte-equal between the
 // real SI bridge (apps/edge/src/si/bridge.ts) and the NDJSON CLI (Phase 0's
-// `fartol-readout`).
+// `fartola-readout`).
 //
 // Codex review C-H2 (HIGH): the prior plan-03 stub dropped
 // start/finish/check/clear/card_holder/punch_count. Plan 07's reducer then
@@ -15,7 +15,7 @@
 //
 // T-PAYLOAD-DRIFT mitigation: the return type is the schema's `card_read`
 // discriminated union arm (Extract<EventPayload, { event_type: 'card_read' }>),
-// which in turn imports `NdjsonPunch` + `HalfDayClock` from @fartol/sportident.
+// which in turn imports `NdjsonPunch` + `HalfDayClock` from @fartola/sportident.
 // Any future field rename / removal in Phase 0's types surfaces here as a TS
 // compile error.
 //
@@ -36,8 +36,8 @@
 //   lines 265-279 top-level field assignment)
 // - REQ-EVT-CMP-005 (card_read payload shape preserved end-to-end)
 
-import type { BaseSiCard, NdjsonPunch } from '@fartol/sportident';
-import { toHalfDayClock } from '@fartol/sportident';
+import type { BaseSiCard, NdjsonPunch } from '@fartola/sportident';
+import { toHalfDayClock } from '@fartola/sportident';
 import type { EventPayload } from '../db/schema.ts';
 import { cardTypeFromNumber } from './cardType.ts';
 
@@ -73,7 +73,7 @@ type WithExtras = BaseSiCard & {
  * `event_type: 'card_read'` is included so the EventPayload union narrows.
  *
  * Drift detection: the return type is the schema's `card_read` union arm
- * which imports HalfDayClock + NdjsonPunch from @fartol/sportident. A field
+ * which imports HalfDayClock + NdjsonPunch from @fartola/sportident. A field
  * rename in Phase 0 fails the assignment at TS-compile time
  * (T-PAYLOAD-DRIFT mitigation, codex C-H2).
  */

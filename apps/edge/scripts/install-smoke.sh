@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Authored for fartol. Not ported from upstream.
+# Authored for fartola. Not ported from upstream.
 #
-# Smoke test: install the locally-built fartol tarball into a throwaway
+# Smoke test: install the locally-built fartola tarball into a throwaway
 # tmpdir via `npm install --prefix <tmpdir> -g <tarball>`, then boot the
 # installed binary and assert /api/health + the SvelteKit SPA shell are
 # both served. Asserts the resolved BIN path BEFORE invocation so a
 # future regression in npm's global-prefix layout surfaces the layout
 # mismatch loud and early (C-H4 LOCKED — both --prefix and -g are
 # required for the global-install bin layout; --prefix alone places the
-# bin at $TMPDIR/node_modules/.bin/fartol (local layout), while
-# --prefix + -g together place it at $TMPDIR/bin/fartol per npm's global
+# bin at $TMPDIR/node_modules/.bin/fartola (local layout), while
+# --prefix + -g together place it at $TMPDIR/bin/fartola per npm's global
 # prefix layout. The package contents land at
 # $TMPDIR/lib/node_modules/<scope>/<name>/).
 #
@@ -19,7 +19,7 @@
 # - .planning/phases/01-single-laptop-training-mvp/01-PATTERNS.md §S-1.
 #
 # Usage:
-#   bash apps/edge/scripts/install-smoke.sh dist/fartol-*.tgz
+#   bash apps/edge/scripts/install-smoke.sh dist/fartola-*.tgz
 # Exits 0 with `PASS` on success; non-zero with a context message on failure.
 
 set -euo pipefail
@@ -29,14 +29,14 @@ if [ ! -f "$TARBALL_INPUT" ]; then
   echo "FAIL: tarball not found at $TARBALL_INPUT"
   exit 1
 fi
-# Resolve to absolute path. A relative path like `dist/fartol-0.1.0.tgz` is
+# Resolve to absolute path. A relative path like `dist/fartola-0.1.0.tgz` is
 # interpreted by npm 9+ as a GitHub `<user>/<repo>` shorthand and triggers a
 # git clone attempt instead of a local-file install. Both `./<path>` and an
 # absolute path avoid the shorthand parser; absolute is unambiguous.
 TARBALL="$(readlink -f "$TARBALL_INPUT")"
 
-TMPDIR_PATH="$(mktemp -d /tmp/fartol-install-XXXXXX)"
-PORT="${FARTOL_SMOKE_PORT:-30001}"
+TMPDIR_PATH="$(mktemp -d /tmp/fartola-install-XXXXXX)"
+PORT="${FARTOLA_SMOKE_PORT:-30001}"
 
 # Defer cleanup until the end so even early failures leave debug output.
 SERVER_PID=""
@@ -51,14 +51,14 @@ trap cleanup EXIT INT TERM
 
 echo "Installing $TARBALL -> $TMPDIR_PATH (true global-install, -g flag)..."
 # C-H4 LOCKED: --prefix + -g together produce the npm global-prefix layout:
-#   $TMPDIR/bin/fartol                                      (the PATH-bound symlink)
+#   $TMPDIR/bin/fartola                                      (the PATH-bound symlink)
 #   $TMPDIR/lib/node_modules/<scope>/<name>/                (the package contents)
-# Without -g, the bin lands at $TMPDIR/node_modules/.bin/fartol (a local-prefix
+# Without -g, the bin lands at $TMPDIR/node_modules/.bin/fartola (a local-prefix
 # layout). The script asserts the global-prefix BIN location BEFORE invoking
 # the binary so any future npm layout drift surfaces clearly.
 npm install --prefix "$TMPDIR_PATH" -g --silent "$TARBALL"
 
-BIN="$TMPDIR_PATH/bin/fartol"
+BIN="$TMPDIR_PATH/bin/fartola"
 echo "Resolved BIN path: $BIN"
 if [ ! -e "$BIN" ]; then
   echo "FAIL: binary not found at $BIN"
@@ -78,7 +78,7 @@ fi
 
 # Boot the binary against a tmpdir DB + backup-dir + no-bridge (no /dev/ttyUSB0
 # in CI / install-smoke). Health + SPA assertions run before kill.
-DB_PATH="$TMPDIR_PATH/fartol.db"
+DB_PATH="$TMPDIR_PATH/fartola.db"
 BACKUP_DIR="$TMPDIR_PATH/backups"
 
 echo "Booting $BIN on port $PORT with --no-bridge..."
@@ -108,9 +108,9 @@ echo "$RESP" | grep -q '"status":"ok"' || {
   exit 1
 }
 
-# The SPA shell is the SvelteKit-built 200.html — it carries the title "FartOL"
+# The SPA shell is the SvelteKit-built 200.html — it carries the title "fartOLa"
 # from apps/web/src/app.html (locked by UI-SPEC). Match either the explicit
-# <title>FartOL</title> emit or the FartOL string anywhere in the HTML.
+# <title>fartOLa</title> emit or the fartOLa string anywhere in the HTML.
 HTML="$(curl -fs "http://127.0.0.1:$PORT/" || true)"
 HTML_BYTES="${#HTML}"
 echo "SPA shell bytes: $HTML_BYTES"
@@ -119,8 +119,8 @@ if [ "$HTML_BYTES" -lt 200 ]; then
   tail -40 "$TMPDIR_PATH/server.log"
   exit 1
 fi
-if ! echo "$HTML" | grep -qE '<title>[^<]*FartOL|FartOL'; then
-  echo "FAIL: SPA shell did not contain 'FartOL' marker"
+if ! echo "$HTML" | grep -qE '<title>[^<]*fartOLa|fartOLa'; then
+  echo "FAIL: SPA shell did not contain 'fartOLa' marker"
   echo "$HTML" | head -20
   exit 1
 fi
@@ -157,7 +157,7 @@ SERVER_PID=""
 
 PORT2="$((PORT + 1))"
 BRIDGE_LOG="$TMPDIR_PATH/server-bridge.log"
-FAKE_SERIAL="$TMPDIR_PATH/no-such-device-fartol-smoke"
+FAKE_SERIAL="$TMPDIR_PATH/no-such-device-fartola-smoke"
 echo "Booting $BIN on port $PORT2 with bridge → $FAKE_SERIAL (expected ENOENT)..."
 "$BIN" --port "$PORT2" --db-path "$DB_PATH" --backup-dir "$BACKUP_DIR" \
   --serial-path "$FAKE_SERIAL" \

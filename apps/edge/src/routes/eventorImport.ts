@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // POST /api/competitions/:id/eventor-import — fetch the IOF EntryList XML
 // for an Eventor event ID directly from Eventor and pipe it through the
@@ -61,7 +61,7 @@ export default async function registerEventorImportRoutes(app: FastifyInstance):
 
       // 1. Verify competition exists BEFORE talking to Eventor — saves a
       //    round-trip on the wrong-URL case.
-      const comp = app.fartolDb.db
+      const comp = app.fartolaDb.db
         .select({ id: competitions.id })
         .from(competitions)
         .where(eq(competitions.id, competitionId))
@@ -71,7 +71,7 @@ export default async function registerEventorImportRoutes(app: FastifyInstance):
       }
 
       // 2. Resolve API key (env > config). 503 if absent.
-      const apiKey = resolveSecret(app.fartolDb, 'EVENTOR_API_KEY');
+      const apiKey = resolveSecret(app.fartolaDb, 'EVENTOR_API_KEY');
       if (!apiKey || apiKey.length === 0) {
         return reply.code(503).send({ error: 'eventor_no_key' });
       }
@@ -118,7 +118,7 @@ export default async function registerEventorImportRoutes(app: FastifyInstance):
       // (routes/import.ts) keeps the strict XSD gate.
       const validation = await validateXml(xml);
       if (!validation.valid) {
-        const dumpPath = path.join(tmpdir(), `fartol-eventor-${eventId}-xsd-${Date.now()}.xml`);
+        const dumpPath = path.join(tmpdir(), `fartola-eventor-${eventId}-xsd-${Date.now()}.xml`);
         try {
           await fsp.writeFile(dumpPath, xml, 'utf8');
         } catch {
@@ -139,8 +139,8 @@ export default async function registerEventorImportRoutes(app: FastifyInstance):
       //    manual-upload path so the consent semantics, club upserts,
       //    and projection-dirty handling are identical.
       try {
-        const result = ingestEntryList(app.fartolDb, competitionId, parsedXml.data, Date.now());
-        const autoBind = autoBindNewCompetitors(app.fartolDb, competitionId, app.fartolNodeId);
+        const result = ingestEntryList(app.fartolaDb, competitionId, parsedXml.data, Date.now());
+        const autoBind = autoBindNewCompetitors(app.fartolaDb, competitionId, app.fartolaNodeId);
         if (autoBind.bound.length > 0) {
           app.projectionStore.markDirty(competitionId);
         }

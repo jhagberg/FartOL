@@ -158,7 +158,7 @@ export class WsClient {
 ```
 Construct with `ws://${window.location.host}/ws` (or `wss://` under HTTPS).
 
-From `@fartol/shared-types`:
+From `@fartola/shared-types`:
 - `readoutChannel(competitionId: string): ChannelName` — the channel
   card_read envelopes flow on. Use the same one for /registration.
 - `WsEnvelope = { type: string; payload: unknown; seq?: number }` — card
@@ -342,7 +342,7 @@ i18n keys to add (Swedish first, English second):
     Keep this file pure (no fetch, no WS, no DOM). It MUST be importable from both browser and Node test environments without side effects.
   </action>
   <acceptance_criteria>
-    cardQueue.svelte.ts compiles under `tsc --noEmit`; all 8 vitest cases pass (`pnpm --filter @fartol/web test --run --reporter=verbose cardQueue` exit 0). The QueuedCard interface is exported and imported by Task 2 + Task 4 without circular import warnings.
+    cardQueue.svelte.ts compiles under `tsc --noEmit`; all 8 vitest cases pass (`pnpm --filter @fartola/web test --run --reporter=verbose cardQueue` exit 0). The QueuedCard interface is exported and imported by Task 2 + Task 4 without circular import warnings.
   </acceptance_criteria>
 </task>
 
@@ -355,7 +355,7 @@ i18n keys to add (Swedish first, English second):
   <read_first>
     apps/web/src/lib/screens/ReadoutView.svelte lines 280-450 (the connectWs + handleWs + handleLiveEvent + onCardRead + triggerCardReadSideEffects functions — extract WS wiring, leave history/UI logic in the screen),
     apps/web/src/lib/ws/client.ts (the WsClient interface — locked; do not modify),
-    @fartol/shared-types (readoutChannel + WsEnvelope types — locked),
+    @fartola/shared-types (readoutChannel + WsEnvelope types — locked),
     apps/web/src/lib/stores/bridgeStatus.svelte.ts (bridgeStatus.set() — the connection_changed callback shape)
   </read_first>
   <action>
@@ -401,7 +401,7 @@ i18n keys to add (Swedish first, English second):
     Add a one-line top-of-file comment to cardSubscription.ts: "Shared WS card-event subscription. Locked by 02-02b-PLAN.md task 2. Replaces inline WS code in ReadoutView (Phase 1) so /registration (Plan 2b) and /readout consume the same plumbing."
   </action>
   <verify>
-    <automated>pnpm --filter @fartol/web test --run --reporter=verbose 2>&1 | tail -40 && pnpm exec playwright test tests/e2e/readout.spec.ts tests/e2e/walkup.spec.ts --reporter=line 2>&1 | tail -40</automated>
+    <automated>pnpm --filter @fartola/web test --run --reporter=verbose 2>&1 | tail -40 && pnpm exec playwright test tests/e2e/readout.spec.ts tests/e2e/walkup.spec.ts --reporter=line 2>&1 | tail -40</automated>
   </verify>
   <acceptance_criteria>
     cardSubscription.ts compiles; ReadoutView.svelte compiles after the refactor; ALL existing readout + walkup e2e tests still pass (this is a pure refactor — zero observable behavior change for /readout). No new unit tests in this task — coverage comes from the e2e tests that already exercise the WS dispatch.
@@ -486,7 +486,7 @@ i18n keys to add (Swedish first, English second):
     DO NOT introduce a Svelte unit test for RegistrationView in this task — coverage comes from the e2e in Task 5. The wiring is simple enough that the e2e proves correctness end-to-end; a unit test for "modal opens when state is set" would be Svelte-implementation-testing.
   </action>
   <verify>
-    <automated>pnpm --filter @fartol/web exec tsc --noEmit 2>&1 | tail -20 && pnpm --filter @fartol/web exec svelte-check --no-tsconfig --output human 2>&1 | tail -30</automated>
+    <automated>pnpm --filter @fartola/web exec tsc --noEmit 2>&1 | tail -20 && pnpm --filter @fartola/web exec svelte-check --no-tsconfig --output human 2>&1 | tail -30</automated>
   </verify>
   <acceptance_criteria>
     RegistrationView.svelte + the WalkupModal onClose prop compile cleanly under both tsc --noEmit and svelte-check. New i18n keys present in sv.json AND en.json (verify with `node -e "['sv','en'].forEach(l=> { const j=require('./apps/web/src/lib/i18n/'+l+'.json'); console.log(l, j.registration?.title, j.registration?.dedupeToast)})"`). Existing WalkupModal tests still pass (Plan 02-02's tests + Phase 1 walkup.spec.ts).
@@ -513,7 +513,7 @@ i18n keys to add (Swedish first, English second):
     Write `apps/web/src/routes/competition/[id]/registration/+page.svelte`:
       ```svelte
       <!--
-        Authored for fartol. Not ported from upstream.
+        Authored for fartola. Not ported from upstream.
 
         /competition/:id/registration — the registration-desk operator surface.
         Thin shell mounting RegistrationView. Mirrors the readout/+page.svelte
@@ -526,7 +526,7 @@ i18n keys to add (Swedish first, English second):
       <script lang="ts">
         import { page } from '$app/state';
         import RegistrationView from '$lib/screens/RegistrationView.svelte';
-        import type { ClassDTO } from '@fartol/shared-types';
+        import type { ClassDTO } from '@fartola/shared-types';
 
         // If +page.ts returns data, consume via $props(); otherwise derive from URL only.
         interface Props { data?: { competitionId: string; classes: ClassDTO[] } | undefined; }
@@ -551,7 +551,7 @@ i18n keys to add (Swedish first, English second):
     Confirm via local dev server that `http://localhost:5173/competition/<any-id>/registration` renders RegistrationView with the empty state. (Manual confirmation in Task 5 e2e.)
   </action>
   <verify>
-    <automated>pnpm --filter @fartol/web exec svelte-check --no-tsconfig --output human 2>&1 | tail -20 && find apps/web/src/routes/competition/'[id]'/registration/ -type f</automated>
+    <automated>pnpm --filter @fartola/web exec svelte-check --no-tsconfig --output human 2>&1 | tail -20 && find apps/web/src/routes/competition/'[id]'/registration/ -type f</automated>
   </verify>
   <acceptance_criteria>
     Both files exist under the correct route directory; svelte-check passes; the route directory layout matches Phase 1's `readout/` sibling (+page.svelte + optional +page.ts).
@@ -572,7 +572,7 @@ i18n keys to add (Swedish first, English second):
     Write `tests/e2e/registration-queue.spec.ts` covering 5 deterministic scenarios:
 
       ```typescript
-      // Authored for fartol. Not ported from upstream.
+      // Authored for fartola. Not ported from upstream.
       //
       // Registration-desk queue + auto-advance e2e (plan 02-02b).
       //
@@ -701,7 +701,7 @@ i18n keys to add (Swedish first, English second):
 
 | Boundary | Description |
 |----------|-------------|
-| browser → /api/__dev/simulate-read | Dev-only endpoint; FARTOL_DEV-gated in production builds. Used here only by the e2e test, NOT by RegistrationView itself. |
+| browser → /api/__dev/simulate-read | Dev-only endpoint; FARTOLA_DEV-gated in production builds. Used here only by the e2e test, NOT by RegistrationView itself. |
 | browser ↔ WS readoutChannel | Same trust as Phase 1 — LAN-bound; WsClient is the locked client wrapper. /registration consumes the same channel /readout already trusts. |
 | browser → /api/competitions/:id | Read-only data fetch for classes; same trust as Phase 1's readout fetch. |
 
@@ -711,18 +711,18 @@ i18n keys to add (Swedish first, English second):
 |-----------|----------|-----------|-------------|-----------------|
 | T-02B-01 | DoS | Operator opens /registration twice in two tabs; both tabs consume from the same cardQueue → race conditions | accept | cardQueue is module-scoped per-tab (Svelte rune stores are not cross-tab); each tab has its own queue. Documented in playbook (Plan 06): "Use ONE registration tab per bridge." If two tabs are open, both modals open independently — confusing but not data-corrupting. |
 | T-02B-02 | Info Disclosure | RegistrationView leaks card numbers + holder hints to anyone with /registration URL on LAN | accept | Same trust posture as /readout. Phase 1's `--bind-host` + CORS allow-list + LAN-only deployment apply unchanged. No NEW data exposure beyond what /readout already shows. |
-| T-02B-03 | Tampering | Malicious LAN client POSTs /api/__dev/simulate-read to inject synthetic card_reads into someone else's registration session | mitigate | The /api/__dev/simulate-read endpoint is FARTOL_DEV-gated (Phase 1 lock). Plan 2b does not introduce a new attack surface — uses the existing endpoint only in the e2e test, not in production code paths. |
+| T-02B-03 | Tampering | Malicious LAN client POSTs /api/__dev/simulate-read to inject synthetic card_reads into someone else's registration session | mitigate | The /api/__dev/simulate-read endpoint is FARTOLA_DEV-gated (Phase 1 lock). Plan 2b does not introduce a new attack surface — uses the existing endpoint only in the e2e test, not in production code paths. |
 | T-02B-04 | Repudiation | Operator marks a card as "saved" but the cardQueue entry was lost due to browser-tab crash | accept | The card_read event is still in the events table on the bridge (Phase 1 append-only). On tab reload, the queue is empty but the operator can navigate to /readout and pick up unknown cards from the history list — Phase 1 recovery path. |
 | T-02B-05 | DoS | Adversary floods card_inserted events to balloon cardQueue → browser memory exhaustion | accept | LAN-only trust posture; bridge rate-limits card_read events at the hardware level (SI reader cadence ~1 read/sec). Even at 60s of unattended floods, queue grows by ~60 entries — well under any practical memory limit. Add a soft cap of 200 entries as a future hardening if real flood scenarios emerge. |
 | T-02B-SC | Tampering | No new npm dependencies installed in this plan | mitigate | Plan 2b adds ZERO npm installs (cardQueue, cardSubscription, RegistrationView are all in-tree). Phase 2's only net-new package install (saxes for Plan 01) is unaffected by this plan. |
 </threat_model>
 
 <verification>
-- `pnpm --filter @fartol/web test --run` exits 0 (cardQueue unit tests pass; existing tests untouched).
-- `pnpm --filter @fartol/web exec svelte-check --no-tsconfig` exits 0 (RegistrationView + WalkupModal onClose prop + route shell all type-check).
+- `pnpm --filter @fartola/web test --run` exits 0 (cardQueue unit tests pass; existing tests untouched).
+- `pnpm --filter @fartola/web exec svelte-check --no-tsconfig` exits 0 (RegistrationView + WalkupModal onClose prop + route shell all type-check).
 - `pnpm exec playwright test tests/e2e/readout.spec.ts tests/e2e/walkup.spec.ts` exits 0 (ReadoutView refactor in Task 2 preserves Phase 1 behavior).
 - `pnpm exec playwright test tests/e2e/registration-queue.spec.ts` exits 0 (the new 7-step scenario passes).
-- Manual smoke: boot bridge with FARTOL_DEV=1; navigate to /competition/<id>/registration; in another browser tab call `curl -X POST http://localhost:3000/api/__dev/simulate-read -d '{"card_number":11111,"card_type":"SI10","competition_id":"<id>"}'`; modal opens. Repeat with card_number 22222; badge appears showing "1 i kö". Save modal #1 → modal auto-opens for #22222. Empty queue → modal closes, empty state visible.
+- Manual smoke: boot bridge with FARTOLA_DEV=1; navigate to /competition/<id>/registration; in another browser tab call `curl -X POST http://localhost:3000/api/__dev/simulate-read -d '{"card_number":11111,"card_type":"SI10","competition_id":"<id>"}'`; modal opens. Repeat with card_number 22222; badge appears showing "1 i kö". Save modal #1 → modal auto-opens for #22222. Empty queue → modal closes, empty state visible.
 </verification>
 
 <success_criteria>

@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Placeholder Playwright spec for Phase 1 plan 01. Exists so
 // `pnpm exec playwright test --list` exits 0 with the structural

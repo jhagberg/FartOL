@@ -26,7 +26,7 @@ fan-out under 6 parallel workers race in a way that wasn't an issue
 when only ~10 specs existed. Adding the 2 export tests pushed the
 worker pool past whatever timing margin the existing specs had.
 
-**Reproduction:** `FARTOL_DEV=1 npx playwright test --reporter=line`
+**Reproduction:** `FARTOLA_DEV=1 npx playwright test --reporter=line`
 on a fresh tmp DB fails 1–2 specs roughly half the time; running each
 spec or pair in isolation passes 100% of the time. Plan 01-16 verified
 its own two specs pass when run isolated AND when paired with any one

@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Module-scoped runes store for the operator's "active competition" —
 // the workspace context for every comp-scoped surface (Avläsning, Anmälda,
@@ -19,7 +19,7 @@
 // sync — if the operator opens a second tab, the second tab will hydrate
 // from the same server state on mount.
 
-import type { CompetitionDTO } from '@fartol/shared-types';
+import type { CompetitionDTO } from '@fartola/shared-types';
 import {
   getActiveCompetition,
   setActiveCompetition,

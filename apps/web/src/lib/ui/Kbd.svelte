@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Keyboard-key hint, used in UI-SPEC §"Keyboard shortcuts" footers and
   inline help. Monospace, small, with a subtle border so it reads as a

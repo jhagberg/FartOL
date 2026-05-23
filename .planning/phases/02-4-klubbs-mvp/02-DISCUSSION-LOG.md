@@ -20,7 +20,7 @@ existing code and review of the MeOS source.
 | Option | Description | Selected |
 |--------|-------------|----------|
 | No auth (4-klubbs LAN) | Closed club LAN, no pwd header. Saves config friction. | ✓ |
-| pwd header from env | Belt+braces. FartOL reads MIP_PASSWORD from .env. | |
+| pwd header from env | Belt+braces. fartOLa reads MIP_PASSWORD from .env. | |
 | pwd opt-in | Default off; admin tweak flips on mid-event. | |
 
 **User's choice:** No auth (D-MIP-1).
@@ -193,7 +193,7 @@ gray areas.
 - **MIP authentication** → Phase 2.1. D-MIP-1 chose no-auth for the
   closed 4-klubbs LAN; sanctioned events with bigger attack surfaces
   should add pwd checks.
-- **MeOS-side hired-card visibility on FartOL crash recovery**
+- **MeOS-side hired-card visibility on fartOLa crash recovery**
   (D-LIM-1) → Phase 2.1. MOP `<cmp>` doesn't carry the hired flag, so
   rentals marked in MeOS during outage need manual re-entry on
   restart. Documented in the parallel-run playbook.

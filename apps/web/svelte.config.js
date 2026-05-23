@@ -1,6 +1,6 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
-// SvelteKit config for @fartol/web. SPA mode via @sveltejs/adapter-static
+// SvelteKit config for @fartola/web. SPA mode via @sveltejs/adapter-static
 // with fallback: '200.html' — the edge bridge (apps/edge) serves the
 // built apps/web/build/ directory and falls back to 200.html on any
 // non-API/non-WS path so SvelteKit's client-side router can take over.

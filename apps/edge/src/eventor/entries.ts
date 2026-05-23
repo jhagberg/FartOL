@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Eventor per-event entries download — public REST endpoint documented
 // by SOFT. Sources:

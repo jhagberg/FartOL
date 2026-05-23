@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Class-standing receipt template. Big-time block + place "X of N
   finished" hero, then a leader-or-behind row, then the regular splits

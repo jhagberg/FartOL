@@ -9,13 +9,13 @@ Bring chosen screens back into `01-SKETCHES/`, then run
 
 ## 1. Brief
 
-Single-laptop **orienteering training MVP** (working name: FartOL).
+Single-laptop **orienteering training MVP** (working name: fartOLa).
 Target event: StorTuna OK Tuesday training, **20–40 starters**,
 **no internet required**, runs entirely on one Linux laptop.
 
 - **Stack (locked):** SvelteKit PWA (`adapter-static`, SPA mode) +
   Fastify backend on the same laptop. localhost:5173 in dev,
-  one `fartol` binary in prod. Component library not yet chosen —
+  one `fartola` binary in prod. Component library not yet chosen —
   Skeleton or shadcn-svelte are the candidates.
 - **Locale:** Swedish primary (`sv` default), English secondary (`en`).
   i18next-driven; all user-facing strings are keys from day one.

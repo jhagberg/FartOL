@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for autoBindNewCompetitors. Five scenarios:
 //   1. Race: card_read lands before competitor is created → autoBind

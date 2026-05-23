@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for kids-svg-to-bitmap.ts. PATTERNS S-3 (lazy native
 // require): the test file does NOT import sharp at the top level — it
@@ -27,7 +27,7 @@ import {
   generateKidsBitmap,
   type KidsBitmapInput,
 } from './kids-svg-to-bitmap.ts';
-import { skogisFromInput } from '@fartol/shared-types';
+import { skogisFromInput } from '@fartola/shared-types';
 
 const FIXTURE: KidsBitmapInput = {
   card_number: 7501853,

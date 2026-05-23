@@ -15,9 +15,9 @@ tests/e2e/.tmp.db-wal
 tests/e2e/.tmp.db-shm
 
 # Edge bridge runtime
-fartol.db
-fartol.db-wal
-fartol.db-shm
+fartola.db
+fartola.db-wal
+fartola.db-shm
 
 # Daily SQLite backup snapshots (plan 17 — default dir is ./backups/)
 backups/

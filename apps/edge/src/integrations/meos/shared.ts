@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Shared constants + XML normalizers for the MeOS integration plugins
 // (mip.ts and, when Plan 02-04 lands, mop.ts).

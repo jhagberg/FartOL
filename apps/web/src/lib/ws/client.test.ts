@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // vitest unit tests for the browser-side WsClient wrapper. Uses a minimal
 // FakeWebSocket so the test does not actually open a network socket; the
@@ -11,7 +11,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { WsClient, RECONNECT_BACKOFF_MS } from './client.ts';
-import type { WsEnvelope } from '@fartol/shared-types';
+import type { WsEnvelope } from '@fartola/shared-types';
 
 interface FakeWsCtor {
   instances: FakeWebSocket[];

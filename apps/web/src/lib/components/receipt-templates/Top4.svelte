@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Top-4 leaderboard receipt template — runner's row + the top 4 of their
   class. If the runner is NOT in the top 4, an extra "Din placering"

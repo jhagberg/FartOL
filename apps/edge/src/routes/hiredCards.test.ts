@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for the Plan 02-05 Hyrbricka REST surface:
 //
@@ -35,7 +35,7 @@ import type { BroadcastSink } from '../server.ts';
 import { openDatabase, type DbHandle } from '../db/index.ts';
 import { ensureNodeId } from '../db/node-id.ts';
 import { competitions, hiredCards } from '../db/schema.ts';
-import { readoutChannel } from '@fartol/shared-types';
+import { readoutChannel } from '@fartola/shared-types';
 
 interface CapturedEnvelope {
   channel: string;

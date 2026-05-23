@@ -4,7 +4,7 @@
   <!ENTITY lol "lol">
   <!ENTITY lol2 "&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;">
 ]>
-<CompetitorList iofVersion="3.0" createTime="2026-05-16T20:00:00Z" creator="fartol-test"
+<CompetitorList iofVersion="3.0" createTime="2026-05-16T20:00:00Z" creator="fartola-test"
                 xmlns="http://www.orienteering.org/datastandard/3.0">
   <Competitor modifyTime="2024-12-12T09:46:45Z">
     <Person sex="M">

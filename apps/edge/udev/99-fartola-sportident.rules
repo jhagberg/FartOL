@@ -1,9 +1,9 @@
-# Example udev rules for the FartOL edge bridge.
+# Example udev rules for the fartOLa edge bridge.
 # Locked by:
 #   .planning/phases/01-single-laptop-training-mvp/01-18-PLAN.md task 2.
 #
 # Installation:
-#   sudo cp $(npm prefix -g)/lib/node_modules/@fartol/edge/udev/99-fartol-sportident.rules \
+#   sudo cp $(npm prefix -g)/lib/node_modules/@fartola/edge/udev/99-fartola-sportident.rules \
 #           /etc/udev/rules.d/
 #   sudo udevadm control --reload-rules
 #   sudo usermod -aG dialout,lp $USER   # log out + back in afterwards

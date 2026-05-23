@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Status pill rendering one of the eight projected outcomes
   (UI-SPEC §"Status colors"):

@@ -22,7 +22,7 @@ verification:
   sportident_tests: pass
   shared_types_tests: pass
   playwright_e2e: pass_15_passed_2_skipped
-  build_fartol: pass_with_existing_svelte_warnings
+  build_fartola: pass_with_existing_svelte_warnings
   install_smoke: pass
 ---
 
@@ -110,12 +110,12 @@ The only deferral I would reconsider is the new club-upsert warning above. It is
 Commands run during this recheck:
 
 - `pnpm typecheck`: pass.
-- `pnpm --filter @fartol/web test -- --run`: pass, 31 tests.
-- `pnpm --filter @fartol/shared-types test`: pass, 1 test.
-- `pnpm --filter @fartol/sportident test`: pass, 20 tests.
-- `pnpm --filter @fartol/edge test`: pass, 280 tests.
+- `pnpm --filter @fartola/web test -- --run`: pass, 31 tests.
+- `pnpm --filter @fartola/shared-types test`: pass, 1 test.
+- `pnpm --filter @fartola/sportident test`: pass, 20 tests.
+- `pnpm --filter @fartola/edge test`: pass, 280 tests.
 - `CI=1 pnpm e2e --workers=1`: pass, 15 passed, 2 skipped.
-- `pnpm build:fartol`: pass; existing Svelte warnings remain for modal accessibility/autofocus and `$state` local-reference usage.
+- `pnpm build:fartola`: pass; existing Svelte warnings remain for modal accessibility/autofocus and `$state` local-reference usage.
 - `pnpm test:install`: pass, 2 install smoke tests.
 
 I also checked the workspace instruction include. `AGENTS.md` references `@RTK.md`, but no `RTK.md` exists in this worktree.

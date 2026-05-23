@@ -44,7 +44,7 @@ export class SiSendTask {
     });
     // Command-bearing messages get a timeout; bare-mode messages (ACK/WAKEUP)
     // don't need a response and skip the timer. The timer KEEPS the event loop
-    // alive (no unref) — bin/fartol-readout is otherwise idle while waiting for
+    // alive (no unref) — bin/fartola-readout is otherwise idle while waiting for
     // station replies, and `await task.promise` must reliably reject.
     if (message.mode === undefined) {
       this.timeoutHandle = setTimeout(() => {

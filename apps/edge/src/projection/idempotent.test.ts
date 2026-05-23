@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // REQ-EVT-004 (reducer is deterministic + idempotent). Three gates:
 //   1. Re-running reduce over the same event log twice produces
@@ -16,7 +16,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import type { HalfDayClock, NdjsonPunch } from '@fartol/sportident';
+import type { HalfDayClock, NdjsonPunch } from '@fartola/sportident';
 import type { Event, Competitor, Class } from '../db/types.ts';
 import type { EventPayload } from '../db/schema.ts';
 import { reduce, type CourseWithControlCodes } from './reduce.ts';

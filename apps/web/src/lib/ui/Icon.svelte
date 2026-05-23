@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Tiny inline-SVG icon component. We deliberately avoid a runtime icon
   library here — the nav + status set is small (~10 glyphs) so inlining
@@ -77,7 +77,7 @@
     <path d="M7 17 17 7" />
     <path d="M8 7h9v9" />
   {:else if name === 'download'}
-    <!-- import / cloud-down — direction matches "pulling INTO fartol" -->
+    <!-- import / cloud-down — direction matches "pulling INTO fartola" -->
     <path d="M12 3v12" />
     <path d="m7 10 5 5 5-5" />
     <path d="M5 21h14" />

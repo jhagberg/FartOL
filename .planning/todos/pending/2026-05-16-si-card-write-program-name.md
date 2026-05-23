@@ -1,6 +1,6 @@
 ---
 created: 2026-05-16T15:00:00+02:00
-title: Program names + clubs onto SI cards via FartOL (write side of the protocol)
+title: Program names + clubs onto SI cards via fartOLa (write side of the protocol)
 area: hardware,feature
 files:
   - packages/sportident/src/SiCard/BaseSiCard.ts
@@ -18,13 +18,13 @@ source: conversation 2026-05-16 — Jonas asked if we can program names onto car
 
 ## Background
 
-The SI `card_holder` field is read-only from FartOL's perspective today: the
+The SI `card_holder` field is read-only from fartOLa's perspective today: the
 Phase 0 library implements `BaseSiCard.typeSpecificRead()` but has no write
 counterpart. Clubs that want to program names onto cards use SPORTident
 Config+ (free desktop tool, supports all card models).
 
 The hardware itself supports it — BSM7/8-USB master stations expose the
-write side of the wire protocol; FartOL just doesn't drive that path.
+write side of the wire protocol; fartOLa just doesn't drive that path.
 
 ## Why this might be worth building
 

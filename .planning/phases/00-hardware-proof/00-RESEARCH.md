@@ -43,7 +43,7 @@
 - D-13: Output format: NDJSON, one JSON object per line.
 - D-14: Timestamps as milliseconds since Unix epoch (number).
 - D-15: JSON field names: snake_case end-to-end.
-- D-16: Invocation: bin (e.g. `fartol-readout`) AND a pnpm script (e.g. `pnpm dev:readout`).
+- D-16: Invocation: bin (e.g. `fartola-readout`) AND a pnpm script (e.g. `pnpm dev:readout`).
 
 **Test strategy (D-17..D-20):**
 - D-17: Split: fixture-based unit tests in CI + manual hardware smoke locally before tagging.
@@ -95,7 +95,7 @@ Phase 0 is a single-tier hardware utility — no UI, no API, no DB. The "tiers" 
 | Card detection from insert message | Card layer (`BaseSiCard.detectFromMessage`) | Protocol codec | Per-cardtype `typeSpecificInstanceFromMessage(message)` decides instantiation. |
 | Card data read (per-page GET_SI8 / GET_SI5) | Card layer (`SiCard5.typeSpecificRead`, `ModernSiCard.typeSpecificRead`) | Station layer | Pulls 1-8 pages depending on type; stops early via `punchCount`. |
 | Punch decoding (code + time + day + ms) | Card layer (`cropPunches`, `getPunchOffset`, `SiTime`) | — | Pure; lives in storage definitions. |
-| NDJSON event emission | Output layer (new, `bin/fartol-readout.ts`) | Card + Station layers | Wraps the SI events as `{schema_version, event, ...snake_case_fields}` on stdout; CRC errors on stderr. |
+| NDJSON event emission | Output layer (new, `bin/fartola-readout.ts`) | Card + Station layers | Wraps the SI events as `{schema_version, event, ...snake_case_fields}` on stdout; CRC errors on stderr. |
 | Hardware acceptance smoke | Scripts (`scripts/hardware-smoke.sh`) | All | Orchestrator for manual testing; not part of the published package. |
 
 **Tier ownership invariant:** Nothing above the Output layer is allowed to call `console.log`. Output layer owns stdout exclusively; everything else logs to stderr or returns errors.
@@ -717,7 +717,7 @@ Each step shows the captured card_number on screen so Jonas can sanity-check aga
 - **Phase gate (before tagging v0.0.1-handshake):**
   1. Full CI suite green.
   2. `./scripts/hardware-smoke.sh` exits 0 with all 4 cards.
-  3. `pnpm exec fartol-readout --once` confirms one real card read manually (operator inspection of NDJSON output).
+  3. `pnpm exec fartola-readout --once` confirms one real card read manually (operator inspection of NDJSON output).
 
 ### Wave 0 Gaps
 
@@ -958,11 +958,11 @@ test('parse: ACK byte alone', () => {
 ### NDJSON bin skeleton (planner reference)
 
 ```typescript
-// packages/sportident/src/bin/fartol-readout.ts
+// packages/sportident/src/bin/fartola-readout.ts
 import { SerialTransport } from '../transport/SerialTransport.ts';
 // import the rest of the ported protocol/card/station bits
 
-const port = process.env.FARTOL_DEVICE ?? '/dev/ttyUSB0';
+const port = process.env.FARTOLA_DEVICE ?? '/dev/ttyUSB0';
 const transport = new SerialTransport({ path: port, baudRate: 38400 });
 
 function emit(event: object): void {
@@ -1023,7 +1023,7 @@ emit({ event: 'connection_changed', state: 'open' });
 
 ## Project Constraints (from CLAUDE.md)
 
-No `CLAUDE.md` exists at the repo root (`/home/jonas/src/FartOL/CLAUDE.md` does not exist). The global `~/.claude/CLAUDE.md` instructions apply:
+No `CLAUDE.md` exists at the repo root (`/home/jonas/src/fartOLa/CLAUDE.md` does not exist). The global `~/.claude/CLAUDE.md` instructions apply:
 
 - **Surgical edits / minimum code that solves the stated problem.** Phase 0 plan should resist over-scaffolding (e.g., don't add ESLint plugin overload, jest configs, husky, etc.). Lefthook + commitlint + tsup + node:test is enough.
 - **Match existing style.** No existing code yet — establish conventions in Phase 0 that Phase 1+ inherit (snake_case fields, ESM imports, relative paths, no enums, MIT NOTICE headers).
@@ -1139,12 +1139,12 @@ No `CLAUDE.md` exists at the repo root (`/home/jonas/src/FartOL/CLAUDE.md` does 
 ### Secondary (MEDIUM confidence)
 
 - **Project planning artifacts** (read for context):
-  - `/home/jonas/src/FartOL/.planning/research/ecosystem.md` — SportIdent ecosystem facts (cards, stations, protocol commands)
-  - `/home/jonas/src/FartOL/.planning/research/architecture.md` — Three-tier architecture, event log schema
-  - `/home/jonas/src/FartOL/.planning/REQUIREMENTS.md` — REQ-HW-001/002/004 + scope buckets
-  - `/home/jonas/src/FartOL/.planning/adr/0005-sportident-code-isolated-mit.md` — MIT package + clean SiReader interface
-  - `/home/jonas/src/FartOL/.planning/adr/0006-tech-stack.md` — Node 22 LTS + serialport
-  - `/home/jonas/src/FartOL/.planning/ROADMAP.md` — Phase 0 success criteria + downstream phases
+  - `/home/jonas/src/fartOLa/.planning/research/ecosystem.md` — SportIdent ecosystem facts (cards, stations, protocol commands)
+  - `/home/jonas/src/fartOLa/.planning/research/architecture.md` — Three-tier architecture, event log schema
+  - `/home/jonas/src/fartOLa/.planning/REQUIREMENTS.md` — REQ-HW-001/002/004 + scope buckets
+  - `/home/jonas/src/fartOLa/.planning/adr/0005-sportident-code-isolated-mit.md` — MIT package + clean SiReader interface
+  - `/home/jonas/src/fartOLa/.planning/adr/0006-tech-stack.md` — Node 22 LTS + serialport
+  - `/home/jonas/src/fartOLa/.planning/ROADMAP.md` — Phase 0 success criteria + downstream phases
 
 - **WebSearch results** (verified against upstream where possible):
   - <https://docs.sportident.com/products/stations/bsm7-usb-rs232> — BSM7 baud 38400
@@ -1206,7 +1206,7 @@ No `CLAUDE.md` exists at the repo root (`/home/jonas/src/FartOL/CLAUDE.md` does 
 
 ### File Created
 
-`/home/jonas/src/FartOL/.planning/phases/00-hardware-proof/00-RESEARCH.md`
+`/home/jonas/src/fartOLa/.planning/phases/00-hardware-proof/00-RESEARCH.md`
 
 ### Confidence Assessment
 
@@ -1230,7 +1230,7 @@ Yes. Plan can begin immediately. Recommend planner orders work as:
 2. **Wave 1:** port `siProtocol.ts` + `constants.ts` + utils + CRC test vectors. ALL 10 CRC tests pass before moving on.
 3. **Wave 2:** port storage primitives + BaseSiCard + ModernSiCard + SiCard5/9/10/SIAC + their fixture-based unit tests.
 4. **Wave 3:** write `SerialTransport.ts` + simplified send queue + handshake state machine (subset of SiMainStation).
-5. **Wave 4:** write `bin/fartol-readout.ts` + NDJSON formatter + frame_error path + connection state events.
+5. **Wave 4:** write `bin/fartola-readout.ts` + NDJSON formatter + frame_error path + connection state events.
 6. **Wave 5:** `--record` mode for fixture capture + `scripts/hardware-smoke.sh` + capture Jonas's SI5/SI9/SI10/SIAC fixtures + smoke green + tag `v0.0.1-handshake`.
 
 Estimated total: ~1500-2000 LOC across ~25-30 files. Single-developer Phase 0 should fit in 2-4 focused days.

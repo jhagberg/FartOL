@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Orienteering control flag mark — half-white / half-orange diamond
   rotated 45°. LOCKED by 01-UI-SPEC.md §"Visual Anchors". Stroke colour

@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   File drag-and-drop + click-to-pick primitive. The wizard step 2 owns
   the only caller today; future plans (re-import into an existing

@@ -1,6 +1,6 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
-// Public API surface for @fartol/sportident, per
+// Public API surface for @fartola/sportident, per
 // .planning/phases/00-hardware-proof/00-RESEARCH.md §"Open Questions for
 // Planner" #6 (recommended export list).
 //

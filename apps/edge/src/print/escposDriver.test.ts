@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for createNodeThermalPrinterSink (the production
 // ESC/POS PrinterSink). PATTERNS S-2 injection — every test passes a
@@ -227,7 +227,7 @@ describe('createNodeThermalPrinterSink (PATTERNS S-2 / S-3)', () => {
     // buildPrinter returns null and print() rejects. This must not depend
     // on whether the developer machine currently has /dev/usb/lp0 plugged in.
     const sink = createNodeThermalPrinterSink({
-      probePaths: ['/tmp/fartol-missing-lp0', '/tmp/fartol-missing-lp1'],
+      probePaths: ['/tmp/fartola-missing-lp0', '/tmp/fartola-missing-lp1'],
     });
     await assert.rejects(
       () => sink.print(makeEnvelope()),

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
-// Binary entrypoint — `fartol`. Parses argv, builds the Fastify server via
+// Binary entrypoint — `fartola`. Parses argv, builds the Fastify server via
 // buildServer(), and awaits app.listen({ host, port }). SIGINT closes the
 // app cleanly and exits 0. Uncaught exceptions and unhandled promise
 // rejections log to stderr and exit 1 (RESEARCH Pitfall 9).
@@ -36,7 +36,7 @@ import { buildServer } from '../server.ts';
 import { openDatabase } from '../db/index.ts';
 import { ensureNodeId } from '../db/node-id.ts';
 import type { DbHandle } from '../db/index.ts';
-import { SerialTransport, SiMainStation } from '@fartol/sportident';
+import { SerialTransport, SiMainStation } from '@fartola/sportident';
 import { attachBridge } from '../si/bridge.ts';
 import type { AttachedBridge } from '../si/bridge.ts';
 import { config, competitions } from '../db/schema.ts';
@@ -78,14 +78,14 @@ function resolvePrinterType(rawType: string | undefined): PrinterTypeId {
 export function resolvePrinterConfig(
   env: Record<string, string | undefined> = process.env
 ): PrinterConfig {
-  const mode = env['FARTOL_PRINTER'];
+  const mode = env['FARTOLA_PRINTER'];
   if (mode === 'stdout') return { kind: 'stdout' };
   if (mode === 'direct' || mode === 'escpos') {
-    return { kind: 'direct', printerType: resolvePrinterType(env['FARTOL_PRINTER_TYPE']) };
+    return { kind: 'direct', printerType: resolvePrinterType(env['FARTOLA_PRINTER_TYPE']) };
   }
   return {
     kind: 'cups',
-    queueName: env['FARTOL_CUPS_QUEUE']?.trim() || DEFAULT_CUPS_QUEUE,
+    queueName: env['FARTOLA_CUPS_QUEUE']?.trim() || DEFAULT_CUPS_QUEUE,
   };
 }
 
@@ -97,17 +97,17 @@ function createPrinterSink(config: PrinterConfig): PrinterSink {
   return createCupsPrinterSink({ queueName: config.queueName });
 }
 
-const HELP = `fartol: FartOL edge bridge (Fastify HTTP/WS + SQLite event log + SI bridge).
+const HELP = `fartola: fartOLa edge bridge (Fastify HTTP/WS + SQLite event log + SI bridge).
 
 Usage:
-  fartol [options]
+  fartola [options]
 
 Options:
   --port <int>             HTTP port (default 3000)
   --bind-host <host>       Listen host (default 127.0.0.1). Use of 0.0.0.0
                            or any non-loopback address requires --allow-lan
                            as a guard against accidental LAN exposure.
-  --db-path <path>         SQLite database path (default ./fartol.db).
+  --db-path <path>         SQLite database path (default ./fartola.db).
   --serial-path <path>     SerialPort device path (default /dev/ttyUSB0).
                            Ignored when --no-bridge is set.
   --no-bridge              Skip SI bridge attach. Useful for offline tests,
@@ -139,7 +139,7 @@ export function parseArgs(argv: string[]): CliOpts {
   const opts: CliOpts = {
     port: 3000,
     bindHost: '127.0.0.1',
-    dbPath: './fartol.db',
+    dbPath: './fartola.db',
     allowLan: false,
     noBridge: false,
     serialPath: '/dev/ttyUSB0',
@@ -468,15 +468,15 @@ function errMsg(err: unknown): string {
 export async function main(argv: string[] = process.argv.slice(2)): Promise<void> {
   const opts = parseArgs(argv);
 
-  const dbPath = process.env['FARTOL_DB_PATH'] ?? opts.dbPath;
+  const dbPath = process.env['FARTOLA_DB_PATH'] ?? opts.dbPath;
   const handle: DbHandle = openDatabase(dbPath);
-  const nodeId = process.env['FARTOL_NODE_ID'] ?? ensureNodeId(handle);
+  const nodeId = process.env['FARTOLA_NODE_ID'] ?? ensureNodeId(handle);
 
   // Printer sink selection: default to the CUPS queue because the Phase 1
   // Star TSP143IIIU prints reliably through Star's rastertostar CUPS
-  // driver. FARTOL_PRINTER=direct keeps the node-thermal-printer
+  // driver. FARTOLA_PRINTER=direct keeps the node-thermal-printer
   // /dev/usb/lp* path available for compatible ESC/POS devices, and
-  // FARTOL_PRINTER=stdout keeps the JSON-line sink for dev / CI.
+  // FARTOLA_PRINTER=stdout keeps the JSON-line sink for dev / CI.
   const printerSink = createPrinterSink(resolvePrinterConfig(process.env));
 
   const app: FastifyInstance = await buildServer({
@@ -530,12 +530,12 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
   // Plan 17 — start the daily backup + retention schedulers. Both are cron-
   // in-process setTimeout chains anchored on next local midnight; they
   // run independently of the bridge lifecycle. Decorate the app so the
-  // /api/__admin/run-backup-now + /run-retention-now endpoints (FARTOL_DEV
+  // /api/__admin/run-backup-now + /run-retention-now endpoints (FARTOLA_DEV
   // gated) can trigger one-off runs for operators.
   const backup = scheduleDailyBackup(handle, { backupDir: opts.backupDir });
   const retention = scheduleDailyRetention(handle, { retentionDays: opts.retentionDays });
-  app.fartolBackup = backup;
-  app.fartolRetention = retention;
+  app.fartolaBackup = backup;
+  app.fartolaRetention = retention;
 
   // Phase 2.0 plan 02-01 task 4 — Eventor cache refresher (D-EV-1 /
   // D-EV-2 / D-EV-3). The handle exposes runNow + stop; we kick off the
@@ -553,7 +553,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
     apiKey: () => resolveSecret(handle, 'EVENTOR_API_KEY'),
     logger: app.log,
   });
-  app.fartolEventor = eventor;
+  app.fartolaEventor = eventor;
 
   const shutdown = async (code: number): Promise<void> => {
     try {

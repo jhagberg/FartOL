@@ -56,7 +56,7 @@ Overall, the plan set is unusually thorough and has the right high-level shape: 
 
 - **MEDIUM — WAKEUP behavior is underspecified.** Research says upstream prepends `WAKEUP` before every command. Plan 04 only clearly sends it during initial handshake. Make `sendMessage()` centrally write `[WAKEUP, ...render(message)]`.
 
-- **MEDIUM — tsup output filenames may not match package `bin`.** Plan 01/05 expect `dist/bin/fartol-readout.cjs`. Ensure `tsup.config.ts` sets `outExtension` explicitly for `.mjs`/`.cjs`.
+- **MEDIUM — tsup output filenames may not match package `bin`.** Plan 01/05 expect `dist/bin/fartola-readout.cjs`. Ensure `tsup.config.ts` sets `outExtension` explicitly for `.mjs`/`.cjs`.
 
 - **MEDIUM — MIT attribution is partly enforced by grep, but incompletely.** Acceptance checks a few files, not all ported files and fixtures. Add a small script/check that scans all `src/**` and `tests/fixtures/upstream/**` files that are copied from upstream.
 
@@ -97,7 +97,7 @@ Ja, de är tekniskt verifierbara och påverkar arkitekturen, inte bara dokumenta
 
 - **MEDIUM — Receive buffer overflow.** I Plan 04 (`SiTargetMultiplexer.ts`) ackumuleras bytes i `receiveBuffer`. Om en enhet (eller brus) skickar oändligt med data utan STX/ETX kommer Node-processen till slut att krascha på minne. *Rekommendation:* Hård gräns (t.ex. 64 KB) som rensar buffer + kastar `frame_error: "overflow"` när den överskrids.
 
-- **MEDIUM — Zombie processes on serialport hang.** Om hårdvaran kopplas ur mitt under en async `typeSpecificRead` kan kvarvarande `sendMessage`-promiser "hänga" om inte `transport.on('close')` proaktivt avbryter kön. *Status:* Delvis täckt i Plan 04 (SiSendTask abort), men säkerställ att queue-rejection faktiskt händer vid transport-close — annars hänger `bin/fartol-readout` kvar trots urkoppling.
+- **MEDIUM — Zombie processes on serialport hang.** Om hårdvaran kopplas ur mitt under en async `typeSpecificRead` kan kvarvarande `sendMessage`-promiser "hänga" om inte `transport.on('close')` proaktivt avbryter kön. *Status:* Delvis täckt i Plan 04 (SiSendTask abort), men säkerställ att queue-rejection faktiskt händer vid transport-close — annars hänger `bin/fartola-readout` kvar trots urkoppling.
 
 - **LOW (Phase 1 gap) — Timestamp semantics card-vs-host.** Plan 05 blandar host-tid (`ts_ms`) med kort-tid (`seconds_in_half_day`). Vid midnatt-passering / orienteringstävlingar över flera dagar räcker inte `half_day` för att korrelera stämplingar utan en referenspunkt. Acceptabelt för Phase 0; flagga som "Phase 1 gap".
 

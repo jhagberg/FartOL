@@ -1,20 +1,20 @@
-# FartOL — Cumulative third-party attribution
+# fartOLa — Cumulative third-party attribution
 
-The `fartol` binary distributed by this package bundles several open-source
+The `fartola` binary distributed by this package bundles several open-source
 projects. The package as a whole is **AGPL-3.0-or-later** licensed
 (see `LICENSE` at the repo root); the bundled components retain their
 original licenses below.
 
 ## Workspace siblings bundled into this binary
 
-Plan 18 of Phase 1 packages the FartOL edge bridge as a single tarball
-by bundling the workspace siblings (`@fartol/sportident` +
-`@fartol/shared-types`) via tsup's `noExternal` so users don't need a
+Plan 18 of Phase 1 packages the fartOLa edge bridge as a single tarball
+by bundling the workspace siblings (`@fartola/sportident` +
+`@fartola/shared-types`) via tsup's `noExternal` so users don't need a
 separate publish step. Their licenses still apply to the bundled code:
 
-### @fartol/sportident — MIT
+### @fartola/sportident — MIT
 
-- **Repository:** <https://github.com/jonashagberg/FartOL> (this monorepo,
+- **Repository:** <https://github.com/jhagberg/fartOLa> (this monorepo,
   `packages/sportident/`)
 - **License:** MIT (see `packages/sportident/LICENSE`)
 - **Provenance:** Ported from `allestuetsmerweh/sportident.js` (MIT). Per-file
@@ -23,9 +23,9 @@ separate publish step. Their licenses still apply to the bundled code:
   lists `per-magnusson/sportident-python` (GPL — reference only, no code
   copied) and `sdenier/GecoSI` (GPL — reference only).
 
-### @fartol/shared-types — AGPL-3.0-or-later
+### @fartola/shared-types — AGPL-3.0-or-later
 
-- **Repository:** <https://github.com/jonashagberg/FartOL> (this monorepo,
+- **Repository:** <https://github.com/jhagberg/fartOLa> (this monorepo,
   `packages/shared-types/`)
 - **License:** AGPL-3.0-or-later (same as the application).
 
@@ -61,7 +61,7 @@ resolves them when the operator installs the tarball. License notes:
   thermal-print path.
 - **sharp** (Apache-2.0) — image preprocessing for the Kids receipt
   template's Skogis bitmap conversion.
-- **serialport** (MIT, via `@fartol/sportident`) — SerialPort native binding
+- **serialport** (MIT, via `@fartola/sportident`) — SerialPort native binding
   for the BSM7/8-USB reader.
 
 ## Web (`apps/web/build/`) bundled into `dist/web/`
@@ -80,7 +80,7 @@ screen (all SIL OFL); attribution will be added when those land.
 
 ## License compliance summary
 
-The FartOL binary is **AGPL-3.0-or-later** as a whole. The bundled MIT
+The fartOLa binary is **AGPL-3.0-or-later** as a whole. The bundled MIT
 components retain MIT compatibility (AGPL accepts MIT-derived code).
 Operators distributing modified versions of this binary must release the
 source under AGPL-3.0-or-later and offer network-service recipients access

@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Unit tests for the cardQueue Svelte 5 runes FIFO store.
 //

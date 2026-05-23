@@ -1,6 +1,6 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
-// Smoke test for the @fartol/shared-types barrel — asserts the runtime
+// Smoke test for the @fartola/shared-types barrel — asserts the runtime
 // exports (EVENT_SCHEMA_VERSION, readoutChannel) resolve and the channel
 // builder returns the expected template-literal shape. Type re-exports
 // (NdjsonEvent etc.) are verified by `tsc --noEmit` at the package level.
@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 
 import { EVENT_SCHEMA_VERSION, readoutChannel, resultsChannel } from './index.ts';
 
-describe('@fartol/shared-types', () => {
+describe('@fartola/shared-types', () => {
   test('EVENT_SCHEMA_VERSION is 1', () => {
     assert.equal(EVENT_SCHEMA_VERSION, 1);
   });

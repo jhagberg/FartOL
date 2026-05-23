@@ -1,4 +1,4 @@
-// Authored for fartol. emitDiagnostic unit tests for Plan 00-05 Task 1.
+// Authored for fartola. emitDiagnostic unit tests for Plan 00-05 Task 1.
 // Covers: stderr one-line ISO-prefixed diagnostics, injected `err` defaults to
 // process.stderr.write but can be overridden for capture in tests.
 // See packages/sportident/NOTICE.md for cumulative attribution.

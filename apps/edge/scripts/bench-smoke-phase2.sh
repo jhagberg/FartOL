@@ -2,7 +2,7 @@
 #
 # bench-smoke-phase2.sh — Phase 2.0 round-trip smoke test.
 #
-# Boots (or reuses) a local FartOL bridge and exercises the six core
+# Boots (or reuses) a local fartOLa bridge and exercises the six core
 # Phase 2.0 surfaces via curl + sqlite3 assertions:
 #
 #   1. /mip empty poll returns well-formed MIPData XML.
@@ -19,10 +19,10 @@
 # Parameterized via env vars so Task 4's Wednesday-morning bench can
 # point the script at the running production bridge:
 #
-#   FARTOL_PORT       — bridge port (default 3001)
-#   FARTOL_HOST       — bridge host (default 127.0.0.1)
-#   FARTOL_DB         — sqlite db path (default /tmp/fartol-smoke-$$.db)
-#   FARTOL_SKIP_BOOT  — when 1, skip bridge boot + cleanup; assume an
+#   FARTOLA_PORT       — bridge port (default 3001)
+#   FARTOLA_HOST       — bridge host (default 127.0.0.1)
+#   FARTOLA_DB         — sqlite db path (default /tmp/fartola-smoke-$$.db)
+#   FARTOLA_SKIP_BOOT  — when 1, skip bridge boot + cleanup; assume an
 #                       externally-running bridge at $HOST:$PORT and
 #                       preserve the DB on exit
 #
@@ -36,12 +36,12 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # 0. Parameterize (env-var overrides for the Task 4 prod-bridge invocation)
 # ---------------------------------------------------------------------------
-: "${FARTOL_PORT:=3001}"
-: "${FARTOL_HOST:=127.0.0.1}"
-: "${FARTOL_DB:=/tmp/fartol-smoke-$$.db}"
-: "${FARTOL_SKIP_BOOT:=0}"
+: "${FARTOLA_PORT:=3001}"
+: "${FARTOLA_HOST:=127.0.0.1}"
+: "${FARTOLA_DB:=/tmp/fartola-smoke-$$.db}"
+: "${FARTOLA_SKIP_BOOT:=0}"
 
-BASE="http://${FARTOL_HOST}:${FARTOL_PORT}"
+BASE="http://${FARTOLA_HOST}:${FARTOLA_PORT}"
 
 RED='\033[31m'
 GREEN='\033[32m'
@@ -88,43 +88,43 @@ if [ ${#missing[@]} -gt 0 ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 2. Boot bridge (skip if FARTOL_SKIP_BOOT=1 — Task 4 prod-bridge path)
+# 2. Boot bridge (skip if FARTOLA_SKIP_BOOT=1 — Task 4 prod-bridge path)
 # ---------------------------------------------------------------------------
-FARTOL_PID=""
+FARTOLA_PID=""
 
 cleanup() {
-  if [ -n "$FARTOL_PID" ]; then
-    kill "$FARTOL_PID" 2>/dev/null || true
-    wait "$FARTOL_PID" 2>/dev/null || true
+  if [ -n "$FARTOLA_PID" ]; then
+    kill "$FARTOLA_PID" 2>/dev/null || true
+    wait "$FARTOLA_PID" 2>/dev/null || true
   fi
   # Only remove the temp DB when this script booted the bridge itself;
   # preserve the prod DB in the Task 4 SKIP_BOOT path.
-  if [ "$FARTOL_SKIP_BOOT" = "0" ]; then
-    rm -f "$FARTOL_DB" "${FARTOL_DB}-wal" "${FARTOL_DB}-shm" 2>/dev/null || true
+  if [ "$FARTOLA_SKIP_BOOT" = "0" ]; then
+    rm -f "$FARTOLA_DB" "${FARTOLA_DB}-wal" "${FARTOLA_DB}-shm" 2>/dev/null || true
   fi
 }
 trap cleanup EXIT
 
-if [ "$FARTOL_SKIP_BOOT" = "0" ]; then
-  # Locate the bin: prefer `fartol` on PATH, else fall back to the workspace
+if [ "$FARTOLA_SKIP_BOOT" = "0" ]; then
+  # Locate the bin: prefer `fartola` on PATH, else fall back to the workspace
   # tsx invocation. The latter is the dev path; the former is what gets
   # shipped by `pnpm pack:tarball`.
-  if command -v fartol >/dev/null 2>&1; then
-    fartol --port "$FARTOL_PORT" --bind-host "$FARTOL_HOST" \
-           --db-path "$FARTOL_DB" --no-bridge \
-           > /tmp/fartol-smoke-$$.log 2>&1 &
-    FARTOL_PID=$!
+  if command -v fartola >/dev/null 2>&1; then
+    fartola --port "$FARTOLA_PORT" --bind-host "$FARTOLA_HOST" \
+           --db-path "$FARTOLA_DB" --no-bridge \
+           > /tmp/fartola-smoke-$$.log 2>&1 &
+    FARTOLA_PID=$!
   else
     # Walk up from this script's location to the workspace root, then
     # invoke the tsx entrypoint. Works from any cwd.
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     EDGE_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
     (cd "$EDGE_ROOT" && \
-      node --import tsx src/bin/fartol.ts \
-        --port "$FARTOL_PORT" --bind-host "$FARTOL_HOST" \
-        --db-path "$FARTOL_DB" --no-bridge \
-        > /tmp/fartol-smoke-$$.log 2>&1) &
-    FARTOL_PID=$!
+      node --import tsx src/bin/fartola.ts \
+        --port "$FARTOLA_PORT" --bind-host "$FARTOLA_HOST" \
+        --db-path "$FARTOLA_DB" --no-bridge \
+        > /tmp/fartola-smoke-$$.log 2>&1) &
+    FARTOLA_PID=$!
   fi
 fi
 
@@ -140,9 +140,9 @@ for _ in $(seq 1 30); do
   sleep 0.5
 done
 if [ "$ready" = "0" ]; then
-  if [ -f /tmp/fartol-smoke-$$.log ]; then
+  if [ -f /tmp/fartola-smoke-$$.log ]; then
     echo "--- bridge log tail ---" >&2
-    tail -20 /tmp/fartol-smoke-$$.log >&2
+    tail -20 /tmp/fartola-smoke-$$.log >&2
   fi
   record_fail "bridge not ready at ${BASE}/api/health after 15s"
 fi
@@ -185,7 +185,7 @@ if ! printf '%s' "$MOP_RESPONSE" | grep -q 'MOPStatus status="OK"'; then
   record_fail "assertion 2: /mop did not return MOPStatus status=\"OK\"; got: $MOP_RESPONSE"
 fi
 
-MEOS_ROW=$(sqlite3 "$FARTOL_DB" "SELECT id FROM meos_competitors WHERE id='5490'" || true)
+MEOS_ROW=$(sqlite3 "$FARTOLA_DB" "SELECT id FROM meos_competitors WHERE id='5490'" || true)
 if [ "$MEOS_ROW" != "5490" ]; then
   record_fail "assertion 2: meos_competitors id=5490 missing after MOP POST (got: '$MEOS_ROW')"
 fi
@@ -273,14 +273,14 @@ record_pass "assertion 4: Hyrbricka round-trip — create → list → return �
 # ---------------------------------------------------------------------------
 # 8. Smoke assertion 5 — schema sanity
 # ---------------------------------------------------------------------------
-HC_SCHEMA=$(sqlite3 "$FARTOL_DB" ".schema hired_cards" || true)
+HC_SCHEMA=$(sqlite3 "$FARTOLA_DB" ".schema hired_cards" || true)
 for col in competition_id card_number marked_at_ms; do
   if ! printf '%s' "$HC_SCHEMA" | grep -q "$col"; then
     record_fail "assertion 5: hired_cards schema missing column '$col'"
   fi
 done
 
-MEOS_SCHEMA=$(sqlite3 "$FARTOL_DB" ".schema meos_competitors" || true)
+MEOS_SCHEMA=$(sqlite3 "$FARTOLA_DB" ".schema meos_competitors" || true)
 if ! printf '%s' "$MEOS_SCHEMA" | grep -q 'id'; then
   record_fail "assertion 5: meos_competitors schema missing 'id' column"
 fi

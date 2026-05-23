@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // HalfDayClock → milliseconds conversion + start/finish elapsed time.
 // Per codex review C-H2: start/finish on a CardReadEvent are top-level
@@ -21,7 +21,7 @@
 //   NdjsonPunch component types) + lines 163-180 (toHalfDayClock helper —
 //   this file mirrors its 24h-ring semantics for the inverse direction)
 
-import type { HalfDayClock } from '@fartol/sportident';
+import type { HalfDayClock } from '@fartola/sportident';
 
 const HALF_DAY_MS = 12 * 3600 * 1000;
 const DAY_MS = 24 * 3600 * 1000;

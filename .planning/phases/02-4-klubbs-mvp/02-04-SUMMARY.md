@@ -187,15 +187,15 @@ See `key-decisions` in the frontmatter. The notable ones:
 ## Issues Encountered
 
 - **commitlint subject-case + body line-length rules**: `feat(02-04): POST /mop ...` was rejected (POST is upper-case in the subject); body lines >100 chars also rejected. Resolved by switching subject to lowercase `post /mop` and wrapping the body at ~72 chars via a heredoc. No code impact.
-- **First `pnpm test` filter path mismatch**: `pnpm --filter @fartol/web test --run apps/web/src/lib/...` filters the path relative to the package root; the correct invocation is `--run src/lib/...`. No code impact.
+- **First `pnpm test` filter path mismatch**: `pnpm --filter @fartola/web test --run apps/web/src/lib/...` filters the path relative to the package root; the correct invocation is `--run src/lib/...`. No code impact.
 
 ## User Setup Required
 
 None for plan-level acceptance. For the Wednesday bench dry-run:
 
 1. Boot the bridge with an active competition set:
-   `fartol --port 3000 --bind-host 0.0.0.0 --allow-lan` then `POST /api/sessions/active-competition { competition_id: <uuid> }`.
-2. Configure MeOS to push to `http://<fartol-ip>:3000/mop` (no `/api/` prefix; no password). MeOS picks the push cadence — typically on every cmp change.
+   `fartola --port 3000 --bind-host 0.0.0.0 --allow-lan` then `POST /api/sessions/active-competition { competition_id: <uuid> }`.
+2. Configure MeOS to push to `http://<fartola-ip>:3000/mop` (no `/api/` prefix; no password). MeOS picks the push cadence — typically on every cmp change.
 3. Smoke-test from the bench:
    ```
    curl -s -X POST -H "Content-Type: text/xml" \
@@ -205,7 +205,7 @@ None for plan-level acceptance. For the Wednesday bench dry-run:
    Returns `<?xml version="1.0"?><MOPStatus status="OK"/>`.
 4. Verify the shadow row landed:
    ```
-   sqlite3 fartol.db "SELECT id, name, card_number FROM meos_competitors"
+   sqlite3 fartola.db "SELECT id, name, card_number FROM meos_competitors"
    ```
    Returns `5490 | Hagberg, Jonas | 12345`.
 5. With the active competition + a class named `Vit` set, the readout view should show the toast `1 löpare hämtade från MeOS` after the same curl.

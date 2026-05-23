@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for the competitions REST CRUD. Exercises the full Zod
 // + Drizzle + Fastify boundary the SvelteKit wizard (plan 12) consumes:

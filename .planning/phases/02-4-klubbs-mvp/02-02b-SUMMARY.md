@@ -316,8 +316,8 @@ None for plan-level acceptance.
 To exercise the registration-desk flow live on Wednesday's 4-klubbs
 bench:
 
-1. Boot the bridge with FARTOL_DEV=1 + an active competition (the
-   `pnpm --filter @fartol/edge dev` shell brings this up).
+1. Boot the bridge with FARTOLA_DEV=1 + an active competition (the
+   `pnpm --filter @fartola/edge dev` shell brings this up).
 2. Navigate to `http://localhost:5173/competition/<id>/registration`
    — see the "Inga brickor i kö" empty state.
 3. Beep one SI bricka on the reader — WalkupModal opens with the
@@ -371,7 +371,7 @@ day-of polish that comes out of Tuesday's dry-run.
       consecutive runs
 - [x] Commits: `3552786`, `c3cc7c5`, `d667552`, `8bcab9e`,
       `ed6edf4` — all FOUND in `git log`
-- [x] `pnpm --filter @fartol/web test --run` — 86/86 pass
+- [x] `pnpm --filter @fartola/web test --run` — 86/86 pass
 - [x] `pnpm -r typecheck` — exits 0
 - [x] `pnpm exec playwright test tests/e2e/readout.spec.ts tests/e2e/walkup.spec.ts tests/e2e/hyrbricka.spec.ts tests/e2e/registration-queue.spec.ts`
       — 11/11 pass

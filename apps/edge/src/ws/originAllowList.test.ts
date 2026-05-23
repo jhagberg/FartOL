@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Unit coverage for the isOriginAllowed predicate that gates the WS
 // `verifyClient` upgrade hook. Pulled out as a unit test (no Fastify
@@ -63,7 +63,7 @@ describe('isOriginAllowed', () => {
       'http://192.168.1.20:3000',
       'http://10.0.0.5:3000',
       'http://172.16.5.10:3000',
-      'http://fartol-laptop.local:3000',
+      'http://fartola-laptop.local:3000',
       'http://[fe80::1%25eth0]:3000',
     ];
     for (const o of lan) {
@@ -83,7 +83,7 @@ describe('isOriginAllowed', () => {
       'http://172.16.0.1:3000',
       'http://172.31.255.254:3000',
       // mDNS
-      'http://fartol-laptop.local:3000',
+      'http://fartola-laptop.local:3000',
       'http://stortuna-edge.local',
     ];
     for (const o of lan) {

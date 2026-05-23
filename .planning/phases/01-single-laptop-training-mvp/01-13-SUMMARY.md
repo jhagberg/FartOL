@@ -71,7 +71,7 @@ key-decisions:
   - 'wizard.spec.ts C-H3 gate hardened: row-count snapshot races with parallel readout.spec.ts workers (DB-isolation hassle called out in plan). Replaced with `no row with our unique name` — same C-H3 semantic, parallel-worker safe.'
 
 patterns-established:
-  - 'Per-file PATTERNS S-1 header convention applied to all 19 new files (verbatim Authored-for-fartol notice + Locked-by section)'
+  - 'Per-file PATTERNS S-1 header convention applied to all 19 new files (verbatim Authored-for-fartola notice + Locked-by section)'
   - 'ReceiptTemplateProps shared type in receipt-templates/types.ts — single source for all 6 templates'
   - 'Walk-up URL contract: ReadoutView is the PRODUCER (auto-redirect + history-click-on-unknown), plan 14 will be the CONSUMER (overlay mount + URL clear)'
 
@@ -165,7 +165,7 @@ Plan metadata commit (this SUMMARY + STATE/ROADMAP/REQUIREMENTS bumps) lands sep
 - **Issue:** Replacing the readout placeholder broke the `readout-competition-id` test-id check (expected); also exposed a pre-existing parallel-worker race in wizard.spec.ts test 2's `countBefore === countAfter` snapshot. The plan called out the DB-isolation hassle and prescribed serial mode as a workaround.
 - **Fix:** Updated wizard.spec.ts to assert on `readout-view` (the new test-id), AND switched the C-H3 gate from total-row-count to the already-present `no row with our unique name` check. Same C-H3 atomic-rollback semantic, parallel-safe.
 - **Files modified:** tests/e2e/wizard.spec.ts
-- **Verification:** `FARTOL_DEV=1 npx playwright test` → 6/6 pass (4 readout + 2 wizard).
+- **Verification:** `FARTOLA_DEV=1 npx playwright test` → 6/6 pass (4 readout + 2 wizard).
 - **Committed in:** `5291fb3` (Task 2 commit)
 
 ---
@@ -189,10 +189,10 @@ None. The plan's `<threat_model>` block enumerated T-XSS-RUNNER-NAME (mitigated 
 
 ## Verification
 
-- `pnpm --filter @fartol/web typecheck` ✔ passes
-- `pnpm --filter @fartol/web test` ✔ 31 tests pass (17 new skogis + 14 prior)
-- `pnpm --filter @fartol/web build` ✔ builds (198 kB readout chunk — largest in the SPA, expected)
-- `FARTOL_DEV=1 npx playwright test` ✔ 6/6 pass (4 readout + 2 wizard)
+- `pnpm --filter @fartola/web typecheck` ✔ passes
+- `pnpm --filter @fartola/web test` ✔ 31 tests pass (17 new skogis + 14 prior)
+- `pnpm --filter @fartola/web build` ✔ builds (198 kB readout chunk — largest in the SPA, expected)
+- `FARTOLA_DEV=1 npx playwright test` ✔ 6/6 pass (4 readout + 2 wizard)
 
 ## Next Phase Readiness
 

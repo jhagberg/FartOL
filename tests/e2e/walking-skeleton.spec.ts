@@ -1,9 +1,9 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Plan 03's walking-skeleton e2e — RETIRED in plan 12.
 //
 // Plan 12 retires the simulate-read button from `/` (it moves into the
-// readout view in plan 13), so the original assertions (h1=FartOL,
+// readout view in plan 13), so the original assertions (h1=fartOLa,
 // simulate-read-btn, event=card_number=7501853) no longer line up with
 // the page surface. The dev-only simulate-read endpoint itself still
 // exists and is exercised by apps/edge/src/routes/dev.test.ts; the

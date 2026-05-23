@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Classic receipt template — default mall per UI-SPEC §"Receipt templates".
   Header rows (event name + date, runner + card, class + club + start),

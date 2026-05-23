@@ -65,7 +65,7 @@ key-files:
     - 'apps/edge/src/routes/dev.ts — simulate-read calls app.projectionStore.markDirty(competition_id) after insertEvent + wsBroadcast.'
     - 'apps/edge/src/routes/competitors.ts — walk-up POST calls app.projectionStore.markDirty(competition_id) after the card_bound event commits + broadcasts.'
     - 'apps/edge/src/server.ts — constructs createProjectionStore after wsPlugin; decorates app.projectionStore; adds onClose hook to dispose. Registers registerResultsRoute. New BuildServerOpts.projectionDebounceMs.'
-    - 'apps/edge/src/bin/fartol.ts — BridgeLifecycle passes this.app.projectionStore into attachBridge.'
+    - 'apps/edge/src/bin/fartola.ts — BridgeLifecycle passes this.app.projectionStore into attachBridge.'
 
 key-decisions:
   - 'Debounce default = 50ms. UI-SPEC §"Live results auto-update" doesnt pin a specific window; 50ms is one frame at 20 Hz which is well under any human perception threshold, and the plan-07 reducer runs in ~10ms for 1000 events (20× headroom). A real Tuesday training never produces > 1 card_read/sec, so the debounce only matters during simulated burst inputs (and during the simulate-read + walk-up tests where projectionDebounceMs=0).'
@@ -98,12 +98,12 @@ completed: 2026-05-14
 
 ## Performance
 
-- **Duration:** ~30 min (including pnpm install on the fresh worktree, sportident build to expose @fartol/sportident types, three prettier auto-fix loops, one ESLint unused-import fix, one commit-message capitalization fix)
+- **Duration:** ~30 min (including pnpm install on the fresh worktree, sportident build to expose @fartola/sportident types, three prettier auto-fix loops, one ESLint unused-import fix, one commit-message capitalization fix)
 - **Started:** 2026-05-14T~14:00Z
 - **Completed:** 2026-05-14T~14:30Z
 - **Tasks:** 2 / 2
 - **Files created:** 5 (2 production + 2 test + the results route module)
-- **Files modified:** 8 (server.ts, bin/fartol.ts, routes/dev.ts, routes/competitors.ts, si/bridge.ts, si/bridge.test.ts, ws/index.ts, ws/index.test.ts)
+- **Files modified:** 8 (server.ts, bin/fartola.ts, routes/dev.ts, routes/competitors.ts, si/bridge.ts, si/bridge.test.ts, ws/index.ts, ws/index.test.ts)
 - **Tests added:** 13 new node:tests (4 store.test.ts + 1 store.test.ts B-2 paired gate + 3 results.test.ts + 2 bridge.test.ts + 3 ws/index.test.ts new + 1 amended)
 - **Edge cumulative:** 183 / 183 pass (170 plan-07 baseline → 177 after Task 1 → 183 after Task 2)
 
@@ -149,7 +149,7 @@ _Plan metadata commit lands with this SUMMARY (separate from per-task commits)._
 - `apps/edge/src/si/bridge.test.ts` — `replayFixtureThroughBridge` passes a spy `ProjectionStore`. `ReplayCtx.markDirtyCalls` tracks counts. Tests 9 + 10 added.
 - `apps/edge/src/routes/dev.ts` — simulate-read calls `app.projectionStore.markDirty(competition_id)` after `insertEvent` + `wsBroadcast`.
 - `apps/edge/src/routes/competitors.ts` — walk-up POST calls `app.projectionStore.markDirty(competition_id)` after the card_bound event commits + broadcasts.
-- `apps/edge/src/bin/fartol.ts` — `BridgeLifecycle.openAttempt` passes `this.app.projectionStore` into `attachBridge`.
+- `apps/edge/src/bin/fartola.ts` — `BridgeLifecycle.openAttempt` passes `this.app.projectionStore` into `attachBridge`.
 
 ## Decisions Made
 
@@ -184,16 +184,16 @@ _Plan metadata commit lands with this SUMMARY (separate from per-task commits)._
 
 ## Issues Encountered
 
-- **Fresh worktree required pnpm install + sportident build before typecheck would resolve `@fartol/sportident`.** Same friction every plan has seen since plan 01 — already documented in plans 01, 02, 06, 07 summaries. A Phase 2 follow-up (source-fallback export in `packages/sportident/package.json`) would remove the interleaved-build need; not in scope for plan 08.
+- **Fresh worktree required pnpm install + sportident build before typecheck would resolve `@fartola/sportident`.** Same friction every plan has seen since plan 01 — already documented in plans 01, 02, 06, 07 summaries. A Phase 2 follow-up (source-fallback export in `packages/sportident/package.json`) would remove the interleaved-build need; not in scope for plan 08.
 - **No other blockers.** The plan spec was clear, the dependencies (plan 03 + plan 04 + plan 06 + plan 07) all landed clean, and the test infrastructure (in-memory SQLite + `app.inject()` + WebSocket clients on port 0) was already established in earlier plans.
 
 ## User Setup Required
 
-None. The new tests run cold via `pnpm --filter @fartol/edge test`. No env vars beyond `FARTOL_DEV=1` (which the integration test sets/unsets within the test itself). No new package deps.
+None. The new tests run cold via `pnpm --filter @fartola/edge test`. No env vars beyond `FARTOLA_DEV=1` (which the integration test sets/unsets within the test itself). No new package deps.
 
 ## Next Phase Readiness
 
-- **Plan 11 / 14 (SvelteKit results page + walk-up modal):** `import { ResultView, CompetitorView } from '@fartol/edge/projection/types.ts'` (or the shared-types re-export once plan 11 wires it). The SvelteKit results page on initial mount calls `GET /api/competitions/:id/results` for the snapshot, subscribes to `results:<id>` for `results_full` (a redundant initial state in case the WS connects faster than the REST round trip), and applies `results_update` envelopes by `class_id`. The walk-up modal reads `pending_unknown_cards` directly off the results envelope.
+- **Plan 11 / 14 (SvelteKit results page + walk-up modal):** `import { ResultView, CompetitorView } from '@fartola/edge/projection/types.ts'` (or the shared-types re-export once plan 11 wires it). The SvelteKit results page on initial mount calls `GET /api/competitions/:id/results` for the snapshot, subscribes to `results:<id>` for `results_full` (a redundant initial state in case the WS connects faster than the REST round trip), and applies `results_update` envelopes by `class_id`. The walk-up modal reads `pending_unknown_cards` directly off the results envelope.
 - **Plan 09 / 10 (additional REST + WS):** the projection-store contract is locked. Future routes that mutate the projection state (e.g. a future `POST /api/competitions/:id/manual-dnf` for the operator-DNF flow) just call `app.projectionStore.markDirty(competition_id)` after the events row commits.
 - **Plan 16 (IOF XML 3.0 export):** reads CompetitorView's `latest_start` + `latest_finish` + `elapsed_time_ms` from the projection cache via `app.projectionStore.get(id)`. No re-walk of the event log; the cache is the source of truth for the export.
 
@@ -231,7 +231,7 @@ None. Plan 08 LIFTS plan 03's results: hello stub into a real `results_full` emi
 - `apps/edge/src/routes/dev.ts`: FOUND (modified — markDirty after simulate-read)
 - `apps/edge/src/routes/competitors.ts`: FOUND (modified — markDirty after card_bound)
 - `apps/edge/src/server.ts`: FOUND (modified — createProjectionStore + decorate + register)
-- `apps/edge/src/bin/fartol.ts`: FOUND (modified — pass projectionStore into attachBridge)
+- `apps/edge/src/bin/fartola.ts`: FOUND (modified — pass projectionStore into attachBridge)
 
 **Commits verified in git log:**
 
@@ -240,8 +240,8 @@ None. Plan 08 LIFTS plan 03's results: hello stub into a real `results_full` emi
 
 **Behavior verified live:**
 
-- `pnpm --filter @fartol/edge typecheck`: clean.
-- `pnpm --filter @fartol/edge test`: 183 / 183 pass (baseline 170 → +13 new tests for plan 08).
+- `pnpm --filter @fartola/edge typecheck`: clean.
+- `pnpm --filter @fartola/edge test`: 183 / 183 pass (baseline 170 → +13 new tests for plan 08).
 - `grep -rn "type: 'replay'" apps/edge/src/ws/index.ts`: returns ONE match — inside the `if (kind === 'readout')` branch only. Zero matches inside the `} else {` branch for results: channels.
 - `grep -rn "results_full" apps/edge/src/ws/index.ts`: returns ONE match — inside the `} else {` results: branch. The only emitter of `results_full` envelopes in the codebase.
 - `grep -rn "results_update" apps/edge/src/projection/store.ts`: returns ONE match — inside `recomputeNow`. The only emitter of `results_update` envelopes in the codebase.

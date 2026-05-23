@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Animated heartbeat dot. UI-SPEC §"Visual Anchors" calls for a 1.6s
   ease-in-out pulse on the readout topbar's WS-connection indicator and

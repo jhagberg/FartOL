@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Vitest coverage for ActiveHyrbrickorView (Plan 02-05 Task 3) and the
 // Sidebar nav-item presence. Pure-helper style — no svelte-testing-library

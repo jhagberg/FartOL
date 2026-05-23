@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Plan 02-05 — Hyrbrickor admin backstop view. D-HB-2 mandates an
   end-of-event reconciliation surface where the operator can see every
@@ -23,7 +23,7 @@
   import { onMount } from 'svelte';
   import { t } from '$lib/i18n/index.ts';
   import { listHiredCards, returnHiredCard } from '$lib/api/client.ts';
-  import type { HiredCardRow } from '@fartol/shared-types';
+  import type { HiredCardRow } from '@fartola/shared-types';
   import Button from '$lib/ui/Button.svelte';
 
   interface Props {

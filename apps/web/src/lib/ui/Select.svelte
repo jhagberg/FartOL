@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Thin wrapper around native <select>. Uses the same token-driven styling
   as Input.svelte so the readout-sidebar dropdowns (template picker,

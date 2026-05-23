@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   LatestReadCard — the active runner block at the top of the readout
   view. Three states:

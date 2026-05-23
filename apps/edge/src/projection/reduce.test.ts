@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for the pure reducer. The 13 LOCKED scenarios from
 // plan 01-07 task 2 verify gate. Tests 11–13 are the explicit codex C-H2
@@ -16,7 +16,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import type { HalfDayClock, NdjsonPunch } from '@fartol/sportident';
+import type { HalfDayClock, NdjsonPunch } from '@fartola/sportident';
 import type { Event, Competitor, Class } from '../db/types.ts';
 import type { EventPayload } from '../db/schema.ts';
 import { reduce, type CourseWithControlCodes } from './reduce.ts';

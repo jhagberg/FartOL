@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for /api/competitors (walk-up registration) + /api/clubs
 // autocomplete. Exercises:
@@ -17,7 +17,7 @@
 //     type='card_bound' (PATTERNS S-2 — no real WS client).
 //   - test 8 (GET /api/clubs): three clubs inserted with different
 //     last_seen_at_ms; GET returns them DESC ordered.
-//   - test 9 (atomicity): app.fartolNextLocalSeq is swapped to a throwing fn;
+//   - test 9 (atomicity): app.fartolaNextLocalSeq is swapped to a throwing fn;
 //     POST fails 500, competitor row + clubs row + events row all absent
 //     (rollback).
 //
@@ -33,7 +33,7 @@ import { ensureNodeId } from '../db/node-id.ts';
 import { competitors, events, clubs as clubsTable } from '../db/schema.ts';
 import type { DbHandle } from '../db/index.ts';
 import type { FastifyInstance } from 'fastify';
-import type { ChannelName } from '@fartol/shared-types';
+import type { ChannelName } from '@fartola/shared-types';
 import { eq } from 'drizzle-orm';
 
 interface Ctx {

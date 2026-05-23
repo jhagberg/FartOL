@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Public barrel for the projection layer. Plan 08 (WS results channel),
 // plan 11 (web client wire types), and plan 16 (IOF XML export) all

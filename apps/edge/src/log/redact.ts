@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Pino redaction paths for the Fastify logger.
 //
@@ -57,7 +57,7 @@ export const LOGGER_REDACT_PATHS: readonly string[] = [
 ];
 
 /** Default pino redact config for buildServer. Censor matches the pino
- * default so existing grep tooling (`journalctl --user -u fartol | grep
+ * default so existing grep tooling (`journalctl --user -u fartola | grep
  * REDACTED`) keeps working. */
 export const LOGGER_REDACT_OPTIONS = {
   paths: [...LOGGER_REDACT_PATHS],

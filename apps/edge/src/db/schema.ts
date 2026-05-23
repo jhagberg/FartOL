@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Drizzle schema-as-TS for the Phase 1 single-laptop training MVP. Defines
 // the events table (immutable, append-only) plus seven mutable config
@@ -60,7 +60,7 @@ import {
   index,
   uniqueIndex,
 } from 'drizzle-orm/sqlite-core';
-import type { NdjsonPunch, HalfDayClock } from '@fartol/sportident';
+import type { NdjsonPunch, HalfDayClock } from '@fartola/sportident';
 
 // ---------------------------------------------------------------------------
 // EventPayload — discriminated union stored as JSON in events.payload.

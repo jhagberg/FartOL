@@ -67,7 +67,7 @@ so the index stays small and the field can't be re-used as PII).
 - Generate `idempotency_token = crypto.randomUUID()` when the form is first
   saved.
 - Store the full POST body + token in `localStorage` under
-  `fartol.outbox.<token>` _before_ the fetch.
+  `fartola.outbox.<token>` _before_ the fetch.
 - POST with the token in the body.
 - On success → delete the localStorage entry.
 - On TypeError → leave in outbox, schedule retry (5s backoff, max ~5 tries).

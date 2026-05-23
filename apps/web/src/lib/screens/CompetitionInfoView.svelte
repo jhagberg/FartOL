@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol.
+  Authored for fartola.
 
   CompetitionInfoView — single surface for inspecting and editing a
   competition's static config: name, date, receipt template, auto-print,
@@ -32,7 +32,7 @@
     ClassDTO,
     CourseDTO,
     CompetitorDTO,
-  } from '@fartol/shared-types';
+  } from '@fartola/shared-types';
 
   interface Props {
     competitionId: string;

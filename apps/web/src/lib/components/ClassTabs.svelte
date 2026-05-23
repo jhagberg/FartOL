@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Per-class tab strip for the live-results view. The "All" tab aggregates
   every class. Each tab shows the row count to give the operator (or

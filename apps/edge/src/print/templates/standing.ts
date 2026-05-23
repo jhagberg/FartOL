@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Standing receipt — minimalist focus on the position. Header → name →
 // total time (large) → "PLATS X av Y i mål" → leader gap. UI-SPEC

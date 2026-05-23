@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   PunchGrid — auto-fill tile grid showing the runner's controls in
   course order. Three states per tile: `ok` (green soft fill), `miss`

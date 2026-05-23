@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Locked variants per 01-UI-SPEC.md §"Component Inventory" / §"Buttons":
   - primary | ghost | danger

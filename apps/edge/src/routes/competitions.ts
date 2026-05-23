@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // REST CRUD for competitions — the mutable-config-tables (CONTEXT D-09)
 // surface that the SvelteKit wizard (plan 12) consumes. D-15 three-click
@@ -42,12 +42,12 @@ import {
   type ClassDTO,
   type CourseDTO,
   type CourseControlDTO,
-} from '@fartol/shared-types';
+} from '@fartola/shared-types';
 import { competitions, classes, courses, courseControls, controls } from '../db/schema.ts';
 import type { Competition } from '../db/types.ts';
 import { issuesToErrors } from './_zod-errors.ts';
 import { insertEvent } from '../si/eventInserter.ts';
-import { readoutChannel } from '@fartol/shared-types';
+import { readoutChannel } from '@fartola/shared-types';
 
 // ---------------------------------------------------------------------------
 // Row → DTO mappers. apps/edge owns the boundary translation; shared-types
@@ -89,7 +89,7 @@ function competitionRowToDTO(row: Competition): CompetitionDTO {
 export default async function registerCompetitions(app: FastifyInstance): Promise<void> {
   // GET /api/competitions — list ordered by created_at_ms DESC.
   app.get('/api/competitions', async () => {
-    const rows = app.fartolDb.db
+    const rows = app.fartolaDb.db
       .select()
       .from(competitions)
       .orderBy(desc(competitions.createdAtMs))
@@ -122,21 +122,21 @@ export default async function registerCompetitions(app: FastifyInstance): Promis
       // race actually begins.
       raceStartedAtMs: null,
     };
-    app.fartolDb.db.insert(competitions).values(row).run();
+    app.fartolaDb.db.insert(competitions).values(row).run();
     return reply.code(201).send(competitionRowToDTO(row));
   });
 
   // GET /api/competitions/:id — 200 with embedded classes + courses, 404 if missing.
   app.get<{ Params: { id: string } }>('/api/competitions/:id', async (req, reply) => {
     const { id } = req.params;
-    const compRow = app.fartolDb.db
+    const compRow = app.fartolaDb.db
       .select()
       .from(competitions)
       .where(eq(competitions.id, id))
       .get();
     if (!compRow) return reply.code(404).send({ error: 'competition not found' });
 
-    const classRows = app.fartolDb.db
+    const classRows = app.fartolaDb.db
       .select()
       .from(classes)
       .where(eq(classes.competitionId, id))
@@ -152,7 +152,7 @@ export default async function registerCompetitions(app: FastifyInstance): Promis
     // Courses + embedded controls. Two SELECTs: courses for the competition,
     // then a single joined SELECT of all course_controls × controls for those
     // courses ordered by (course_id, order_idx). Group in TS by course_id.
-    const courseRows = app.fartolDb.db
+    const courseRows = app.fartolaDb.db
       .select()
       .from(courses)
       .where(eq(courses.competitionId, id))
@@ -161,7 +161,7 @@ export default async function registerCompetitions(app: FastifyInstance): Promis
     const controlsByCourse = new Map<string, CourseControlDTO[]>();
     for (const c of courseRows) controlsByCourse.set(c.id, []);
     if (courseRows.length > 0) {
-      const joined = app.fartolDb.db
+      const joined = app.fartolaDb.db
         .select({
           courseId: courseControls.courseId,
           orderIdx: courseControls.orderIdx,
@@ -201,7 +201,7 @@ export default async function registerCompetitions(app: FastifyInstance): Promis
     if (!parsed.success) {
       return reply.code(400).send(issuesToErrors(parsed.error.issues));
     }
-    const existing = app.fartolDb.db
+    const existing = app.fartolaDb.db
       .select()
       .from(competitions)
       .where(eq(competitions.id, id))
@@ -220,10 +220,10 @@ export default async function registerCompetitions(app: FastifyInstance): Promis
     // Empty-body PATCH is a no-op 200 (idempotent). Skip the UPDATE so we
     // don't issue a SET-less SQL statement.
     if (Object.keys(patch).length > 0) {
-      app.fartolDb.db.update(competitions).set(patch).where(eq(competitions.id, id)).run();
+      app.fartolaDb.db.update(competitions).set(patch).where(eq(competitions.id, id)).run();
     }
 
-    const updated = app.fartolDb.db
+    const updated = app.fartolaDb.db
       .select()
       .from(competitions)
       .where(eq(competitions.id, id))
@@ -250,7 +250,7 @@ export default async function registerCompetitions(app: FastifyInstance): Promis
   // race start. 404 if the competition doesn't exist.
   app.post<{ Params: { id: string } }>('/api/competitions/:id/start-race', async (req, reply) => {
     const { id: competitionId } = req.params;
-    const existing = app.fartolDb.db
+    const existing = app.fartolaDb.db
       .select()
       .from(competitions)
       .where(eq(competitions.id, competitionId))
@@ -268,16 +268,16 @@ export default async function registerCompetitions(app: FastifyInstance): Promis
     // crash between the two writes can't leave the audit log and the
     // denormalised column out of sync (mirrors the hired-cards PATCH fix
     // for G-001). The broadcast lands AFTER commit per PATTERNS S-4.
-    const r = app.fartolDb.sqlite.transaction(() => {
+    const r = app.fartolaDb.sqlite.transaction(() => {
       const inserted = insertEvent(
-        app.fartolDb,
-        app.fartolNodeId,
+        app.fartolaDb,
+        app.fartolaNodeId,
         'race_started',
         startedAtMs,
         { event_type: 'race_started', started_at_ms: startedAtMs },
         competitionId
       );
-      app.fartolDb.db
+      app.fartolaDb.db
         .update(competitions)
         .set({ raceStartedAtMs: startedAtMs })
         .where(eq(competitions.id, competitionId))
@@ -291,7 +291,7 @@ export default async function registerCompetitions(app: FastifyInstance): Promis
     });
     app.projectionStore.markDirty(competitionId);
 
-    const updated = app.fartolDb.db
+    const updated = app.fartolaDb.db
       .select()
       .from(competitions)
       .where(eq(competitions.id, competitionId))
@@ -317,7 +317,7 @@ export default async function registerCompetitions(app: FastifyInstance): Promis
   // returns 200 with the current state and writes no new event.
   app.post<{ Params: { id: string } }>('/api/competitions/:id/reset-race', async (req, reply) => {
     const { id: competitionId } = req.params;
-    const existing = app.fartolDb.db
+    const existing = app.fartolaDb.db
       .select()
       .from(competitions)
       .where(eq(competitions.id, competitionId))
@@ -330,16 +330,16 @@ export default async function registerCompetitions(app: FastifyInstance): Promis
 
     const previousStartedAtMs = existing.raceStartedAtMs;
     const now = Date.now();
-    const r = app.fartolDb.sqlite.transaction(() => {
+    const r = app.fartolaDb.sqlite.transaction(() => {
       const inserted = insertEvent(
-        app.fartolDb,
-        app.fartolNodeId,
+        app.fartolaDb,
+        app.fartolaNodeId,
         'race_reset',
         now,
         { event_type: 'race_reset', previous_started_at_ms: previousStartedAtMs },
         competitionId
       );
-      app.fartolDb.db
+      app.fartolaDb.db
         .update(competitions)
         .set({ raceStartedAtMs: null })
         .where(eq(competitions.id, competitionId))
@@ -353,7 +353,7 @@ export default async function registerCompetitions(app: FastifyInstance): Promis
     });
     app.projectionStore.markDirty(competitionId);
 
-    const updated = app.fartolDb.db
+    const updated = app.fartolaDb.db
       .select()
       .from(competitions)
       .where(eq(competitions.id, competitionId))

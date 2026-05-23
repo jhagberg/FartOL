@@ -313,24 +313,24 @@ Per-suite breakdown:
 
 ## Self-Check: PASSED
 
-- `/home/jonas/src/FartOL/packages/sportident/src/storage/SiDataType.ts` — FOUND (25 LOC)
-- `/home/jonas/src/FartOL/packages/sportident/src/storage/SiInt.ts` — FOUND
-- `/home/jonas/src/FartOL/packages/sportident/src/storage/SiArray.ts` — FOUND
-- `/home/jonas/src/FartOL/packages/sportident/src/storage/SiDict.ts` — FOUND
-- `/home/jonas/src/FartOL/packages/sportident/src/storage/SiBool.ts` — FOUND
-- `/home/jonas/src/FartOL/packages/sportident/src/storage/SiEnum.ts` — FOUND (first-key-wins reverse lookup)
-- `/home/jonas/src/FartOL/packages/sportident/src/storage/SiModified.ts` — FOUND
-- `/home/jonas/src/FartOL/packages/sportident/src/storage/SiStorage.ts` — FOUND
-- `/home/jonas/src/FartOL/packages/sportident/src/storage/index.ts` — FOUND
-- `/home/jonas/src/FartOL/packages/sportident/src/SiCard/BaseSiCard.ts` — FOUND (two registries, no `registerNumberRange`)
-- `/home/jonas/src/FartOL/packages/sportident/src/SiCard/IRaceResultData.ts` — FOUND
-- `/home/jonas/src/FartOL/packages/sportident/src/SiCard/ISiCard.ts` — FOUND
-- `/home/jonas/src/FartOL/packages/sportident/src/SiCard/ISiCardExamples.ts` — FOUND
-- `/home/jonas/src/FartOL/packages/sportident/src/SiCard/types/ModernSiCard.ts` — FOUND (page 0x04 chain present)
-- `/home/jonas/src/FartOL/packages/sportident/src/SiCard/types/SiCard5.ts` — FOUND (registerSi5Range only)
-- `/home/jonas/src/FartOL/packages/sportident/src/SiCard/types/SiCard9.ts` — FOUND (registerSi8Range only)
-- `/home/jonas/src/FartOL/packages/sportident/src/SiCard/types/SiCard10.ts` — FOUND (registerSi8Range only)
-- `/home/jonas/src/FartOL/packages/sportident/src/SiCard/types/SIAC.ts` — FOUND (registerSi8Range only, TODO comment)
+- `/home/jonas/src/fartOLa/packages/sportident/src/storage/SiDataType.ts` — FOUND (25 LOC)
+- `/home/jonas/src/fartOLa/packages/sportident/src/storage/SiInt.ts` — FOUND
+- `/home/jonas/src/fartOLa/packages/sportident/src/storage/SiArray.ts` — FOUND
+- `/home/jonas/src/fartOLa/packages/sportident/src/storage/SiDict.ts` — FOUND
+- `/home/jonas/src/fartOLa/packages/sportident/src/storage/SiBool.ts` — FOUND
+- `/home/jonas/src/fartOLa/packages/sportident/src/storage/SiEnum.ts` — FOUND (first-key-wins reverse lookup)
+- `/home/jonas/src/fartOLa/packages/sportident/src/storage/SiModified.ts` — FOUND
+- `/home/jonas/src/fartOLa/packages/sportident/src/storage/SiStorage.ts` — FOUND
+- `/home/jonas/src/fartOLa/packages/sportident/src/storage/index.ts` — FOUND
+- `/home/jonas/src/fartOLa/packages/sportident/src/SiCard/BaseSiCard.ts` — FOUND (two registries, no `registerNumberRange`)
+- `/home/jonas/src/fartOLa/packages/sportident/src/SiCard/IRaceResultData.ts` — FOUND
+- `/home/jonas/src/fartOLa/packages/sportident/src/SiCard/ISiCard.ts` — FOUND
+- `/home/jonas/src/fartOLa/packages/sportident/src/SiCard/ISiCardExamples.ts` — FOUND
+- `/home/jonas/src/fartOLa/packages/sportident/src/SiCard/types/ModernSiCard.ts` — FOUND (page 0x04 chain present)
+- `/home/jonas/src/fartOLa/packages/sportident/src/SiCard/types/SiCard5.ts` — FOUND (registerSi5Range only)
+- `/home/jonas/src/fartOLa/packages/sportident/src/SiCard/types/SiCard9.ts` — FOUND (registerSi8Range only)
+- `/home/jonas/src/fartOLa/packages/sportident/src/SiCard/types/SiCard10.ts` — FOUND (registerSi8Range only)
+- `/home/jonas/src/fartOLa/packages/sportident/src/SiCard/types/SIAC.ts` — FOUND (registerSi8Range only, TODO comment)
 - All 7 fixtures FOUND under `packages/sportident/tests/fixtures/upstream/` with `export const fixture` and MIT NOTICE headers
 - `si10-many-punches.ts` `fixture.cardData.punches.length` = 64 (>32 — exercises page 5)
 - Commit `fce06b6` (Task 1) — FOUND in git log

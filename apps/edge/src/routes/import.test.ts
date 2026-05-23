@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test integration coverage for POST /api/competitions/:id/import.
 // Exercises both kinds (CourseData + EntryList), the XSD failure path, the

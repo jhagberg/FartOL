@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Module-scoped Svelte 5 runes store for the SI bridge connection state.
 // ReadoutView writes to it on every `connection_changed` WS envelope;

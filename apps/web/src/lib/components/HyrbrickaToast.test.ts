@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Vitest coverage for the Plan 02-05 HyrbrickaToast component + the
 // ReadoutView Set-based dismissal logic. The Svelte component itself

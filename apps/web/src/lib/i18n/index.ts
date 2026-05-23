@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // i18next bootstrap. Initialized SYNCHRONOUSLY at module-import time with
 // both locales bundled — this is the defense against the flash-of-English

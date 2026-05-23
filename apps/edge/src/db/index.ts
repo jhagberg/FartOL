@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Typed db handle factory for apps/edge. Opens a better-sqlite3 connection,
 // sets the locked WAL pragmas, runs the embedded migrator (applies BOTH

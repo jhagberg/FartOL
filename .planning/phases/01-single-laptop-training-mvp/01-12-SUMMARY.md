@@ -167,7 +167,7 @@ Hard-coded 1600ms `setTimeout` flips `readerStatus` from `'opening'` to `'open'`
 
 **2. [Rule 3 - Blocking] walking-skeleton.spec.ts retired**
 
-- **Found during:** Task 1 — replacing +page.svelte broke the walking-skeleton e2e (asserts on `<h1>FartOL</h1>` and `simulate-read-btn`).
+- **Found during:** Task 1 — replacing +page.svelte broke the walking-skeleton e2e (asserts on `<h1>fartOLa</h1>` and `simulate-read-btn`).
 - **Issue:** The plan-03 e2e depended on the walking-skeleton placeholder that plan 12 retires.
 - **Fix:** Converted spec to `test.skip` with a comment routing future readers to plan 13's readout e2e for the missing simulate-read assertion.
 - **Files modified:** `tests/e2e/walking-skeleton.spec.ts`
@@ -189,11 +189,11 @@ None.
 
 | Check                                                                                 | Result                                       |
 | ------------------------------------------------------------------------------------- | -------------------------------------------- |
-| `pnpm --filter @fartol/web typecheck`                                                 | PASS                                         |
-| `pnpm --filter @fartol/web test` (vitest)                                             | PASS — 14 tests across 4 files               |
-| `pnpm --filter @fartol/web build` (SvelteKit + adapter-static)                        | PASS                                         |
-| `pnpm --filter @fartol/edge build` (tsup CJS + DTS)                                   | PASS                                         |
-| `npx playwright test tests/e2e/wizard.spec.ts` (with FARTOL_DEV=1)                    | PASS — 2 / 2                                 |
+| `pnpm --filter @fartola/web typecheck`                                                 | PASS                                         |
+| `pnpm --filter @fartola/web test` (vitest)                                             | PASS — 14 tests across 4 files               |
+| `pnpm --filter @fartola/web build` (SvelteKit + adapter-static)                        | PASS                                         |
+| `pnpm --filter @fartola/edge build` (tsup CJS + DTS)                                   | PASS                                         |
+| `npx playwright test tests/e2e/wizard.spec.ts` (with FARTOLA_DEV=1)                    | PASS — 2 / 2                                 |
 | Full e2e suite (`npx playwright test`)                                                | PASS — 2 / 2 active (2 skipped placeholders) |
 | C-H3 wire-shape regression (1 from-wizard POST, 0 /api/competitions POSTs)            | PASS                                         |
 | C-H3 rollback regression (competitions row count unchanged after corrupt-XML failure) | PASS                                         |

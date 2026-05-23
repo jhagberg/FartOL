@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // GET /api/eventor/lookup + GET /api/eventor/status (Plan 02-02 task 1).
 //
@@ -12,7 +12,7 @@
 //     types in the name field).
 //
 // The status route surfaces enough metadata for TweaksPanel to render its
-// indicator and (when FARTOL_DEV=1) a manual "Uppdatera" button targeting
+// indicator and (when FARTOLA_DEV=1) a manual "Uppdatera" button targeting
 // /api/__admin/eventor/refresh:
 //
 //   - `state`: ready (cache present + <7d old) | stale (>7d old) |
@@ -20,7 +20,7 @@
 //     no_key (no API key in process.env).
 //   - `ageDays`: floor((now - marker) / 86400000), null when no marker.
 //   - `competitorCount`: row count of eventor_competitors.
-//   - `fartol_dev`: process.env.FARTOL_DEV === '1' evaluated at REQUEST
+//   - `fartola_dev`: process.env.FARTOLA_DEV === '1' evaluated at REQUEST
 //     time so the web TweaksPanel can correctly gate the admin button in
 //     production builds (import.meta.env.DEV would be bundler-time and
 //     always false in production).
@@ -109,13 +109,13 @@ export default async function registerEventorRoutes(app: FastifyInstance): Promi
     }
 
     if (si_card !== undefined) {
-      return lookupBySiCard(app.fartolDb, si_card);
+      return lookupBySiCard(app.fartolaDb, si_card);
     }
     if (q !== undefined) {
-      const suggestions = searchCompetitorsByName(app.fartolDb, q, limit ?? 20, club_id);
+      const suggestions = searchCompetitorsByName(app.fartolaDb, q, limit ?? 20, club_id);
       return { suggestions };
     }
-    const suggestions = lookupByNamePrefix(app.fartolDb, prefix as string, limit ?? 20);
+    const suggestions = lookupByNamePrefix(app.fartolaDb, prefix as string, limit ?? 20);
     return { suggestions };
   });
 
@@ -131,7 +131,7 @@ export default async function registerEventorRoutes(app: FastifyInstance): Promi
       if (!parsed.success) {
         return reply.code(400).send(issuesToErrors(parsed.error.issues));
       }
-      const suggestions = searchClubsByName(app.fartolDb, parsed.data.q, parsed.data.limit ?? 20);
+      const suggestions = searchClubsByName(app.fartolaDb, parsed.data.q, parsed.data.limit ?? 20);
       return { suggestions };
     }
   );
@@ -153,7 +153,7 @@ export default async function registerEventorRoutes(app: FastifyInstance): Promi
       if (!parsed.success) {
         return reply.code(400).send(issuesToErrors(parsed.error.issues));
       }
-      const apiKey = resolveSecret(app.fartolDb, 'EVENTOR_API_KEY');
+      const apiKey = resolveSecret(app.fartolaDb, 'EVENTOR_API_KEY');
       if (!apiKey || apiKey.length === 0) {
         return reply.code(503).send({ error: 'eventor_no_key' });
       }
@@ -179,24 +179,24 @@ export default async function registerEventorRoutes(app: FastifyInstance): Promi
     // Request-time env eval — closure captures process.env which is mutable
     // at runtime. import.meta.env.DEV would be bundler-time and wrong in
     // production builds.
-    const fartolDev = process.env['FARTOL_DEV'] === '1';
+    const fartolaDev = process.env['FARTOLA_DEV'] === '1';
     // Plan 02-07 task 2: env→config→absent precedence. The UI write
     // path (PUT /api/settings/integrations) lands the key in the
     // config table; the next status refresh reflects source='config'
     // without a restart. process.env still wins so the headless
-    // ~/.env.fartol path stays the source of truth for CLI operators.
-    const apiKey = resolveSecret(app.fartolDb, 'EVENTOR_API_KEY');
-    const source = resolveSecretSource(app.fartolDb, 'EVENTOR_API_KEY');
+    // ~/.env.fartola path stays the source of truth for CLI operators.
+    const apiKey = resolveSecret(app.fartolaDb, 'EVENTOR_API_KEY');
+    const source = resolveSecretSource(app.fartolaDb, 'EVENTOR_API_KEY');
 
     // Competitor count is cheap (SQLite COUNT over a 252k indexed table is
     // sub-ms). Drives the 'offline' vs 'no_key' branch when no marker is set.
-    const countRow = app.fartolDb.db
+    const countRow = app.fartolaDb.db
       .select({ n: sql<number>`COUNT(*)` })
       .from(eventorCompetitors)
       .get();
     const competitorCount = countRow?.n ?? 0;
 
-    const markerRow = app.fartolDb.db
+    const markerRow = app.fartolaDb.db
       .select({ value: configTable.value })
       .from(configTable)
       .where(eq(configTable.key, CACHE_MARKER_KEY))
@@ -223,6 +223,6 @@ export default async function registerEventorRoutes(app: FastifyInstance): Promi
       state = competitorCount > 0 ? 'ready' : 'offline';
     }
 
-    return { state, ageDays, competitorCount, source, fartol_dev: fartolDev };
+    return { state, ageDays, competitorCount, source, fartola_dev: fartolaDev };
   });
 }

@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Classic receipt template — header (competition name + date) → runner
 // name → klass / bricka → splits table (1-based leg, control code, cum

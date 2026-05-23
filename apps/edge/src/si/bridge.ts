@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Wires Phase 0's SiMainStation events into the Phase 1 SQLite event log + WS
 // broadcast. The bridge is a thin event-driven adapter: each station event
@@ -11,7 +11,7 @@
 // card_holder + punch_count + punches[]. The helper
 // `apps/edge/src/si/cardReadPayload.ts` builds the exact NdjsonEmitter shape;
 // the EventPayload `card_read` arm imports CardReadEvent's component types
-// (HalfDayClock + NdjsonPunch) from @fartol/sportident so any drift surfaces
+// (HalfDayClock + NdjsonPunch) from @fartola/sportident so any drift surfaces
 // at TS-compile time (T-PAYLOAD-DRIFT mitigation).
 //
 // No-active-competition contract (T-IDLE-CHANNEL-LEAK mitigation): when
@@ -19,7 +19,7 @@
 // `competition_id=null` (forensic value preserved) BUT `wsBroadcast` is NOT
 // called. No phantom 'readout:__idle__' channel is fabricated.
 //
-// Analog: `packages/sportident/src/bin/fartol-readout.ts` lines 187-254 — the
+// Analog: `packages/sportident/src/bin/fartola-readout.ts` lines 187-254 — the
 // same 5-event surface (cardInserted, cardRead, cardRemoved, frameError,
 // connectionChanged) with NDJSON output swapped for SQLite + WS.
 //
@@ -31,9 +31,9 @@
 //   §"apps/edge/src/si/bridge.ts" + §S-2 sink injection + §S-3 lazy native
 // - .planning/phases/01-single-laptop-training-mvp/01-REVIEWS.md §C-H2
 
-import type { SiMainStation, BaseSiCard, FrameError, ConnectionState } from '@fartol/sportident';
-import { readoutChannel } from '@fartol/shared-types';
-import type { ChannelName } from '@fartol/shared-types';
+import type { SiMainStation, BaseSiCard, FrameError, ConnectionState } from '@fartola/sportident';
+import { readoutChannel } from '@fartola/shared-types';
+import type { ChannelName } from '@fartola/shared-types';
 
 import { and, asc, eq } from 'drizzle-orm';
 
@@ -50,7 +50,7 @@ import {
   courseControls,
   controls as controlsTable,
 } from '../db/schema.ts';
-import { skogisFromInput } from '@fartol/shared-types';
+import { skogisFromInput } from '@fartola/shared-types';
 
 /** Hex-encode a byte buffer for `frame_error.raw`. Mirrors the convention
  * used by NdjsonEmitter (uppercase hex pairs joined by spaces). */
@@ -82,7 +82,7 @@ export interface BridgeOpts {
    * broadcast nor markDirty fire. */
   projectionStore: ProjectionStore;
   /** Plan 15 — auto-print path. Wired in the bin (apps/edge/src/bin/
-   * fartol.ts) from app.printerSink. Optional so plan-06 / plan-08
+   * fartola.ts) from app.printerSink. Optional so plan-06 / plan-08
    * tests that don't exercise auto-print can keep their existing
    * fixtures untouched (those tests gate the auto-print enqueue path
    * behind getCompetition returning a row with auto_print=true; without

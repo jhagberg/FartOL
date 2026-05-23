@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol.
+  Authored for fartola.
 
   Competition info / edit route. Thin route wrapper — the actual screen
   lives at $lib/screens/CompetitionInfoView.svelte so it's testable

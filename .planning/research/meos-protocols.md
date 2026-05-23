@@ -1,4 +1,4 @@
-# MeOS protocols — research for FartOL phase 2
+# MeOS protocols — research for fartOLa phase 2
 
 Source: <https://www.melin.nu/meos/sv/codes.php> fetched 2026-05-16. All four
 listed downloads were retrieved successfully and extracted to `/tmp/meos-research/`
@@ -57,7 +57,7 @@ snippets and the XSDs are fully annotated.
 - **Transport**: HTTP POST, payload = raw XML body (or gzipped XML body if the
   receiver advertises support). HTTP headers carry `competition` (numeric id)
   and `pwd` (plain-text password).
-- **Direction**: **Read-only from FartOL's POV.** MeOS pushes, we receive and
+- **Direction**: **Read-only from fartOLa's POV.** MeOS pushes, we receive and
   store. There is no MOP "GET" endpoint in MeOS — it only writes outwards.
 - **Message shape**: Two root elements:
   - `<MOPComplete>` — full snapshot; receiver should drop prior state and
@@ -91,7 +91,7 @@ Server replies `<MOPStatus status="OK"/>` or `BADCMP|BADPWD|NOZIP|ERROR`.
 
 - **Transport**: HTTP GET issued **by MeOS to our server** as poller. MeOS
   sends `competition`, `lastid`, `pwd` headers; we respond with XML.
-- **Direction**: **Write-in from FartOL's POV.** FartOL acts as the server;
+- **Direction**: **Write-in from fartOLa's POV.** fartOLa acts as the server;
   MeOS pulls. (MeOS is the HTTP client.)
 - **Message shape**: One root `<MIPData lastid="N">` containing zero or more of:
   - `<p code="33" card="12345" time="36070"/>` — free punch (by card or by `sno=` start number)
@@ -134,7 +134,7 @@ Representative payload (from PDF):
   hard-codes `localhost`; pointing it at a remote IP requires MeOS to bind on
   that interface, which the user must enable.
 - **Sportident integration**: **Carries raw SI-equivalent punch data.** This
-  is the protocol to use if FartOL has read an SI card and wants to forward it
+  is the protocol to use if fartOLa has read an SI card and wants to forward it
   to MeOS as if MeOS had its own reader. The shape is purpose-built for it.
 
 Note: code is dated **2014** and labels `codeDay` as "Obsolete, not used
@@ -161,19 +161,19 @@ Also dated 2014 and undocumented except via the Java sample.
 
 ---
 
-## 3. Phase-2 fit for FartOL
+## 3. Phase-2 fit for fartOLa
 
 ### A — Parallel finish capture without runner double-stamping
 
-**Goal:** one physical SI reader serves both FartOL and MeOS; runners stamp
+**Goal:** one physical SI reader serves both fartOLa and MeOS; runners stamp
 once at finish.
 
-**Recommended approach: FartOL owns the SI reader; FartOL forwards each card
+**Recommended approach: fartOLa owns the SI reader; fartOLa forwards each card
 read-out into MeOS via the SendPunch TCP line protocol (§2.3) or, preferably,
 via MIP `<card>` (§2.2).**
 
 Sketch (SendPunch TCP — simplest):
-1. FartOL's finish station reads the SI card from the serial port (we already
+1. fartOLa's finish station reads the SI card from the serial port (we already
    do this in phase 1).
 2. After our own pipeline accepts the read, we open a TCP connection to
    `meos-host:10000`, serialize a `Card` frame (1-byte type=64 + 14-byte
@@ -183,7 +183,7 @@ Sketch (SendPunch TCP — simplest):
    its own SI reader hooked up.
 
 Sketch (MIP — more future-proof):
-1. FartOL exposes an HTTP endpoint that MeOS polls (we are the server, MeOS
+1. fartOLa exposes an HTTP endpoint that MeOS polls (we are the server, MeOS
    the client).
 2. We buffer card read-outs and respond with `<MIPData><card number="…">…</card></MIPData>`.
 3. MIP also natively models hired cards (`<card hired="true">`), so the
@@ -197,12 +197,12 @@ maintained protocol (XSD bumped 2025-04, page upload 2026-05-14) and supports
 entries + hired-card flagging.
 
 **Caveat:** MeOS will only count a finish punch as a finish if the cardNo
-matches a registered competitor. So FartOL must either (a) push entries to
+matches a registered competitor. So fartOLa must either (a) push entries to
 MeOS first (also via MIP `<entry>`), or (b) the operator enters the runner
 manually in MeOS using the same card number. For 4-klubbs walk-up registration,
 (b) is realistic; for full automation, (a) is needed.
 
-### B — One-way push FartOL → MeOS (results / registrations)
+### B — One-way push fartOLa → MeOS (results / registrations)
 
 Two channels:
 - **Registrations/entries:** MIP `<entry>` (§2.2). Supports name, club,
@@ -213,17 +213,17 @@ Two channels:
   (raw binary). For "share the SI reader" use SendPunch; for "feed remote
   punches from a Sportident SRR/AIR or a phone app" use MIP.
 
-Note that **FartOL cannot push computed results (rankings, status changes)
+Note that **fartOLa cannot push computed results (rankings, status changes)
 into MeOS via these protocols**. MIP accepts punches and entry data; it does
 not accept "set this runner to status DQ". The closest is MIP's
 `<entry localId="103"><status>NS</status></entry>`, which is documented for
 DNS only and is really an entry-update path, not a results-update path. If we
 need full results parity, **MeOS must remain the source of truth** for status
-and FartOL becomes a presentation/extension layer.
+and fartOLa becomes a presentation/extension layer.
 
-### C — One-way pull MeOS → FartOL (results comparison)
+### C — One-way pull MeOS → fartOLa (results comparison)
 
-Use MOP (§2.1). FartOL stands up an HTTP endpoint and MeOS POSTs
+Use MOP (§2.1). fartOLa stands up an HTTP endpoint and MeOS POSTs
 `<MOPComplete>` (full snapshot) and `<MOPDiff>` (incremental) to it
 continuously. We get competitors, classes, clubs, radio splits, statuses, and
 finish times in tenths of a second. The reference `update.php` is ~70 lines
@@ -231,7 +231,7 @@ and trivial to port to Node.js / TypeScript.
 
 **Cost: lowest of the three.** It's a pure HTTP receiver, no SI reader, no
 TCP socket, no Windows-only tooling. Could be done in half a day. Useful even
-for the Wednesday event as a passive "did FartOL match MeOS?" debugging tool.
+for the Wednesday event as a passive "did fartOLa match MeOS?" debugging tool.
 
 ---
 
@@ -239,7 +239,7 @@ for the Wednesday event as a passive "did FartOL match MeOS?" debugging tool.
 
 | Use case | Protocol | Effort | Windows-only blockers? |
 |---|---|---|---|
-| A (shared SI reader) | SendPunch TCP | ~1 day | None for FartOL side; MeOS must run the "TCP punch input" service on Windows, which is built-in |
+| A (shared SI reader) | SendPunch TCP | ~1 day | None for fartOLa side; MeOS must run the "TCP punch input" service on Windows, which is built-in |
 | A (shared SI reader, polished) | MIP `<card>` | ~2 days | None |
 | B (push entries) | MIP `<entry>` | ~1 day on top of A | None |
 | B (push punches) | covered by A | — | — |
@@ -276,28 +276,28 @@ worked, so no fallback needed.
 
 ## 5. Recommendation
 
-**For the 4-day Wednesday MVP (4-klubbs, ~100 starters):** run FartOL beside
-MeOS using a "MeOS-as-source-of-truth + FartOL-as-mirror" layout. Concretely:
-let MeOS own the SI finish reader as today, and have FartOL receive a MOP
+**For the 4-day Wednesday MVP (4-klubbs, ~100 starters):** run fartOLa beside
+MeOS using a "MeOS-as-source-of-truth + fartOLa-as-mirror" layout. Concretely:
+let MeOS own the SI finish reader as today, and have fartOLa receive a MOP
 feed from MeOS over HTTP (~½ day to implement). This means **zero changes to
 the existing MeOS workflow on race day** — no shared serial port, no risk of
-FartOL bricking MeOS's punch input. FartOL acts as a passive results
+fartOLa bricking MeOS's punch input. fartOLa acts as a passive results
 presentation layer using data MeOS already publishes. If we additionally have
 spare time before Wednesday, layer in SendPunch TCP injection so that
-FartOL-owned read-outs (e.g. test stamps, or a backup reader) can be pushed
+fartOLa-owned read-outs (e.g. test stamps, or a backup reader) can be pushed
 into MeOS without runners double-stamping. This is the lowest-risk strategy
-because the failure mode of MOP-only is "FartOL shows no results" — runners
+because the failure mode of MOP-only is "fartOLa shows no results" — runners
 and operators are unaffected.
 
 **For Phase 2.1 (post-Wednesday architectural fit):** standardise on MIP
-(MeOS Input Protocol) as the integration substrate, with FartOL acting as the
+(MeOS Input Protocol) as the integration substrate, with fartOLa acting as the
 HTTP server MeOS polls. MIP is the only one of the four protocols that is
 actively versioned (v3.0, April 2025 update, page upload 2026-05-14), it
 natively handles the hyrbricka use case (`<card hired="true">` triggers
-MeOS's built-in "return card" reminder, so FartOL doesn't need to duplicate
+MeOS's built-in "return card" reminder, so fartOLa doesn't need to duplicate
 that UI when MeOS is doing the read-out), it supports both raw card dumps
 and individual free punches, and it has a built-in entry-registration path
 that covers walk-up registration. Pair MIP-in with MOP-out as the read-back
-channel so we can reconcile FartOL's internal state against MeOS's view.
-This makes MeOS effectively a backend FartOL can drive, and avoids the
+channel so we can reconcile fartOLa's internal state against MeOS's view.
+This makes MeOS effectively a backend fartOLa can drive, and avoids the
 2014-era SendPunch/UDP binary protocols entirely except as fallback.

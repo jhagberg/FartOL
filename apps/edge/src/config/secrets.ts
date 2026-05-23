@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Secret resolver — shared helper that lifts the env→config→absent
 // precedence out of apps/edge/src/eventor/boot.ts and
@@ -58,7 +58,7 @@ export function resolveSecret(handle: DbHandle, key: string): string | undefined
 }
 
 /** Companion to resolveSecret that returns the source tag the UI uses
- * to render the "Värdet kommer från ~/.env.fartol …" banner and the
+ * to render the "Värdet kommer från ~/.env.fartola …" banner and the
  * /status `source` field. */
 export function resolveSecretSource(handle: DbHandle, key: string): SecretSource {
   const envValue = process.env[key];

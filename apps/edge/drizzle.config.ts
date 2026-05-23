@@ -1,6 +1,6 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
-// drizzle-kit configuration for the @fartol/edge package. Dev-only — this
+// drizzle-kit configuration for the @fartola/edge package. Dev-only — this
 // file is read by `pnpm db:generate` (Phase 1 plan 02). Runtime migrator
 // (apps/edge/src/db/migrate.ts) does NOT read this file; it resolves the
 // migrations folder relative to import.meta.url so the published tarball

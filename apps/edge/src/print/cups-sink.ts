@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // CUPS PrinterSink for Star TSP100/TSP143 queues. The TSP100IIIU bench
 // unit prints reliably through Star's CUPS raster driver, while direct
@@ -39,7 +39,7 @@ export interface CreateCupsPrinterSinkOpts {
 }
 
 const DEFAULT_QUEUE = 'TSP143--STR_T-001-';
-const DEFAULT_TITLE = 'FartOL-receipt';
+const DEFAULT_TITLE = 'fartOLa-receipt';
 const DEFAULT_WIDTH = 32;
 
 class TextReceiptPrinter implements ThermalPrinterLike {

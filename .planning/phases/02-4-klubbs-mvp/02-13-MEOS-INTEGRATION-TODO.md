@@ -12,14 +12,14 @@ they don't get lost between phases.
 ## Context
 
 PR #20 (Phase 2.0 4-klubbs MVP) merged. Race ran 2026-05-20 on MeOS as
-primary, FartOL as parallel. During pre-race testing we drove FartOL's
+primary, fartOLa as parallel. During pre-race testing we drove fartOLa's
 MIP output into MeOS and the receive log showed:
 
 ```
 Fel: Fagerström, Andreas, Okänd klass
 ```
 
-Even though `classname="Violett"` on the FartOL side matched
+Even though `classname="Violett"` on the fartOLa side matched
 `oclass.Name="Violett"` (Id=5) on the MeOS side byte-for-byte. The
 runner was never inserted. Investigation traced the rejection to a real
 bug in MeOS — see §1 below. Operational notes from the same session
@@ -33,11 +33,11 @@ captured in §5–7.
 (`restserver.cpp:1372-1375`) does its own class lookup by integer ID
 and ignores the name-resolved `cls` that the caller (`onlineinput.cpp:
 996`) already obtained. The caller passes the raw `classId=0` (since
-FartOL omits the attribute) at `onlineinput.cpp:1141`, never
+fartOLa omits the attribute) at `onlineinput.cpp:1141`, never
 substituting `cls->getId()`. So name-only entries always fail the
 permission check, even though name resolution succeeded.
 
-**Workaround:** FartOL's MIP emitter must include `classid="N"`
+**Workaround:** fartOLa's MIP emitter must include `classid="N"`
 alongside `classname="…"` so MeOS's id-first lookup short-circuits the
 broken name-fallback path.
 
@@ -57,7 +57,7 @@ oclass`). Read-only, low risk. Op enters MySQL DSN once per event.
    Con: a second integration surface we have to maintain.
 
 3. **Operator-entered mapping** (cheapest, brittle): a "MeOS
-   klassmappning" panel in FartOL settings where the op pastes the 5–10
+   klassmappning" panel in fartOLa settings where the op pastes the 5–10
    class IDs by hand once per event.
    Pro: trivial to implement.
    Con: silent breakage when MeOS IDs change between events.
@@ -96,12 +96,12 @@ worth doing for shareable links + operator memory.
 
 ### 4. (Phase 2.2 spike candidate) Direct MySQL — third-station mode
 
-MeOS's multi-station mode is exactly what FartOL would emulate by
-talking to MeOS's MySQL directly: two MeOS clients + one FartOL all
+MeOS's multi-station mode is exactly what fartOLa would emulate by
+talking to MeOS's MySQL directly: two MeOS clients + one fartOLa all
 pointed at the same DB. The `Counter` + `ModifiedDate` columns on
 every `oRunner` / `oCard` / `oClass` row exist for this exact pattern.
 
-Scope as a **read-only spike first**: FartOL pulls class/runner state
+Scope as a **read-only spike first**: fartOLa pulls class/runner state
 from MySQL, displays it, but only ever writes via MIP. Once that's
 stable for one full event, evaluate adding writes (which require
 respecting MeOS's optimistic-concurrency contract — bumping Counter,
@@ -128,7 +128,7 @@ REST API. Defaults:
   - `?get=iofresult` / `?get=iofstart` — IOF XML 3.0
   - `?difference=zero` — full MOP snapshot; `?difference=<n>` — delta
 - "Mappa rootadressen" setting is OPTIONAL — only affects bare `/`
-  requests. Leave unchecked for FartOL's use.
+  requests. Leave unchecked for fartOLa's use.
 
 Add to the operator runbook as a "How to query MeOS state" section.
 
@@ -141,7 +141,7 @@ never wakes, and after 10 s restbed gives up with `"Error (MeOS):
 Internal timeout"` (`restserver.cpp:113-114`).
 
 Workaround: click around in MeOS to nudge the message loop. Real fix:
-native Windows host (or stub MeOS's REST role with FartOL eventually).
+native Windows host (or stub MeOS's REST role with fartOLa eventually).
 
 Recommend documenting this in the operator runbook: **deploy MeOS on
 native Windows for any setup that exposes REST.** Wine is fine for
@@ -165,7 +165,7 @@ Worth surfacing in the runbook as a sequencing rule.
   maintenance burden too high. Upstream fix (§2) is the right path.
 - Replacing MIP entirely with direct MySQL writes — see §4 spike
   rationale.
-- Re-implementing MeOS's Informationsserver inside FartOL — premature;
+- Re-implementing MeOS's Informationsserver inside fartOLa — premature;
   MIP-out + REST-poll covers our needs through Phase 2.1.
 
 ## Refs

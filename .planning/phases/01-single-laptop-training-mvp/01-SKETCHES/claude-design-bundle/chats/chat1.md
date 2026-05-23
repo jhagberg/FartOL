@@ -14,18 +14,18 @@ Hi! Happy to help — paste a github.com repository URL and I can explore the st
 
 ## User
 
-https://github.com/jhagberg/FartOL/tree/gsd/phase-1-training-mvp
+https://github.com/jhagberg/fartOLa/tree/gsd/phase-1-training-mvp
 
 Key files for Claude Design to pull:
 
 - Design brief — the main paste target:
-https://github.com/jhagberg/FartOL/blob/gsd/phase-1-training-mvp/.planning/phases/01-single-laptop-training-mvp/01-DESIGN-BRIEF.md
+https://github.com/jhagberg/fartOLa/blob/gsd/phase-1-training-mvp/.planning/phases/01-single-laptop-training-mvp/01-DESIGN-BRIEF.md
 - CONTEXT.md (Phase 1 decisions):
-https://github.com/jhagberg/FartOL/blob/gsd/phase-1-training-mvp/.planning/phases/01-single-laptop-training-mvp/01-CONTEXT.md
+https://github.com/jhagberg/fartOLa/blob/gsd/phase-1-training-mvp/.planning/phases/01-single-laptop-training-mvp/01-CONTEXT.md
 - REQUIREMENTS.md (full requirement list):
-https://github.com/jhagberg/FartOL/blob/gsd/phase-1-training-mvp/.planning/REQUIREMENTS.md
+https://github.com/jhagberg/fartOLa/blob/gsd/phase-1-training-mvp/.planning/REQUIREMENTS.md
 - ROADMAP.md (Phase 1 success criteria):
-https://github.com/jhagberg/FartOL/blob/gsd/phase-1-training-mvp/.planning/ROADMAP.md
+https://github.com/jhagberg/fartOLa/blob/gsd/phase-1-training-mvp/.planning/ROADMAP.md
 
 ## Assistant
 
@@ -277,7 +277,7 @@ Apply comment
 
 _[tool: str_replace_edit]_
 
-Removed. Sidebar brand is just the control-flag mark + "FartOL" now — cleaner.
+Removed. Sidebar brand is just the control-flag mark + "fartOLa" now — cleaner.
 
 ## User
 
@@ -334,7 +334,7 @@ Mikael in particular is worth clicking — the MP receipt shows the missing punc
 
 ## User
 
-Save this design as a PDF: FartOL Phase 1 Prototype.html
+Save this design as a PDF: fartOLa Phase 1 Prototype.html
 
 ## Assistant
 
@@ -376,5 +376,5 @@ _[tool: str_replace_edit]_
 
 _[tool: open_for_print]_
 
-Adding the auto-print and finalizing:Print-ready file opened — should auto-trigger Chrome's print dialog. If it doesn't, [open the print page manually](https://019e2199-f2b6-7990-99d3-31b7c50f43e3.claudeusercontent.com/v1/design/projects/019e2199-f2b6-7990-99d3-31b7c50f43e3/serve/FartOL%20Phase%201%20Prototype-print.html?t=4e2e18ebe629f7766b397475f63c4999e73bc78d748d868820690418f8a1b065.e5cf0ba2-ff7b-4ba6-83f2-5389cf23eb1d.beef3e00-3efd-4880-8281-ef21339a093b.1778687098&direct=1) and press ⌘P / Ctrl+P. In the print dialog set **Destination → Save as PDF**, **Paper size → "Default"** (the page CSS defines 1480×1100), and **Margins → None**. 8 pages: Home, Wizard, Erik with four receipt templates, Walk-up modal, Live results.
+Adding the auto-print and finalizing:Print-ready file opened — should auto-trigger Chrome's print dialog. If it doesn't, [open the print page manually](https://019e2199-f2b6-7990-99d3-31b7c50f43e3.claudeusercontent.com/v1/design/projects/019e2199-f2b6-7990-99d3-31b7c50f43e3/serve/fartOLa%20Phase%201%20Prototype-print.html?t=4e2e18ebe629f7766b397475f63c4999e73bc78d748d868820690418f8a1b065.e5cf0ba2-ff7b-4ba6-83f2-5389cf23eb1d.beef3e00-3efd-4880-8281-ef21339a093b.1778687098&direct=1) and press ⌘P / Ctrl+P. In the print dialog set **Destination → Save as PDF**, **Paper size → "Default"** (the page CSS defines 1480×1100), and **Margins → None**. 8 pages: Home, Wizard, Erik with four receipt templates, Walk-up modal, Live results.
 

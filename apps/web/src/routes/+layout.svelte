@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Root SvelteKit layout. Plan 11 lands the visual baseline:
     - imports the design tokens + font stack so every route sees the same

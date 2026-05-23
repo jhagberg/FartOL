@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Pure card-to-competitor matching helpers. REQ-EVT-CMP-005 D-11: when a
 // card_read event arrives, the reducer looks up the competitor whose
@@ -11,7 +11,7 @@
 // available for one-off non-reducer call sites (e.g. ad-hoc REST handlers).
 //
 // Per codex review C-H5: this file imports the internal Drizzle row type
-// from `../db/types.ts` (NOT from `@fartol/shared-types`). The reducer
+// from `../db/types.ts` (NOT from `@fartola/shared-types`). The reducer
 // boundary stays inside apps/edge.
 //
 // Locked by:

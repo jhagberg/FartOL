@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test integration coverage for the @fastify/websocket plugin. Uses
 // a real WS handshake against a Fastify instance listening on 127.0.0.1
@@ -24,7 +24,7 @@ import { ensureNodeId } from '../db/node-id.ts';
 import { events, classes, controls, courses, courseControls, competitors } from '../db/schema.ts';
 import type { DbHandle } from '../db/index.ts';
 import type { FastifyInstance } from 'fastify';
-import { readoutChannel, resultsChannel } from '@fartol/shared-types';
+import { readoutChannel, resultsChannel } from '@fartola/shared-types';
 
 interface Ctx {
   app: FastifyInstance;
@@ -376,8 +376,8 @@ describe('apps/edge ws plugin', () => {
 
   test('test 8 (plan 08 integration): card_read via simulate-read triggers a results_update on results:<id>', async () => {
     // Bootstrap: seed comp + class + competitor; subscribe to results:.
-    process.env['FARTOL_DEV'] = '1';
-    // Build a fresh server WITH FARTOL_DEV so /api/__dev/simulate-read is
+    process.env['FARTOLA_DEV'] = '1';
+    // Build a fresh server WITH FARTOLA_DEV so /api/__dev/simulate-read is
     // registered (beforeEach's server was built without that env).
     const handle = openDatabase(':memory:');
     const nodeId = ensureNodeId(handle);
@@ -436,7 +436,7 @@ describe('apps/edge ws plugin', () => {
     } finally {
       await app.close();
       handle.close();
-      delete process.env['FARTOL_DEV'];
+      delete process.env['FARTOLA_DEV'];
     }
   });
 

@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Two-column app shell. Locked dimensions:
     grid-template-columns: var(--sidebar-w) 1fr  (240px sidebar)

@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   /competition/:id/runners — canonical "Anmälda" surface. Thin shell that
   forwards competitionId to RunnersListView, which owns search/filter/edit

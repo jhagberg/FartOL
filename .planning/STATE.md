@@ -29,7 +29,7 @@ Plan: 0 of TBD (suggested 5–6, see CONTEXT.md)
 **Phase:** Phase 2.0 — 4-klubbs MVP (parallel with MeOS)
 **Hard deadline:** Wednesday **2026-05-20** (4-klubbs training at Stora Tuna OK)
 **Next concrete action:** Run `/gsd-discuss-phase 2` in worktree
-`/home/jonas/src/FartOL-phase-2/` (branch `gsd/phase-2-sanctioned-competition`)
+`/home/jonas/src/fartOLa-phase-2/` (branch `gsd/phase-2-sanctioned-competition`)
 to refine the CONTEXT.md decisions and resolve the four open questions listed
 there. Then `/gsd-plan-phase 2`. The MeOS protocol research is already done
 (`.planning/research/meos-protocols.md`), the courseData fixture is in
@@ -186,7 +186,7 @@ see RESEARCH §multiplexer.` for auditability.
   close aborts every pending `SiSendTask`). Verified by SerialTransport
   test 10 + SiMainStation test 9.
 
-- `SiSendTask` timer is NOT `unref()`'d — `bin/fartol-readout` is
+- `SiSendTask` timer is NOT `unref()`'d — `bin/fartola-readout` is
   otherwise idle while awaiting station replies; unrefing would let Node
   exit before the timeout fires.
 
@@ -273,12 +273,12 @@ Resume File: .planning/phases/02-4-klubbs-mvp/02-CONTEXT.md
   full Eventor + spectator + crash recovery). Drove this from a Wed parallel-run
   ambition; the 4-klubbs courseData is course-only (Vit/Grön/Gul/Orange/Violett)
   so we lean on Phase 1's auto-create-class-per-course path with a Bana relabel.
-  MeOS coexistence strategy: MIP `<entry>` push for direktanmälningar (FartOL →
-  MeOS), MOP `<cmp>` receiver for state reconciliation (MeOS → FartOL on FartOL
+  MeOS coexistence strategy: MIP `<entry>` push for direktanmälningar (fartOLa →
+  MeOS), MOP `<cmp>` receiver for state reconciliation (MeOS → fartOLa on fartOLa
   crash). The 2014-era SendPunch TCP and UDP-broadcast protocols are skipped
   entirely — MIP XSD v3.0 (uploaded 2026-05-14) and MOP v2.0 (March 2025) are
   the only actively-versioned protocols and cover every documented use case.
-  Hyrbricka handled in both systems independently (FartOL toast at finish-readout
+  Hyrbricka handled in both systems independently (fartOLa toast at finish-readout
   - MIP `hired="true"` triggers MeOS reminder). Yjs and QR self-signup deferred
     to Phase 2.1. CONTEXT.md at `.planning/phases/02-4-klubbs-mvp/02-CONTEXT.md`.
     ROADMAP.md updated with the split. MeOS protocol research at
@@ -299,7 +299,7 @@ Resume File: .planning/phases/02-4-klubbs-mvp/02-CONTEXT.md
   stale task at the multiplexer queue head, so subsequent commands can route
   matching replies (`598d583`). WR-002 repair-station-sn.mjs verification
   now skips the addr_hi/addr_lo/offset_echo trio (three bytes, not two) before
-  reading the repaired byte (`f5df121`). WR-003 fartol-readout installs a
+  reading the repaired byte (`f5df121`). WR-003 fartola-readout installs a
   `station.on('error')` handler that emits a structured NDJSON `frame_error`
   event with reason `card_read_failed` and exits non-zero rather than
   crashing on an unhandled EventEmitter error (`f205cb6`). IN-001 (root
@@ -312,7 +312,7 @@ Resume File: .planning/phases/02-4-klubbs-mvp/02-CONTEXT.md
 - 2026-05-13 — Phase 0 COMPLETE. Plan 00-06 wrap-up: bench session 2026-05-13
   against Jonas's BSM7/8-USB on /dev/ttyUSB0 (serial 593656) round-tripped
   all 4 card types (SI5/248215, SI9/1428824, SI10/7501853, SIAC/8535005 — the
-  SIAC with a 17-punch real-run trace) through fartol-readout. Four directional-
+  SIAC with a 17-punch real-run trace) through fartola-readout. Four directional-
   transcript + NDJSON fixture pairs committed under packages/sportident/tests/
   fixtures/jonas/. New src/integration/benchReplay.test.ts replays the bench
   fixtures in CI and asserts wire-event byte-equality (cumulative 92 tests pass /
@@ -336,7 +336,7 @@ Resume File: .planning/phases/02-4-klubbs-mvp/02-CONTEXT.md
 - 2026-05-12 — Plan 00-05 executed: Wave 4 NDJSON output + bin entry landed.
   NdjsonEmitter (5 event types: connection_changed, card_inserted, card_read,
   card_removed, frame_error) with stable v1 schema; emitDiagnostic for stderr
-  human diagnostics; bin/fartol-readout (#!/usr/bin/env node) wires all 5
+  human diagnostics; bin/fartola-readout (#!/usr/bin/env node) wires all 5
   SiMainStation events to NdjsonEmitter on stdout + emitDiagnostic on stderr.
   Typed FrameError flows from parseAll(onFrameError) straight through to
   NdjsonEmitter.frame_error (codex review #1 closed end-to-end through Plans

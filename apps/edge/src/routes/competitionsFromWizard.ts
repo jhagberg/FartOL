@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // POST /api/competitions/from-wizard — atomic competition create + XML
 // ingest (C-H3 LOCKED).
@@ -132,8 +132,8 @@ export default async function registerCompetitionsFromWizard(app: FastifyInstanc
     let kind: 'CourseData' | 'EntryList' = parsedXml.kind;
 
     try {
-      app.fartolDb.sqlite.transaction(() => {
-        app.fartolDb.db
+      app.fartolaDb.sqlite.transaction(() => {
+        app.fartolaDb.db
           .insert(competitions)
           .values({
             id: competitionId,
@@ -146,12 +146,12 @@ export default async function registerCompetitionsFromWizard(app: FastifyInstanc
           .run();
         if (parsedXml.kind === 'CourseData') {
           kind = 'CourseData';
-          ingestResult = ingestCourseData(app.fartolDb, competitionId, parsedXml.data, {
+          ingestResult = ingestCourseData(app.fartolaDb, competitionId, parsedXml.data, {
             outerTransaction: true,
           });
         } else {
           kind = 'EntryList';
-          ingestResult = ingestEntryList(app.fartolDb, competitionId, parsedXml.data, now, {
+          ingestResult = ingestEntryList(app.fartolaDb, competitionId, parsedXml.data, now, {
             outerTransaction: true,
           });
         }

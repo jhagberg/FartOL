@@ -252,7 +252,7 @@ but other listeners may not be.
 suppress broadcast when it's 0:
 
 ```ts
-const result = app.fartolDb.db.update(hiredCards).set(...).where(
+const result = app.fartolaDb.db.update(hiredCards).set(...).where(
   and(eq(...), eq(...), isNull(hiredCards.returnedAtMs))   // ← extra guard
 ).run();
 if (result.changes === 0) {  // someone else won the race

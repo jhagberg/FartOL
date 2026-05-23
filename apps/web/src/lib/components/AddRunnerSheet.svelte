@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   AddRunnerSheet — manual "Lägg till löpare" surface mounted from
   RunnersListView. Distinct from WalkupModal (which is the card-driven,
@@ -36,7 +36,7 @@
     CompetitorDTO,
     EventorNameSuggestion,
     EventorClubSuggestion,
-  } from '@fartol/shared-types';
+  } from '@fartola/shared-types';
   import Modal from '$lib/ui/Modal.svelte';
   import Button from '$lib/ui/Button.svelte';
   import Field from '$lib/ui/Field.svelte';

@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Read-only Eventor lookup module (Plan 02-02 task 1).
 //

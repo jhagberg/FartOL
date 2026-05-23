@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Retroactive card-to-competitor binding. After EntryList import (plan 05),
 // the newly-created competitor rows carry cardNumber values that may

@@ -1,7 +1,7 @@
 {
-  "name": "@fartol/web",
+  "name": "@fartola/web",
   "version": "0.0.0",
-  "description": "FartOL web client — SvelteKit PWA (adapter-static SPA) served by the edge bridge",
+  "description": "fartOLa web client — SvelteKit PWA (adapter-static SPA) served by the edge bridge",
   "license": "AGPL-3.0-or-later",
   "private": true,
   "type": "module",
@@ -18,7 +18,7 @@
     "lint": "eslint src"
   },
   "dependencies": {
-    "@fartol/shared-types": "workspace:*",
+    "@fartola/shared-types": "workspace:*",
     "i18next": "^26.2.0"
   },
   "devDependencies": {

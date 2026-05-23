@@ -1,9 +1,9 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Walk-up modal Eventor autocomplete + Hyrbricka e2e (Plan 02-02 task 5).
 //
 //   1. Seed competition + import CourseData (classes + courses).
-//   2. Seed the Eventor cache via /api/__dev/eventor-seed (FARTOL_DEV-
+//   2. Seed the Eventor cache via /api/__dev/eventor-seed (FARTOLA_DEV-
 //      gated) so the runner-DB lookups have deterministic data.
 //   3. Tests:
 //        a. Bricka pre-fill: open ?walkup=8535005, modal renders with

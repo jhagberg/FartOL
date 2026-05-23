@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   ReceiptPaper — 300px-wide 80mm thermal-paper emulation. Holds whichever
   template the parent selects and wraps it in the diagonal-stripe scrim +

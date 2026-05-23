@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   /competition/:id/hyrbrickor — mounts the ActiveHyrbrickorView screen.
   Thin shell: reads `id` from $page.params and forwards it to the view,

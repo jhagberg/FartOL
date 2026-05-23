@@ -1,5 +1,5 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   Live results view (/competition/[id]/results). Mounts the per-class tabs
   + the results table, subscribes to results:<competitionId> for live
@@ -29,8 +29,8 @@
   import { onMount, onDestroy } from 'svelte';
   import { t } from '$lib/i18n/index.ts';
   import { WsClient } from '$lib/ws/client.ts';
-  import { resultsChannel, type WsEnvelope } from '@fartol/shared-types';
-  import type { CompetitionDTO, ClassDTO, CourseDTO } from '@fartol/shared-types';
+  import { resultsChannel, type WsEnvelope } from '@fartola/shared-types';
+  import type { CompetitionDTO, ClassDTO, CourseDTO } from '@fartola/shared-types';
   import { getCompetition, getResults } from '$lib/api/client.ts';
   import ClassTabs from '$lib/components/ClassTabs.svelte';
   import ResultsTable from '$lib/components/ResultsTable.svelte';

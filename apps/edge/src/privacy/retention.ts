@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // scheduleDailyRetention — cron-in-process daily PII scrub. Runs at the
 // next local midnight + every 24h thereafter; updates competitor rows

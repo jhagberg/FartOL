@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // SiTargetMultiplexer regression tests focused on send-queue lifecycle.
 // Specifically WR-001 (codex review .planning/phases/00-hardware-proof/00-REVIEW.md):

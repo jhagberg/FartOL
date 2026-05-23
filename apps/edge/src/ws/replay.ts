@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // SQLite-backed missed-event replay for the WS hello handshake. The client
 // sends `{ type: 'hello', channels, last_seen_seq }` on (re)connect; the

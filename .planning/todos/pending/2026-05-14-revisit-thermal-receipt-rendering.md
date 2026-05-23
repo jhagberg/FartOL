@@ -13,7 +13,7 @@ files:
   - apps/edge/src/print/templates/minimal.ts
   - apps/edge/src/print/templates/kids.ts
   - apps/edge/src/print/kids-svg-to-bitmap.ts
-  - apps/edge/src/bin/fartol.ts
+  - apps/edge/src/bin/fartola.ts
   - .planning/phases/01-single-laptop-training-mvp/01-RESEARCH.md
 ---
 
@@ -44,12 +44,12 @@ What worked:
   made the printer physically print.
 - A plain CUPS smoke test printed after:
   `lpadmin -p TSP143--STR_T-001- -E -v 'usb://Star/TSP143%20(STR_T-001)?serial=2550617061100529' -P /usr/share/cups/model/star/tsp143.ppd -o PageSize=X72MMY200MM`.
-- A FartOL-rendered classic receipt submitted through `createCupsPrinterSink()` printed physically.
+- A fartOLa-rendered classic receipt submitted through `createCupsPrinterSink()` printed physically.
   CUPS accepted the job and later showed completed job `TSP143--STR_T-001--68`.
 - The implemented sink renders the existing receipt templates to 32-column text and submits:
-  `lp -d TSP143--STR_T-001- -t FartOL-receipt -`.
+  `lp -d TSP143--STR_T-001- -t fartOLa-receipt -`.
 - Current verification after the CUPS sink landed:
-  `pnpm --filter @fartol/edge typecheck` passed, and `pnpm --filter @fartol/edge test`
+  `pnpm --filter @fartola/edge typecheck` passed, and `pnpm --filter @fartola/edge test`
   passed with 242 tests / 0 failures when run with localhost access for the WebSocket tests.
 
 What did not work:
@@ -69,7 +69,7 @@ Operational conclusion:
 
 - Do not assume we can skip CUPS for the TSP143IIIU unless a new direct-driver experiment proves
   physical paper output on this exact model.
-- Keep the current default as CUPS for Phase 1 hardware. Use `FARTOL_PRINTER=direct` only as an
+- Keep the current default as CUPS for Phase 1 hardware. Use `FARTOLA_PRINTER=direct` only as an
   explicit experimental/compatibility mode for devices that actually accept the raw stream.
 - Any future direct-path attempt must verify physical paper, cut/feed behavior, Swedish
   characters, and the Kids bitmap template. `isPrinterConnected()` plus a resolved print promise is
@@ -101,7 +101,7 @@ Options to investigate (in rough order of effort):
 
 4. **Try receiptline** (rejected initially in RESEARCH §"Alternatives considered" as adding template indirection — worth a second look if direct ESC/POS keeps looking ugly).
 
-After re-attempt, decide: keep CUPS as the default sink (currently set in `fartol.ts`'s `resolvePrinterConfig` — falls back to CUPS unless `FARTOL_PRINTER=direct|stdout`), or revert to direct ESC/POS only if it prints physical paper on the real TSP143IIIU.
+After re-attempt, decide: keep CUPS as the default sink (currently set in `fartola.ts`'s `resolvePrinterConfig` — falls back to CUPS unless `FARTOLA_PRINTER=direct|stdout`), or revert to direct ESC/POS only if it prints physical paper on the real TSP143IIIU.
 
 ## Research already mapped
 
@@ -116,7 +116,7 @@ From `.planning/phases/01-single-laptop-training-mvp/01-RESEARCH.md`:
 
 - Pick one of the four approaches and verify on the real TSP143.
 - Receipt looks acceptable to Jonas (legible, properly cut, å/ä/ö correct, Skogis bitmap visible on Kids template).
-- Default printer sink documented in `apps/edge/src/bin/fartol.ts` matches the chosen approach.
+- Default printer sink documented in `apps/edge/src/bin/fartola.ts` matches the chosen approach.
 - If CUPS is kept, the udev rule + install steps land in plan 01-18 packaging notes.
 - A resolved `node-thermal-printer` direct-path promise is not accepted as proof unless Jonas also
   sees paper output.

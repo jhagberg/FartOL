@@ -1,5 +1,5 @@
 {
-  "app.title": "FartOL",
+  "app.title": "fartOLa",
   "app.subtitle": "Tävlingsavläsning",
   "nav.competitions": "Tävlingar",
   "nav.readout": "Avläsning",
@@ -413,8 +413,8 @@
   "settings.integrations.clear": "Rensa",
   "settings.integrations.cleared": "Borttagen",
   "settings.integrations.saveError": "Kunde inte spara — försök igen",
-  "settings.integrations.sourceEnvBanner": "Värdet kommer från ~/.env.fartol — ändringar via UI skrivs över vid omstart om env-värdet kvarstår",
-  "settings.integrations.sourceEnvBadge": "från ~/.env.fartol",
+  "settings.integrations.sourceEnvBanner": "Värdet kommer från ~/.env.fartola — ändringar via UI skrivs över vid omstart om env-värdet kvarstår",
+  "settings.integrations.sourceEnvBadge": "från ~/.env.fartola",
   "settings.integrations.sourceConfigBadge": "sparad i UI",
   "settings.integrations.placeholder": "Klistra in nyckel här…",
   "settings.integrations.key.EVENTOR_API_KEY": "Eventor API-nyckel",

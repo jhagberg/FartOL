@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // NDJSON event emitter for Plan 00-05 (Phase 0 Wave 4 output layer). Implements
 // the stable v1 schema from .planning/phases/00-hardware-proof/00-RESEARCH.md

@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Tests for `replayFixture` — Plan 06 Task 1 (codex review #6: deterministic
 // playback via directional transcript).
@@ -44,7 +44,7 @@ after(() => {
 });
 
 const newBasename = (label: string): string => {
-  const b = path.join(TMP, `fartol-replay-test-${label}-${NONCE}`);
+  const b = path.join(TMP, `fartola-replay-test-${label}-${NONCE}`);
   cleanup.push(b);
   return b;
 };
@@ -162,7 +162,7 @@ const captureFixture = async (basename: string): Promise<void> => {
 
   const station = new SiMainStation(fake);
 
-  // Connect sink to station events the same way bin/fartol-readout does. The
+  // Connect sink to station events the same way bin/fartola-readout does. The
   // sink IS an NdjsonEmitter so we wire to its event methods.
   station.on('connectionChanged', (state: 'opening' | 'open' | 'closed' | 'error') =>
     sink.connection_changed({ state })

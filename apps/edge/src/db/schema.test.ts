@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test coverage for the Phase 1 Drizzle schema (plan 02). Asserts:
 // - All 9 expected tables exist after openDatabase + migrate.

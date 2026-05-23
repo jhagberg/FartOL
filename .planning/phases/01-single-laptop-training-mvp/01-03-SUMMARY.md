@@ -20,19 +20,19 @@ tags:
 requires:
   - phase: 01-single-laptop-training-mvp
     plan: 01
-    provides: '@fartol/edge Fastify factory + bin + /api/health; @fartol/web SvelteKit SPA; @fartol/shared-types barrel; playwright.config.ts'
+    provides: '@fartola/edge Fastify factory + bin + /api/health; @fartola/web SvelteKit SPA; @fartola/shared-types barrel; playwright.config.ts'
   - phase: 01-single-laptop-training-mvp
     plan: 02
     provides: 'openDatabase / ensureNodeId / nextLocalSeq; Drizzle schema (events + competitions + 7 mutable tables); append-only triggers'
 provides:
   - 'apps/edge/src/ws/{channels,replay,index}.ts — @fastify/websocket plugin, /ws route, wsBroadcast decorator, per-channel-kind hello-replay dispatch (C-M1)'
   - 'apps/edge/src/print/{sink,stdout-sink}.ts — PrinterSink interface + walking-skeleton stdout sink (PATTERNS S-2 sink injection)'
-  - 'apps/edge/src/routes/dev.ts — POST /api/__dev/simulate-read endpoint gated on FARTOL_DEV=1'
-  - 'apps/edge/src/bin/fartol.ts — full lifecycle (openDatabase + ensureNodeId + buildServer + listen + SIGINT close)'
+  - 'apps/edge/src/routes/dev.ts — POST /api/__dev/simulate-read endpoint gated on FARTOLA_DEV=1'
+  - 'apps/edge/src/bin/fartola.ts — full lifecycle (openDatabase + ensureNodeId + buildServer + listen + SIGINT close)'
   - 'apps/web/src/lib/ws/client.ts — WsClient with LOCKED reconnect-backoff schedule + hello-replay handshake'
   - 'apps/web/src/routes/+page.svelte — walking-skeleton home page (Simulate read button + live event list)'
   - 'tests/e2e/walking-skeleton.spec.ts — Playwright e2e that drives simulate-read end-to-end'
-  - 'playwright.config.ts — webServer entries pass FARTOL_DEV=1 / FARTOL_NODE_ID / FARTOL_DB_PATH'
+  - 'playwright.config.ts — webServer entries pass FARTOLA_DEV=1 / FARTOLA_NODE_ID / FARTOLA_DB_PATH'
 affects:
   [
     01-04,
@@ -65,7 +65,7 @@ tech-stack:
     - 'T-EVENT-REPLAY fail-safe: malformed last_seen_seq (negative, non-integer, NaN) skips replay entirely. The client can retry with a valid seq.'
     - 'T-WS-FAN-OUT origin allow-list: verifyClient rejects every Origin header that is not http://{localhost,127.0.0.1,[::1]}:5173 (or :4173 SvelteKit preview). No-Origin requests (CLI / node:test) are allowed.'
     - 'T-DOS-WS maxPayload: 256 KiB on @fastify/websocket.'
-    - 'T-DEV-ENDPOINT env gate: /api/__dev/simulate-read only registers when FARTOL_DEV=1. In production builds the path returns 404 via the global not-found handler.'
+    - 'T-DEV-ENDPOINT env gate: /api/__dev/simulate-read only registers when FARTOLA_DEV=1. In production builds the path returns 404 via the global not-found handler.'
     - 'WsClient reconnect-backoff LOCKED at [1s,2s,4s,8s,16s,30s] per UI-SPEC §"Auto-reconnect"; hello-replay carries last_seen_seq across reconnects.'
 
 key-files:
@@ -77,7 +77,7 @@ key-files:
     - 'apps/edge/src/ws/replay.test.ts (137 lines) — 9 pure unit tests over replayChannel + parseChannel + maxLocalSeq.'
     - 'apps/edge/src/print/sink.ts (40 lines) — PrinterSink interface + PrintEnvelope + ReceiptTemplate union (six template names locked).'
     - 'apps/edge/src/print/stdout-sink.ts (45 lines) — createStdoutPrinterSink({ out? }) — JSON line writer (default process.stdout).'
-    - 'apps/edge/src/routes/dev.ts (178 lines) — POST /api/__dev/simulate-read gated on FARTOL_DEV=1; transactional insert + wsBroadcast + printerSink.print().'
+    - 'apps/edge/src/routes/dev.ts (178 lines) — POST /api/__dev/simulate-read gated on FARTOLA_DEV=1; transactional insert + wsBroadcast + printerSink.print().'
     - 'apps/edge/src/routes/dev.test.ts (180 lines) — 5 happy-path + 1 T-DEV-ENDPOINT gate test cases.'
     - 'apps/web/src/lib/ws/client.ts (138 lines) — WsClient with LOCKED reconnect backoff; exported RECONNECT_BACKOFF_MS const.'
     - 'apps/web/src/lib/ws/client.test.ts (130 lines) — 4 vitest cases against an in-test FakeWebSocket (PATTERNS S-2).'
@@ -85,11 +85,11 @@ key-files:
     - 'tests/e2e/fixtures/walking-skeleton-card.ndjson — SI10 Jonas-001 card_read line (1 NDJSON record, frozen Phase 0 wire shape).'
   modified:
     - 'apps/edge/package.json — +@fastify/websocket +fastify-plugin (dependencies); +ws +@types/ws (devDependencies).'
-    - 'apps/edge/src/server.ts — accepts opts.dbHandle + opts.nodeId + opts.printerSink; decorates app.fartolDb / fartolNodeId / printerSink; registers wsPlugin + devRoutes when dbHandle is provided.'
-    - 'apps/edge/src/bin/fartol.ts — adds openDatabase + ensureNodeId; SIGINT closes the db handle alongside the app; FARTOL_DB_PATH + FARTOL_NODE_ID env vars supported.'
+    - 'apps/edge/src/server.ts — accepts opts.dbHandle + opts.nodeId + opts.printerSink; decorates app.fartolaDb / fartolaNodeId / printerSink; registers wsPlugin + devRoutes when dbHandle is provided.'
+    - 'apps/edge/src/bin/fartola.ts — adds openDatabase + ensureNodeId; SIGINT closes the db handle alongside the app; FARTOLA_DB_PATH + FARTOLA_NODE_ID env vars supported.'
     - 'apps/web/src/routes/+page.svelte — Simulate read button + live event list (max 12); WsClient instance wired to readout:walking-skeleton.'
-    - 'playwright.config.ts — webServer entry for @fartol/edge exports FARTOL_DEV=1 + FARTOL_NODE_ID=test-node-1 + FARTOL_DB_PATH=tests/e2e/.tmp.db.'
-    - '.gitignore — tests/e2e/.tmp.db* + fartol.db* runtime files excluded.'
+    - 'playwright.config.ts — webServer entry for @fartola/edge exports FARTOLA_DEV=1 + FARTOLA_NODE_ID=test-node-1 + FARTOLA_DB_PATH=tests/e2e/.tmp.db.'
+    - '.gitignore — tests/e2e/.tmp.db* + fartola.db* runtime files excluded.'
     - 'pnpm-lock.yaml — regenerated for the new deps.'
 
 key-decisions:
@@ -125,7 +125,7 @@ completed: 2026-05-14
 
 # Phase 1 Plan 03: Walking skeleton (simulate-read → DB → WS → UI → print sink) Summary
 
-**Closes Wave 0. The thinnest end-to-end vertical works: `FARTOL_DEV=1 pnpm dev`, open `localhost:5173`, click Simulate read, see a card_read event render via WebSocket, and watch a Playwright e2e drive the same path headlessly.**
+**Closes Wave 0. The thinnest end-to-end vertical works: `FARTOLA_DEV=1 pnpm dev`, open `localhost:5173`, click Simulate read, see a card_read event render via WebSocket, and watch a Playwright e2e drive the same path headlessly.**
 
 ## Performance
 
@@ -140,9 +140,9 @@ completed: 2026-05-14
 
 - **End-to-end vertical works.** Playwright (chromium 148.0.7778.96) drives the SvelteKit page, clicks Simulate read, the bridge inserts a card_read event, broadcasts via WS, and the browser renders `card_number=7501853` in under 1.4s. `/api/health` returns 200 throughout.
 - **C-M1 regression gates land in two places.** `ws/index.test.ts` tests 5 + 6 prove (a) `results:` hello emits ZERO `replay` envelopes (against 3 events in the DB) and (b) `readout:` hello emits exactly 3 ordered `replay` envelopes for the same DB state. Plan 08 will amend test 5 to also assert one `results_full` frame; the zero-`replay` contract remains.
-- **Threat-register coverage:** T-EVENT-REPLAY (replay.test.ts tests 3 + 4 + ws/index.test.ts test 3), T-WS-FAN-OUT (ws/index.test.ts test 4 — `Origin: http://evil.com` rejected at upgrade), T-DEV-ENDPOINT (dev.test.ts tests 2 + 5 — route absent without FARTOL_DEV=1), T-DOS-WS (maxPayload 256 KiB set in plugin register), T-RESULTS-CHANNEL-LEAK / C-M1 (ws/index.test.ts test 5 — the regression gate).
+- **Threat-register coverage:** T-EVENT-REPLAY (replay.test.ts tests 3 + 4 + ws/index.test.ts test 3), T-WS-FAN-OUT (ws/index.test.ts test 4 — `Origin: http://evil.com` rejected at upgrade), T-DEV-ENDPOINT (dev.test.ts tests 2 + 5 — route absent without FARTOLA_DEV=1), T-DOS-WS (maxPayload 256 KiB set in plugin register), T-RESULTS-CHANNEL-LEAK / C-M1 (ws/index.test.ts test 5 — the regression gate).
 - **Sink-injection discipline holds end-to-end.** dev.test.ts uses a recording PrinterSink to assert printerSink.print() is invoked per simulate-read — no monkey-patching of process.stdout, no vi.mock. The walking-skeleton page in dev mode uses the default stdout-sink.
-- **Bin lifecycle complete.** `apps/edge/src/bin/fartol.ts` owns openDatabase + ensureNodeId + buildServer + listen + SIGINT close. FARTOL_DB_PATH + FARTOL_NODE_ID env vars are honoured so Playwright can isolate the run.
+- **Bin lifecycle complete.** `apps/edge/src/bin/fartola.ts` owns openDatabase + ensureNodeId + buildServer + listen + SIGINT close. FARTOLA_DB_PATH + FARTOLA_NODE_ID env vars are honoured so Playwright can isolate the run.
 - **Test counts at end of Wave 0:**
   - sportident: 108 / 108 pass (frozen Phase 0 suite)
   - shared-types: 3 / 3 pass
@@ -176,7 +176,7 @@ Each task committed atomically:
 
 ### Created — apps/edge/src/routes/
 
-- `dev.ts` — POST /api/\_\_dev/simulate-read endpoint, gated on FARTOL_DEV=1.
+- `dev.ts` — POST /api/\_\_dev/simulate-read endpoint, gated on FARTOLA_DEV=1.
 - `dev.test.ts` — 5 happy + 1 gate test cases.
 
 ### Created — apps/web/src/lib/ws/
@@ -193,10 +193,10 @@ Each task committed atomically:
 
 - `apps/edge/package.json` — +@fastify/websocket +fastify-plugin (dependencies); +ws +@types/ws (devDependencies).
 - `apps/edge/src/server.ts` — accepts opts.dbHandle / opts.nodeId / opts.printerSink; registers wsPlugin + devRoutes when dbHandle present.
-- `apps/edge/src/bin/fartol.ts` — full openDatabase + ensureNodeId + buildServer + SIGINT lifecycle.
+- `apps/edge/src/bin/fartola.ts` — full openDatabase + ensureNodeId + buildServer + SIGINT lifecycle.
 - `apps/web/src/routes/+page.svelte` — Simulate read button + live event list.
-- `playwright.config.ts` — webServer env vars for FARTOL_DEV / FARTOL_NODE_ID / FARTOL_DB_PATH.
-- `.gitignore` — tests/e2e/.tmp.db* + fartol.db* excluded.
+- `playwright.config.ts` — webServer env vars for FARTOLA_DEV / FARTOLA_NODE_ID / FARTOLA_DB_PATH.
+- `.gitignore` — tests/e2e/.tmp.db* + fartola.db* excluded.
 - `pnpm-lock.yaml` — regenerated.
 
 ## Decisions Made
@@ -206,7 +206,7 @@ Each task committed atomically:
 3. **WsClient property assignment (not TS parameter-property shorthand).** The repo tsconfig sets `erasableSyntaxOnly` — TS parameter properties are forbidden because they emit runtime code. WsClient + FakeWebSocket both declare fields then assign in the constructor body.
 4. **Walking-skeleton dev endpoint auto-creates the competition row.** The events table FK on competitions.id is enforced (`foreign_keys = ON`); without an auto-seed, simulate-read returns 500. Plan 06 (SI bridge) + plan 11 (three-click wizard) replace this with a real "competition must exist" check.
 5. **Playwright did NOT require `--with-deps` on this Linux laptop.** A clean `playwright install chromium` was sufficient; chromium 148.0.7778.96 + headless-shell installed cleanly.
-6. **webServer (not a separate spawn helper) was used.** The Playwright config's `webServer` array spawns both `@fartol/edge dev` (with FARTOL_DEV=1) and `@fartol/web dev` in parallel and waits for the ports to open. No custom spawn helper was needed — the dev scripts already work standalone.
+6. **webServer (not a separate spawn helper) was used.** The Playwright config's `webServer` array spawns both `@fartola/edge dev` (with FARTOLA_DEV=1) and `@fartola/web dev` in parallel and waits for the ports to open. No custom spawn helper was needed — the dev scripts already work standalone.
 7. **stdout-sink line shape LOCKED.** `{ "kind": "print", "schema_version": 1, "template": "...", "competition_id": "...", "card_number": <n>, "data": {...} }`. The Playwright e2e does NOT assert on this line (see decision 8); the dev.test.ts recording-sink does.
 8. **e2e does not grep stdout for the print line.** Playwright reroutes webServer stdout through its own logger; grep-assertions on raw stdout are brittle. The dev.test.ts recording-sink already asserts printerSink.print() is invoked, so the wire is end-to-end tested across two layers.
 9. **Cumulative test count green at end of Wave 0: 164 unit/integration + 1 e2e walking-skeleton = 165 PASS / 0 FAIL / 1 SKIPPED (the plan-01 placeholder spec, kept for now since it is harmless).**
@@ -240,7 +240,7 @@ Each task committed atomically:
 - **Issue:** Root tsconfig sets `erasableSyntaxOnly: true`. The WsClient constructor used `constructor(private url: string, private onMessage: ...)` — TS parameter properties emit runtime assignments and are disallowed under `erasableSyntaxOnly`.
 - **Fix:** Declare the fields explicitly and assign in the constructor body. Same fix applied to FakeWebSocket in client.test.ts.
 - **Files modified:** apps/web/src/lib/ws/client.ts, apps/web/src/lib/ws/client.test.ts
-- **Verification:** `pnpm --filter @fartol/web typecheck` clean; tests 1-4 in client.test.ts pass.
+- **Verification:** `pnpm --filter @fartola/web typecheck` clean; tests 1-4 in client.test.ts pass.
 - **Committed in:** `ec3145e` (Task 3) — the fix landed before Task 3 was committed.
 
 **4. [Rule 3 — Blocking] Prettier + commitlint formatting churn**
@@ -273,7 +273,7 @@ pnpm exec playwright install chromium
 
 ## Next Phase Readiness
 
-- **Plan 04 (REST CRUD)**: `buildServer()` opts + `app.fartolDb` + `app.fartolNodeId` + `app.printerSink` decorators are the stable contract. Route handlers can `import { competitions, classes, ... }` from `db/schema.ts` and use `app.fartolDb.db.insert(...)` exactly as `routes/dev.ts` does.
+- **Plan 04 (REST CRUD)**: `buildServer()` opts + `app.fartolaDb` + `app.fartolaNodeId` + `app.printerSink` decorators are the stable contract. Route handlers can `import { competitions, classes, ... }` from `db/schema.ts` and use `app.fartolaDb.db.insert(...)` exactly as `routes/dev.ts` does.
 - **Plan 06 (SI bridge)**: the `apps/edge/src/si/bridge.ts` greenfield is unblocked — wire SiMainStation events to an `insertEvent` helper that mirrors `routes/dev.ts`'s transactional pattern, then call `app.wsBroadcast(readoutChannel(competitionId), { type: 'card_read', payload, seq })`. The full CardReadEvent shape replaces the plan-03 simplified payload (closes C-H2 at the bridge layer).
 - **Plan 08 (results projection + results_full)**: amends `ws/index.test.ts` test 5 to additionally assert one `results_full` frame on a `results:` hello; the zero-`replay` contract (C-M1) is the regression gate that stays. The handleHello stub branch in `ws/index.ts` already has a debug log comment pointing at plan 08.
 - **Plan 11 (full UI + AppShell)**: replaces `apps/web/src/routes/+page.svelte` wholesale; the WsClient + `readout:<competitionId>` channel naming are the stable contract. UI-SPEC backoff is exported as `RECONNECT_BACKOFF_MS` so the status badge in plan 11 can reuse the constant.
@@ -303,7 +303,7 @@ None — all new surface in this plan was covered by the threat model up-front (
 - apps/edge/src/print/stdout-sink.ts: FOUND
 - apps/edge/src/routes/dev.ts: FOUND
 - apps/edge/src/routes/dev.test.ts: FOUND
-- apps/edge/src/bin/fartol.ts: FOUND (modified)
+- apps/edge/src/bin/fartola.ts: FOUND (modified)
 - apps/web/src/lib/ws/client.ts: FOUND
 - apps/web/src/lib/ws/client.test.ts: FOUND
 - apps/web/src/routes/+page.svelte: FOUND (modified)
@@ -321,7 +321,7 @@ None — all new surface in this plan was covered by the threat model up-front (
 
 - `pnpm -r --if-present run typecheck`: clean across all 4 workspace projects.
 - `pnpm -r --if-present run test`: sportident 108 + shared-types 3 + edge 48 + web 5 = 164 tests, 0 fail.
-- `pnpm --filter @fartol/edge build` + `pnpm --filter @fartol/web build`: both produce dist artefacts.
+- `pnpm --filter @fartola/edge build` + `pnpm --filter @fartola/web build`: both produce dist artefacts.
 - `pnpm exec playwright test tests/e2e/walking-skeleton.spec.ts`: 1 PASS in 1.4s on chromium 148.0.7778.96.
 
 ---

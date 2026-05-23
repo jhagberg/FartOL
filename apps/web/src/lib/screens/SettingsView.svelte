@@ -1,10 +1,10 @@
 <!--
-  Authored for fartol. Not ported from upstream.
+  Authored for fartola. Not ported from upstream.
 
   SettingsView (Phase 2.0 Plan 02-07 Task 3).
 
   Operator-facing surface for managing integration API keys without
-  touching ~/.env.fartol. Windows operators (Phase 2.1 target user
+  touching ~/.env.fartola. Windows operators (Phase 2.1 target user
   base) get a UI alternative to dotfiles; Linux operators keep their
   existing env-export workflow because boot precedence
   (env > config > absent) is preserved by apps/edge/src/config/secrets.ts.

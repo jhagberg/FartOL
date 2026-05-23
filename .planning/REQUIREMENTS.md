@@ -193,9 +193,9 @@ Requires application for API key.
 ## External integration
 
 **REQ-EXT-MEOS-001 (v1)** — MeOS coexistence: serve MIP `<entry>`
-polls so a parallel MeOS install receives FartOL walk-up
+polls so a parallel MeOS install receives fartOLa walk-up
 registrations; accept MOP `<MOPComplete>` / `<MOPDiff>` POSTs so
-MeOS-side state can be reconciled into FartOL on bridge restart.
+MeOS-side state can be reconciled into fartOLa on bridge restart.
 Closed LAN; no auth (revisit for sanctioned events in Phase 2.1).
 See `.planning/research/meos-protocols.md` for wire formats and
 `.planning/phases/02-4-klubbs-mvp/02-CONTEXT.md` for the 14 round-2
@@ -205,7 +205,7 @@ implementation decisions (D-MIP-1..4, D-MOP-1..4, D-LIM-1).
 
 ## Operations and reliability
 
-**REQ-OPS-001 (v1)** — Single-binary install: `npm install -g fartol`
+**REQ-OPS-001 (v1)** — Single-binary install: `npm install -g fartola`
 runs the edge bridge. No system dependencies beyond Node 22 LTS.
 
 **REQ-OPS-002 (v1)** — Bridge process survives restart with zero

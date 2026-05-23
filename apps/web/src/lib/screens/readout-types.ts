@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // Wire-side types + formatters for the readout view. Mirrors the
 // `ReadoutResponse` shape from apps/edge/src/routes/readout.ts (plan 09)

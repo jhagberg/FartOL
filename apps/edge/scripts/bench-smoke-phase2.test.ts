@@ -1,4 +1,4 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
 // node:test wrapper for `apps/edge/scripts/bench-smoke-phase2.sh`.
 //
@@ -66,17 +66,17 @@ describe('bench-smoke-phase2.sh', () => {
     assert.ok(ownerExec, 'script not executable (chmod +x missing)');
   });
 
-  test('test 2 (parameterization): script honors FARTOL_SKIP_BOOT short-circuit', async () => {
-    // FARTOL_SKIP_BOOT=1 tells the script to assume an externally-running
+  test('test 2 (parameterization): script honors FARTOLA_SKIP_BOOT short-circuit', async () => {
+    // FARTOLA_SKIP_BOOT=1 tells the script to assume an externally-running
     // bridge. With no bridge actually present, the script should exit
     // non-zero — either at preflight (missing tool), the readiness probe
     // timeout, or a downstream curl failure. Any of those is a clear
     // operator-actionable error.
     const r = await runScript({
-      FARTOL_PORT: '13599',
-      FARTOL_HOST: '127.0.0.1',
-      FARTOL_DB: '/tmp/fartol-smoke-test-noexist.db',
-      FARTOL_SKIP_BOOT: '1',
+      FARTOLA_PORT: '13599',
+      FARTOLA_HOST: '127.0.0.1',
+      FARTOLA_DB: '/tmp/fartola-smoke-test-noexist.db',
+      FARTOLA_SKIP_BOOT: '1',
     });
     assert.notEqual(r.code, 0, 'expected non-zero exit when no bridge is reachable');
     // Any of: preflight tool missing, readiness probe timeout, downstream
@@ -90,9 +90,9 @@ describe('bench-smoke-phase2.sh', () => {
   });
 
   // Test 3 (happy path against a booted bridge) is intentionally
-  // SKIPPED — the script boots the bridge itself when FARTOL_SKIP_BOOT
+  // SKIPPED — the script boots the bridge itself when FARTOLA_SKIP_BOOT
   // is unset, but the test environment doesn't have the production
-  // `fartol` binary on PATH. The script's authoritative pass criterion
+  // `fartola` binary on PATH. The script's authoritative pass criterion
   // is the Wednesday-morning bench run (Task 4 checkpoint).
   test.skip('test 3 (happy path): script boots bridge + 6/6 smoke pass', () => {
     // Skipped per Plan 02-06 task 3 — see file header.

@@ -144,7 +144,7 @@ completed: 2026-05-15
   fixture from the seeded "StorTuna Tisdag 2026-05-19" scenario
   (Anna OK 12:00 place 1, Bo MP 13:20, Cia DNF). Built by running
   the builder with `now: () => new Date('2026-05-19T18:30:00.000Z')`
-  and `creator: 'FartOL test v0.0'`; the test re-runs that exact
+  and `creator: 'fartOLa test v0.0'`; the test re-runs that exact
   invocation and asserts byte-equality.
 - `apps/edge/src/routes/export.ts` — preview + download endpoints with
   C-L1 default-status (`Final → Complete`), W-5 empty-competition
@@ -166,7 +166,7 @@ completed: 2026-05-15
   existing readout/results page shells).
 - `tests/e2e/export.spec.ts` — two specs: "preview validation green +
   download enabled" + "download streams an IOF XML 3.0 ResultList".
-- `playwright.config.ts` — set `FARTOL_PRINTER=stdout` on the webServer
+- `playwright.config.ts` — set `FARTOLA_PRINTER=stdout` on the webServer
   env (Rule 3 blocker — see Deviations).
 - `.planning/phases/01-single-laptop-training-mvp/deferred-items.md` —
   parallel e2e flake doc (Rule SCOPE BOUNDARY — not in plan 16's scope).
@@ -199,18 +199,18 @@ sequence-order fix).
   `valid: true`; the four prior XSD errors disappear.
 - **Committed in:** `bc0506c` (task 1 commit).
 
-**2. [Rule 3 — Blocking] Playwright FARTOL_PRINTER=stdout for dev simulate-read**
+**2. [Rule 3 — Blocking] Playwright FARTOLA_PRINTER=stdout for dev simulate-read**
 
 - **Found during:** Task 2 (e2e first run)
 - **Issue:** The default production printer sink (CUPS, set in
-  `apps/edge/src/bin/fartol.ts:resolvePrinterConfig`) renders the
+  `apps/edge/src/bin/fartola.ts:resolvePrinterConfig`) renders the
   `classic` ESC/POS template, which dereferences
   `data.competition.name`. But `apps/edge/src/routes/dev.ts`
   simulate-read only sends `{ punches: [...] }` in `envelope.data`,
   so `/api/__dev/simulate-read` 500s with
   "Cannot read properties of undefined (reading 'name')". The plan's
   e2e couldn't proceed past setup.
-- **Fix:** Set `FARTOL_PRINTER=stdout` on the Playwright `webServer`
+- **Fix:** Set `FARTOLA_PRINTER=stdout` on the Playwright `webServer`
   env so dev simulate-read uses the JSON-line stdout sink the
   walking-skeleton e2e was originally authored against. This matches
   the broader pattern: dev/CI uses stdout, production hardware uses
@@ -270,7 +270,7 @@ register.
 - FOUND: apps/web/src/routes/competition/[id]/export/+page.svelte
 - FOUND: apps/web/src/lib/api/client.ts (modified — exportPreview added)
 - FOUND: tests/e2e/export.spec.ts
-- FOUND: playwright.config.ts (modified — FARTOL_PRINTER=stdout)
+- FOUND: playwright.config.ts (modified — FARTOLA_PRINTER=stdout)
 - FOUND: .planning/phases/01-single-laptop-training-mvp/deferred-items.md
 
 ### Commits

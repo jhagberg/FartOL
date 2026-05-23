@@ -1,6 +1,6 @@
-// Authored for fartol. Not ported from upstream.
+// Authored for fartola. Not ported from upstream.
 //
-// Public API surface for @fartol/shared-types — the shared TS contract
+// Public API surface for @fartola/shared-types — the shared TS contract
 // between apps/edge/ (Fastify bridge) and apps/web/ (SvelteKit PWA).
 // Pure-TS package, no build step; consumers rely on root tsconfig's
 // `allowImportingTsExtensions` (CONTEXT D-08).
