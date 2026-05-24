@@ -170,6 +170,9 @@ export function reduce(input: ReduceInput): CompetitionState {
   // Phase 2.1 (D-16): track leg_voided max_seconds caps per competitor.
   // Maps competitorId → (controlCode → maxSeconds | null).
   const voidedLegCapsByCompetitor = new Map<string, Map<number, number | null>>();
+  // Competitors who had ANY void/unvoid activity — post-pass must re-derive
+  // their status even if voided_legs is empty at the end (unvoid scenario).
+  const voidDirtyCompetitors = new Set<string>();
   // Phase 2.1 race-phase gate. Seeded from the loader (competitions.
   // race_started_at_ms), but a replayed `race_started` event below can
   // re-seed this mid-walk if the column got out of sync. Three states:
@@ -402,6 +405,7 @@ export function reduce(input: ReduceInput): CompetitionState {
             voidedLegCapsByCompetitor.set(payload.competitor_id, caps);
           }
           caps.set(payload.control_code, payload.max_seconds);
+          voidDirtyCompetitors.add(payload.competitor_id);
         }
         break;
       }
@@ -412,6 +416,7 @@ export function reduce(input: ReduceInput): CompetitionState {
           view.voided_legs = view.voided_legs.filter((c) => c !== payload.control_code);
           const caps = voidedLegCapsByCompetitor.get(payload.competitor_id);
           if (caps !== undefined) caps.delete(payload.control_code);
+          voidDirtyCompetitors.add(payload.competitor_id);
         }
         break;
       }
@@ -425,15 +430,14 @@ export function reduce(input: ReduceInput): CompetitionState {
     }
   }
 
-  // Phase 2.1 (D-16): post-pass voided-leg elapsed recomputation.
-  // We defer this to after the event loop so that leg_voided events that
-  // arrive after card_read events still affect the elapsed time (event order
-  // within the sorted log should not change the projection of derived state).
-  for (const [competitorId, caps] of voidedLegCapsByCompetitor) {
+  // Phase 2.1 (D-16): post-pass voided-leg status + elapsed recomputation.
+  // Iterates ALL competitors who had void/unvoid activity, not just those
+  // with non-empty voided_legs — an unvoid that empties the list must still
+  // re-derive status (void → card_read(miss) → unvoid → should be MP).
+  for (const competitorId of voidDirtyCompetitors) {
+    const caps = voidedLegCapsByCompetitor.get(competitorId) ?? new Map();
     const view = competitorViews.get(competitorId);
-    if (view === undefined || view.elapsed_time_ms === null) continue;
-    if (view.voided_legs.length === 0) continue;
-    // Re-derive elapsed from the latest card_read history entry.
+    if (view === undefined) continue;
     const latestRead = view.card_read_history[view.card_read_history.length - 1];
     if (latestRead === undefined) continue;
     // Start from the raw detected elapsed (before any voided-leg subtraction).

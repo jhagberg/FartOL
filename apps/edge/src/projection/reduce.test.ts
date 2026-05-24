@@ -1173,4 +1173,31 @@ describe('Phase-2.1 reducer extensions — MAX / voided legs / replacement contr
     assert.ok(anna);
     assert.equal(anna.status, 'OK', 'after clearing DQ with voided leg, should be OK not MP');
   });
+
+  // Test 15: void → card_read(miss) → unvoid → should be MP (not stale OK)
+  test('test 15: unvoid reverts status — void→read(miss)→unvoid yields MP', () => {
+    seqCounter = 0;
+    const baseMs = 10 * 3600;
+    const events = [
+      evt({
+        event_type: 'leg_voided',
+        competitor_id: 'c-anna',
+        control_code: 32,
+        max_seconds: null,
+      }),
+      cardRead(1, [p(31), p(33), p(34)], hd(baseMs), hd(baseMs + 300)),
+      evt({ event_type: 'leg_unvoided', competitor_id: 'c-anna', control_code: 32 }),
+    ];
+    const state = reduce({
+      competition_id: 'comp-1',
+      events,
+      competitors: [comp({ id: 'c-anna', cardNumber: 1 })],
+      classes: [cls('cls-H21')],
+      courses: [course('cls-H21', [31, 32, 33, 34])],
+    });
+    const anna = state.competitors.get('c-anna');
+    assert.ok(anna);
+    assert.equal(anna.status, 'MP', 'unvoid should revert: control 32 is expected again');
+    assert.deepEqual(anna.voided_legs, []);
+  });
 });
