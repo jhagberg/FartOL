@@ -109,6 +109,7 @@ export async function refreshClassCache(
       const res = await fetchImpl(`http://${meosHost}:2009/?get=class`, {
         signal: controller.signal,
       });
+      if (!res.ok) throw new Error(`MeOS REST error: ${res.status} ${res.statusText}`);
       xml = await res.text();
     } finally {
       clearTimeout(timer);
