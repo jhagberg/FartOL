@@ -20,6 +20,10 @@
   so operators get the explanation on hover (desktop), long-press (touch),
   or via screen reader (aria-describedby).
 -->
+<script module lang="ts">
+  let instanceCount = 0;
+</script>
+
 <script lang="ts">
   import { t } from '$lib/i18n/index.ts';
 
@@ -37,6 +41,8 @@
 
   let { status, label, small = false, tooltip = true }: Props = $props();
 
+  const instanceId = ++instanceCount;
+
   // Class is lower-case to match the sketch CSS hooks; that keeps the
   // contrast-high mode's `border: 1.5px solid currentColor;` overlay
   // simple to retain.
@@ -44,7 +50,7 @@
   const tipText = $derived(
     tooltip ? t(`rcpt.status.tooltip.${status.toLowerCase()}`) : ''
   );
-  const describedBy = $derived(tooltip ? `status-tip-${status.toLowerCase()}` : undefined);
+  const describedBy = $derived(tooltip ? `status-tip-${instanceId}` : undefined);
 </script>
 
 <span class={klass} title={tipText || undefined} aria-describedby={describedBy}>

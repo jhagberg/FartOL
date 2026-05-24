@@ -63,6 +63,8 @@ import registerHiredCardsRoutes from './routes/hiredCards.ts';
 import registerSettingsRoutes from './routes/settings.ts';
 import registerMipRoute from './integrations/meos/mip.ts';
 import registerMopRoute from './integrations/meos/mop.ts';
+import registerLottningRoutes from './routes/lottning.ts';
+import registerLiveresultatRoutes from './routes/liveresultat.ts';
 import { LOGGER_REDACT_OPTIONS } from './log/redact.ts';
 import wsPlugin from './ws/index.ts';
 import type { DbHandle } from './db/index.ts';
@@ -309,7 +311,17 @@ export async function buildServer(opts: BuildServerOpts = {}): Promise<FastifyIn
     // posture as MIP — MeOS hard-codes its push URL. D-MOP-4: no auth,
     // always-on; D-MOP-1..3 govern the shadow-table writes and auto-merge.
     await app.register(registerMopRoute);
+    await app.register(registerLottningRoutes);
+    await app.register(registerLiveresultatRoutes);
     await app.register(registerDevRoutes);
+  }
+
+  // Plan 04 (D-02 / REQ-OPS-004) — per-reader lifecycle array. Decorated
+  // unconditionally (even when no dbHandle is provided) so /api/health always
+  // returns a valid readers array. The bin overwrites this after listen() with
+  // real lifecycles; tests and --no-bridge boots stay at empty array.
+  if (!app.hasDecorator('bridgeLifecycles')) {
+    app.decorate('bridgeLifecycles', []);
   }
 
   await registerHealthRoute(app);
@@ -366,3 +378,6 @@ declare module 'fastify' {
     bridgeState: 'opening' | 'open' | 'closed' | 'error';
   }
 }
+
+// sessions.ts owns the declarations for activeCompetitionId, reconnectBridge,
+// and bridgeLifecycles. No re-declaration here to avoid duplicate augmentation.
