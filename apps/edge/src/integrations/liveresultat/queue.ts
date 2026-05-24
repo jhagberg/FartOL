@@ -165,7 +165,7 @@ export function createPushQueue(opts: PushQueueOpts): PushQueueHandle {
         competitionId: config.liveresultatId,
         password: config.liveresultatPwd,
         mopXml,
-        fetchImpl: opts.fetchImpl,
+        ...(opts.fetchImpl !== undefined ? { fetchImpl: opts.fetchImpl } : {}),
       });
       lastSuccessAt = Date.now();
       lastError = null;

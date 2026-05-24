@@ -108,8 +108,8 @@ export function drawSOFT(runners: DrawRunner[], opts: DrawSOFTOptions = {}): Dra
 function fisherYatesShuffle<T>(arr: T[], rng: (min: number, max: number) => number): void {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = rng(0, i + 1);
-    const tmp = arr[i];
-    arr[i] = arr[j];
+    const tmp = arr[i]!;
+    arr[i] = arr[j]!;
     arr[j] = tmp;
   }
 }
@@ -142,7 +142,7 @@ function insertVacants(runners: DrawRunner[], count: number): DrawSlot[] {
     if (vacantPositions.has(pos)) {
       result.push(null);
     } else {
-      result.push(runners[runnerIdx++]);
+      result.push(runners[runnerIdx++]!);
     }
   }
   return result;
@@ -153,7 +153,7 @@ function countAdjacencies(slots: DrawSlot[]): number {
   let count = 0;
   const real = slots.filter((s): s is DrawRunner => s !== null);
   for (let i = 0; i < real.length - 1; i++) {
-    if (real[i].club !== null && real[i].club === real[i + 1].club) count++;
+    if (real[i]!.club !== null && real[i]!.club === real[i + 1]!.club) count++;
   }
   return count;
 }
