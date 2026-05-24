@@ -442,9 +442,7 @@ export function reduce(input: ReduceInput): CompetitionState {
     if (latestRead === undefined) continue;
     // Start from the raw detected elapsed (before any voided-leg subtraction).
     // We need the original detectStatus elapsed, not an already-adjusted one.
-    // Re-detect from the latest read's punches and timestamps.
-    const competitor = competitorsByCompetition.find((c) => c.id === competitorId);
-    const course = competitor ? courseByClass.get(competitor.classId) : undefined;
+    const course = view.class_id ? courseByClass.get(view.class_id) : undefined;
     const expected = course?.control_codes ?? [];
     const courseReplacements =
       course && input.replacementControls ? input.replacementControls.get(course.id) : undefined;
@@ -473,8 +471,8 @@ export function reduce(input: ReduceInput): CompetitionState {
     );
     view.elapsed_time_ms = adjustedElapsed;
     // Re-apply MAX gate after voided adjustment.
-    if (view.manual_status === null && competitor !== undefined) {
-      const maxTimeSec = maxTimeByClass.get(competitor.classId);
+    if (view.manual_status === null && view.class_id !== null) {
+      const maxTimeSec = view.class_id ? maxTimeByClass.get(view.class_id) : undefined;
       if (maxTimeSec !== undefined && adjustedElapsed / 1000 > maxTimeSec) {
         view.status = 'MAX';
       } else if (view.status === 'MAX') {
