@@ -603,8 +603,9 @@ function computeVoidedElapsed(
       prevSec = prev.seconds_in_half_day + prev.half_day * 12 * 3600;
     }
     if (prevSec === null) continue;
-    const legSec = punchSec - prevSec;
-    if (legSec <= 0) continue;
+    // Modulo handles midnight crossing (10-mila night legs, 25-manna relays).
+    const legSec = (((punchSec - prevSec) % 86400) + 86400) % 86400;
+    if (legSec === 0) continue;
     const maxSec = caps.get(controlCode);
     const deductSec = maxSec !== null && maxSec !== undefined ? Math.min(legSec, maxSec) : legSec;
     adjusted -= deductSec * 1000;
