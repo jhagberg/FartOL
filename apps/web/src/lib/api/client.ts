@@ -182,6 +182,8 @@ export interface CreateFromWizardInput {
   name: string;
   date: string;
   xml_file: { name: string; content_base64: string };
+  /** Plan 11 — optional Eventor event ID to link on creation. */
+  eventor_event_id?: number | null;
 }
 
 export interface CreateFromWizardOk {
@@ -640,6 +642,25 @@ export interface EventorEventListItem {
   clock: string | null;
 }
 
+/** GET /api/eventor/events/:id — fetch metadata for a single Eventor event.
+ *
+ * Used by the wizard Eventor quickstart to validate a typed event ID and
+ * prefill name + date. Returns structured event metadata on success.
+ * Throws ApiError on 400 (invalid id), 403 (forbidden), 404 (not found),
+ * 502 (eventor down), 503 (no API key). */
+export interface EventorEventMeta {
+  eventId: number;
+  name: string;
+  /** ISO date YYYY-MM-DD. */
+  startDate: string;
+  /** Organising club/organisation name; may be null. */
+  organisation: string | null;
+}
+
+export function getEventorEvent(eventId: number): Promise<EventorEventMeta> {
+  return apiFetch<EventorEventMeta>(`/api/eventor/events/${encodeURIComponent(String(eventId))}`);
+}
+
 export function listEventorEvents(opts: {
   fromDate: string;
   toDate?: string;
@@ -738,6 +759,102 @@ export function returnHiredCard(
 }
 
 // ---------------------------------------------------------------------------
+// Lottning — start-time draw (Phase 2.1 Plan 02.1-02 routes)
+// ---------------------------------------------------------------------------
+
+export interface LottningBody {
+  mode: 'SOFT' | 'Random' | 'Simultaneous';
+  firstStartMs: number;
+  intervalSec: number;
+  vacantSlots?: number;
+}
+
+export interface StartListEntry {
+  id: string;
+  name: string;
+  club: string | null;
+  card_number: number | null;
+  start_time_ms: number | null;
+}
+
+export interface LottningResponse {
+  class: {
+    id: string;
+    name: string;
+    first_start_ms: number | null;
+    start_interval_sec: number | null;
+    max_time_sec: number | null;
+  };
+  start_list: StartListEntry[];
+}
+
+/** POST /api/competitions/:id/lottning/:classId — draw start times for a class.
+ * Returns { drawn: N } where N is the number of competitors assigned times. */
+export function postLottning(
+  competitionId: string,
+  classId: string,
+  body: LottningBody
+): Promise<{ drawn: number }> {
+  return apiFetch(
+    `/api/competitions/${encodeURIComponent(competitionId)}/lottning/${encodeURIComponent(classId)}`,
+    { method: 'POST', body }
+  );
+}
+
+/** GET /api/competitions/:id/lottning/:classId — fetch the current start list
+ * for a class, sorted by start_time_ms ascending. */
+export function getLottning(competitionId: string, classId: string): Promise<LottningResponse> {
+  return apiFetch<LottningResponse>(
+    `/api/competitions/${encodeURIComponent(competitionId)}/lottning/${encodeURIComponent(classId)}`
+  );
+}
+
+/** PATCH /api/competitions/:id/classes/:classId — update class settings
+ * (max_time_sec, etc.). Owned by Plan 02.1-02; this plan only consumes it. */
+export function patchClass(
+  competitionId: string,
+  classId: string,
+  body: { maxTimeSec?: number | null }
+): Promise<{ ok: true }> {
+  return apiFetch(
+    `/api/competitions/${encodeURIComponent(competitionId)}/classes/${encodeURIComponent(classId)}`,
+    { method: 'PATCH', body }
+  );
+}
+
+/** PATCH /api/competitions/:id/competitors/:competitorId/start-time —
+ * update a competitor's individual start_time_ms (D-07 per-runner edit).
+ * Owned by Plan 02.1-02; this plan only consumes it. */
+export function patchCompetitorStartTime(
+  competitionId: string,
+  competitorId: string,
+  startTimeMs: number
+): Promise<{ ok: true }> {
+  return apiFetch(
+    `/api/competitions/${encodeURIComponent(competitionId)}/competitors/${encodeURIComponent(competitorId)}/start-time`,
+    { method: 'PATCH', body: { start_time_ms: startTimeMs } }
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Eventor push (Phase 2.1 Plan 02.1-08)
+// ---------------------------------------------------------------------------
+
+export function postEventorPushResults(competitionId: string): Promise<{ url: string }> {
+  return apiFetch(`/api/competitions/${encodeURIComponent(competitionId)}/eventor/push-results`, {
+    method: 'POST',
+    body: {},
+  });
+}
+
+export function postEventorPushStartlist(competitionId: string): Promise<{ url: string }> {
+  return apiFetch(`/api/competitions/${encodeURIComponent(competitionId)}/eventor/push-startlist`, {
+    method: 'POST',
+    body: {},
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Sessions (active competition pointer + bridge reconnect)
 // ---------------------------------------------------------------------------
 
@@ -762,6 +879,39 @@ export function reconnectBridge(): Promise<{ status: string }> {
 
 export function getBridgeStatus(): Promise<{ state: 'opening' | 'open' | 'closed' | 'error' }> {
   return apiFetch('/api/bridge/status');
+}
+
+// ---------------------------------------------------------------------------
+// Checkunit snapshot (Phase 2.1 Plan 02.1-06 — kvar-i-skogen)
+// ---------------------------------------------------------------------------
+
+export interface CheckunitSnapshotResult {
+  /** SI card numbers read from the check-unit backup memory (started). */
+  cardNumbers: number[];
+  /** SI card numbers that have physically returned (card_read with finish
+   * punch). NOT based on computed status — only physical finish reads. */
+  returnedCardNumbers: number[];
+  /** True when the check-unit's backup memory wrapped around (older records
+   * may be missing). The UI warns the operator when this flag is set. */
+  overflow: boolean;
+  /** Total number of card numbers returned (convenience field). */
+  readCount: number;
+}
+
+/** POST /api/competitions/:id/checkunit/snapshot
+ * Reads the BSF8 check-unit backup memory via the active SI bridge reader.
+ * Optional `reader` query param selects which reader to use when multiple are
+ * connected (defaults to the first available reader). */
+export function postCheckunitSnapshot(
+  competitionId: string,
+  opts: { reader?: string } = {}
+): Promise<CheckunitSnapshotResult> {
+  const query: Record<string, string> = {};
+  if (opts.reader !== undefined) query['reader'] = opts.reader;
+  return apiFetch<CheckunitSnapshotResult>(
+    `/api/competitions/${encodeURIComponent(competitionId)}/checkunit/snapshot`,
+    { method: 'POST', body: {}, ...(Object.keys(query).length > 0 ? { query } : {}) }
+  );
 }
 
 // ---------------------------------------------------------------------------

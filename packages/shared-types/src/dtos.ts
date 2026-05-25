@@ -94,6 +94,13 @@ export const CompetitionDTO = z.object({
    * clock instant. Frontend uses this to render the phase pill and
    * enable/disable the "Starta tävling" CTA. */
   race_started_at_ms: z.number().int().nonnegative().nullable(),
+  /** Phase 2.1 D-17 — display format for elapsed times. 'seconds' is the
+   * default; 'tenths' enables one-decimal rendering for sprint events. */
+  timing_format: z.enum(['seconds', 'tenths']).default('seconds'),
+  /** Phase 2.1 Plan 11 — linked Eventor event ID. NULL = not linked to
+   * any Eventor event. Set by the wizard Eventor quickstart or by
+   * PATCH /api/competitions/:id with eventor_event_id. */
+  eventor_event_id: z.number().int().positive().nullable().optional(),
 });
 export type CompetitionDTO = z.infer<typeof CompetitionDTO>;
 
@@ -102,6 +109,9 @@ export const CompetitionCreateInput = z.object({
   date: ISO_DATE,
   receipt_template: RECEIPT_TEMPLATE.optional(),
   auto_print: z.boolean().optional(),
+  /** Phase 2.1 Plan 11 — optional Eventor event ID to link on creation
+   * (e.g. set by the wizard Eventor quickstart path). */
+  eventor_event_id: z.number().int().positive().nullable().optional(),
 });
 export type CompetitionCreateInput = z.infer<typeof CompetitionCreateInput>;
 
@@ -110,6 +120,11 @@ export const CompetitionPatchInput = z.object({
   date: ISO_DATE.optional(),
   receipt_template: RECEIPT_TEMPLATE.optional(),
   auto_print: z.boolean().optional(),
+  /** Phase 2.1 D-17 — toggle subsecond display for sprint events. */
+  timing_format: z.enum(['seconds', 'tenths']).optional(),
+  /** Phase 2.1 Plan 11 — link (positive integer) or unlink (null) an
+   * Eventor event. PATCH with null removes an existing link. */
+  eventor_event_id: z.number().int().positive().nullable().optional(),
 });
 export type CompetitionPatchInput = z.infer<typeof CompetitionPatchInput>;
 
@@ -185,6 +200,11 @@ export const CompetitorDTO = z.object({
   consent_at_ms: z.number().int().nonnegative().nullable(),
   consent_status: z.enum(['explicit', 'pending_first_read', 'confirmed_on_read']),
   scrubbed_at_ms: z.number().int().nullable(),
+  /** Phase 2.1 — epoch ms of assigned start time from lottning. NULL when
+   * no start time has been drawn yet. Written by the lottning route (Plan
+   * 02.1-02); this field makes it available at the /competitors endpoint
+   * for display in the runners list and readout views. */
+  start_time_ms: z.number().int().nonnegative().nullable(),
 });
 export type CompetitorDTO = z.infer<typeof CompetitorDTO>;
 
